@@ -7,3 +7,10 @@ packages/pet/renders/
 apps/web/.vite/
 tools/shots/
 tools/ultrafuzz/runs/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/.ultrafuzz/
+contracts/.smithers/
+contracts/ultrafuzz.toml
+contracts/smithers.db
