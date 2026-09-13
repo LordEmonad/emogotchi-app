@@ -6,3 +6,4 @@ dist/
 packages/pet/renders/
 apps/web/.vite/
 tools/shots/
+tools/ultrafuzz/runs/
