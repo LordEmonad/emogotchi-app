@@ -361,6 +361,8 @@ contract Emogotchi {
         if (_ownerOf[id] != msg.sender) revert NotOwner();
         _sync(id, c);
         if (!_alive(id, c)) revert NotAlive();
+        // a pet never starts the clock, but once the welcome is over the cat is live and the bonus applies
+        if (c.lastFed == 0 && block.timestamp >= _mintedAt(id) + WELCOME) _materialize(id, c);
         c.pets += uint24(count);
         uint24 today = uint24(block.timestamp / 1 days);
         bool bonus;
@@ -598,6 +600,7 @@ contract Emogotchi {
     }
 
     function crowned(uint256 id) external view returns (bool) {
+        if (_ownerOf[id] == address(0)) return false;
         return _crownIndex[id] != 0 && _alive(id, _cats[id]);
     }
 

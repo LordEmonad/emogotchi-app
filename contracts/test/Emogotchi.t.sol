@@ -511,6 +511,18 @@ contract PetAndNameTest is Base {
         assertEq(v.pets, 5);
     }
 
+    function test_petAfterWelcomeGetsBonus() public {
+        warp(WELCOME + 12 hours);
+        assertEq(g.state(1).fun, 50);
+        vm.prank(alice);
+        g.pet(1, 1);
+        Emogotchi.View memory v = g.state(1);
+        assertEq(v.fun, 55);
+        assertTrue(v.started);
+        assertEq(v.bornAt, T0 + WELCOME);
+        assertFalse(g.crowned(999));
+    }
+
     function test_petBonusCappedAtFull() public {
         feed(1);
         warp(30 minutes);
