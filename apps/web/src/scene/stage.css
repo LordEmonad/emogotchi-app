@@ -1,0 +1,32 @@
+.stage { position: relative; width: 100%; overflow: hidden; border-radius: 22px; background: #1a0f2e; isolation: isolate; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.stage .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.stage .wall { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 20%, #3a1f5c 0%, #24123f 55%, #170b2a 100%); transition: filter 900ms ease; }
+.stage .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(234, 198, 234, 0.13) 1.6px, transparent 1.7px); background-size: 26px 26px; background-position: 6px 8px; mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 70%, transparent); -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 70%, transparent); transition: opacity 900ms ease; }
+.stage .stars { position: absolute; inset: 0; opacity: 0; transition: opacity 1200ms ease; }
+.stage .star { position: absolute; border-radius: 999px; background: #EAC6EA; box-shadow: 0 0 6px rgba(234, 198, 234, 0.9); animation: twinkle 3s ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
+.stage[data-night="on"] .stars { opacity: 1; }
+.stage[data-night="on"] .dots { opacity: 0.4; }
+.stage .rug { position: absolute; left: 50%; width: 420px; height: 64px; margin-left: -210px; border-radius: 50%; background: radial-gradient(ellipse at 50% 50%, rgba(184, 148, 216, 0.22), rgba(184, 148, 216, 0.08) 55%, transparent 72%); pointer-events: none; transition: filter 900ms ease; }
+.stage[data-night="on"] .rug { filter: brightness(0.6); }
+.stage .floor { position: absolute; left: -5%; right: -5%; bottom: -2px; border-radius: 50% 50% 0 0 / 40px 40px 0 0; background: linear-gradient(180deg, #2c1a44 0%, #1d1030 60%, #150a24 100%); box-shadow: inset 0 3px 0 rgba(184,148,216,0.16); transition: filter 900ms ease; }
+.stage[data-night="on"] .wall, .stage[data-night="on"] .floor { filter: brightness(0.62) saturate(0.85); }
+.stage .moon { position: absolute; right: 52px; top: 26px; width: 58px; height: 58px; opacity: 0; transform: translateY(24px) rotate(-10deg); transition: opacity 900ms ease, transform 900ms ease; filter: drop-shadow(0 0 18px rgba(232,216,155,0.35)); }
+.stage[data-night="on"] .moon { opacity: 1; transform: translateY(0) rotate(0); }
+.stage .layer { position: absolute; inset: 0; pointer-events: none; }
+.stage .layer .prop-poop-live { pointer-events: auto; cursor: pointer; }
+.stage .prop { position: absolute; will-change: transform; }
+.stage .prop-inner { width: 100%; height: 100%; }
+.stage .prop-inner svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.stage .cathost { position: absolute; cursor: pointer; will-change: transform; }
+.stage .thought { position: absolute; left: 68%; top: -22%; width: 96px; height: 74px; pointer-events: none; transform-origin: 10% 100%; animation: thought-in 360ms cubic-bezier(.2,.9,.3,1.3) both; }
+.stage .thought[data-side="left"] { left: auto; right: 68%; transform-origin: 90% 100%; }
+.stage .thought[data-side="left"] .thought-cloud { transform: scaleX(-1); }
+.stage .thought[data-on="off"] { animation: thought-out 240ms ease-in both; }
+.stage .thought-cloud { position: absolute; inset: 0; }
+.stage .thought-cloud svg, .stage .thought-icon svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.stage .thought-icon { position: absolute; left: 33%; top: 19%; width: 50%; height: 38%; display: flex; align-items: center; justify-content: center; }
+.stage .thought[data-side="left"] .thought-icon { left: 17%; }
+@keyframes thought-in { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes thought-out { from { transform: scale(1); opacity: 1; } to { transform: scale(0.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .stage .thought, .stage .thought[data-on="off"] { animation: none; } }

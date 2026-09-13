@@ -1,0 +1,28 @@
+// Chaos test: abuse the demo and look for console errors and inconsistent state. node tools/chaos.mjs (dev server on 5199)
+import puppeteer from 'puppeteer-core';
+const browser = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
+const page = await browser.newPage();
+await page.setViewport({ width: 430, height: 900 });
+const errors = [];
+page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.type() + ': ' + m.text()); });
+page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+await page.evaluateOnNewDocument(() => { try { localStorage.setItem('emogotchi.wallet', 'demo'); } catch {} });
+await page.goto('http://localhost:5199/?dev=1', { waitUntil: 'networkidle0' });
+await page.waitForFunction(() => window.__pet);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const state = () => page.evaluate(() => ({ d: window.__pet.director.getState(), anims: document.querySelectorAll('.pet svg')[0]?.getAnimations({ subtree: true }).length }));
+const step = async (name, fn) => { await fn(); const s = await state(); console.log(name.padEnd(34), 'busy=' + s.d.busy, 'dead=' + s.d.dead, 'x=' + Math.round(s.d.x), 'anims=' + s.anims); };
+await step('click all four buttons at once', async () => { await page.evaluate(() => document.querySelectorAll('.action').forEach((b) => b.click())); await wait(300); });
+await step('tap the cat 30x during the action', async () => { for (let i = 0; i < 30; i++) { await page.evaluate(() => { const el = document.querySelector('.cathost'); el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: el.getBoundingClientRect().x + 20, clientY: 10 })); }); await wait(20); } });
+await step('kill mid-action', async () => { await page.evaluate(() => window.__pet.dispatch({ type: 'kill' })); await wait(400); });
+await step('wait for it to finish and die', async () => { await page.waitForFunction(() => window.__pet.director.getState().dead && !window.__pet.director.getState().busy, { timeout: 30000 }); });
+await step('spam actions while dead', async () => { await page.evaluate(() => { const d = window.__pet.director; d.feed(); d.wash(); d.play(); d.pet(1); d.walk(120); }); await wait(500); });
+await step('revive', async () => { await page.evaluate(() => { window.__pet.dispatch({ type: 'revived' }); return window.__pet.director.revive(); }); });
+await step('sleep then kill while asleep', async () => { await page.evaluate(() => { window.__pet.dispatch({ type: 'slept', on: true }); window.__pet.director.sleep(); }); await wait(1200); await page.evaluate(() => window.__pet.dispatch({ type: 'kill' })); await page.waitForFunction(() => window.__pet.director.getState().dead && !window.__pet.director.getState().busy, { timeout: 20000 }); });
+await step('revive again then wash at the wall', async () => { await page.evaluate(() => { window.__pet.dispatch({ type: 'revived' }); return window.__pet.director.revive(); }); await page.evaluate(() => window.__pet.director.walk(485)); await page.evaluate(() => window.__pet.director.wash()); await page.waitForFunction(() => !window.__pet.director.isBusy, { timeout: 40000 }); });
+await step('poop then clean by tapping the poop', async () => { await page.evaluate(() => window.__pet.director.poop()); await page.waitForFunction(() => window.__pet.director.getState().poop && !window.__pet.director.isBusy, { timeout: 20000 }); await page.evaluate(() => document.querySelector('.prop-poop-live').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))); await page.waitForFunction(() => !window.__pet.director.getState().poop && !window.__pet.director.isBusy, { timeout: 20000 }); });
+await step('rapid speed x30 for 20s (aging, auto sleep, poop timer)', async () => { await page.evaluate(() => window.__pet.dispatch({ type: 'speed', speed: 30 })); await wait(20000); await page.evaluate(() => window.__pet.dispatch({ type: 'speed', speed: 1 })); });
+const leak = await page.evaluate(() => document.querySelectorAll('.layer .prop').length);
+console.log('props left in the room:', leak);
+console.log('console errors:', errors.length ? errors : 'none');
+await browser.close();

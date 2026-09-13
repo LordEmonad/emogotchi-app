@@ -1,0 +1,14 @@
+{
+  "name": "@emo-pets/pet",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./cat.svg": "./cat.svg",
+    "./props/*": "./props/*"
+  },
+  "scripts": {
+    "build": "python3 design/cat.py && python3 design/props.py",
+    "render": "python3 design/render.py"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "emo-pets",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@9.15.3",
+  "scripts": {
+    "dev": "pnpm --filter @emo-pets/web dev",
+    "build": "pnpm --filter @emo-pets/web build",
+    "preview": "pnpm --filter @emo-pets/web preview",
+    "typecheck": "pnpm -r typecheck",
+    "pet:build": "pnpm --filter @emo-pets/pet build",
+    "pet:render": "pnpm --filter @emo-pets/pet render",
+    "film": "node tools/filmstrip.mjs",
+    "portraits": "node tools/portrait.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}

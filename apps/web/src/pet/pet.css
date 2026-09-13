@@ -1,0 +1,45 @@
+/* ==== The pet ====
+   Motion lives in rig.ts (Web Animations, additive). This file only sets the
+   transform boxes and origins every part animates around. */
+.pet svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pet #cat, .pet #figure, .pet #shadow, .pet #eyeL, .pet #eyeR, .pet #tail, .pet #fringe, .pet #crown, .pet #crownlift,
+.pet #earL, .pet #earR, .pet #head, .pet #headstack, .pet #body, .pet #pendant, .pet .pupil, .pet .lid,
+.pet #legL, .pet #legR, .pet #footL, .pet #footR, .pet #glintL, .pet #glintC, .pet #glintR, .pet #sweat, .pet #tear,
+.pet #zzz .z, .pet #stink .s, .pet #dirt, .pet #mouth {
+  transform-box: fill-box;
+}
+.pet #eyeL, .pet #eyeR { transform-origin: 50% 55%; }
+.pet .pupil { transform-origin: 50% 50%; }
+.pet #tail { transform-origin: 8% 100%; }
+.pet #fringe { transform-origin: 20% 10%; }
+.pet #crown, .pet #crownlift { transform-origin: 50% 70%; }
+/* the head unit (face, back hair, crown) pivots at the neck; one shared point so nothing detaches */
+.pet #head, .pet #headstack, .pet #crown { transform-box: view-box; transform-origin: 100px 132px; }
+.pet #body { transform-origin: 50% 100%; }
+.pet #cat, .pet #figure { transform-origin: 50% 100%; }
+.pet #shadow { transform-origin: 50% 50%; }
+.pet #earL { transform-origin: 85% 95%; }
+.pet #earR { transform-origin: 15% 95%; }
+.pet #legL { transform-origin: 30% 14%; }
+.pet #legR { transform-origin: 70% 14%; }
+.pet #footL, .pet #footR { transform-origin: 50% 50%; }
+.pet #glintL, .pet #glintC, .pet #glintR { transform-origin: 50% 50%; }
+.pet #sweat, .pet #tear { transform-origin: 50% 0%; }
+.pet #pendant { transform-origin: 50% 0%; }
+.pet #whiskers { transform-box: fill-box; transform-origin: 50% 50%; }
+.pet #mouth, .pet #mouth-open { transform-box: fill-box; transform-origin: 50% 45%; }
+.pet[data-crown="off"] #crown { display: none; }
+.pet #halo { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* ==== ghost (dead) ==== */
+.pet svg { transition: filter 800ms ease; }
+.pet svg #figure path { transition: fill 800ms ease; }
+.pet svg #figure, .pet svg #footL, .pet svg #footR, .pet svg #shadow { transition: opacity 800ms ease; }
+.pet svg.ghost { filter: drop-shadow(0 0 18px rgba(184, 148, 216, 0.55)); }
+.pet svg.ghost #figure { opacity: 0.86; }
+.pet svg.ghost #footL, .pet svg.ghost #footR, .pet svg.ghost #shadow { opacity: 0; }
+.pet svg.ghost path[fill="#F8F8FF"] { fill: #EAC6EA; }
+.pet svg.ghost path[fill="#502858"] { fill: #906096; }
+.pet svg.ghost path[fill="#724278"] { fill: #B894D8; }
+.pet svg.ghost path[fill="#906096"] { fill: #B894D8; }
+.pet svg.ghost path[fill="#E84D7F"] { fill: #EAC6EA; }
