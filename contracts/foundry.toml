@@ -10,3 +10,6 @@ via_ir = true
 
 [fuzz]
 runs = 512
+
+[lint]
+lint_on_build = false # forge 1.8's linter needs >10 GB on this suite; Ultrafuzz box
