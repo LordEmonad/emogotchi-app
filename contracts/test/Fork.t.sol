@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Emogotchi, IERC20Balance} from "../src/Emogotchi.sol";
+import {MockArt} from "./mocks/Mocks.sol";
 
 /// Runs only with a fork: forge test --match-contract Fork --fork-url https://rpc.monad.xyz -vv
 contract ForkTest is Test {
@@ -30,7 +31,7 @@ contract ForkTest is Test {
         p.lens = LENS;
         p.pool = POOL;
         p.maxImpactBps = 50;
-        p.baseURI = "ipfs://test";
+        p.art = address(new MockArt());
         p.siteURI = "https://emogotchi.emonad.lol";
         Emogotchi g = new Emogotchi(p);
 

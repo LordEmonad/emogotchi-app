@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {Emogotchi} from "../src/Emogotchi.sol";
-import {MockEMO, MockWMON, MockNad, Refuser} from "./mocks/Mocks.sol";
+import {MockEMO, MockWMON, MockNad, Refuser, MockArt} from "./mocks/Mocks.sol";
 
 /// @dev Under via_ir the compiler memoises block.timestamp inside a test function; always read the
 ///      clock through vm.getBlockTimestamp() and move it with warp().
@@ -12,6 +12,7 @@ contract Base is Test {
     MockEMO emo;
     MockWMON wmon;
     MockNad nad;
+    MockArt art;
     address pool = address(0x900D);
     address minter = address(0xA11CE);
     address alice = address(0xB0B);
@@ -26,6 +27,7 @@ contract Base is Test {
         emo = new MockEMO();
         wmon = new MockWMON();
         nad = new MockNad(emo, wmon, pool, 10_000 ether, 42_000_000 ether);
+        art = new MockArt();
         g = new Emogotchi(params(minter, 100_000));
         vm.prank(minter);
         g.mintMany(alice, 3);
@@ -49,7 +51,7 @@ contract Base is Test {
         p.lens = address(nad);
         p.pool = pool;
         p.maxImpactBps = 50;
-        p.baseURI = "ipfs://QmPortraits";
+        p.art = address(art);
         p.siteURI = "https://emogotchi.emonad.lol";
     }
 

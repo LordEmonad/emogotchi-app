@@ -25,6 +25,11 @@ interface IERC20Balance {
     function balanceOf(address account) external view returns (uint256);
 }
 
+/// @notice The on-chain portraits (EmogotchiArt).
+interface IEmogotchiArt {
+    function image(uint8 mood, bool crowned) external view returns (string memory);
+}
+
 interface IERC721Receiver {
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
         external
@@ -166,8 +171,8 @@ contract Emogotchi {
     // ---------------------------------------------------------------- storage
     string public constant name = "Emogotchi";
     string public constant symbol = "EMOGOTCHI";
-    /// @dev Where the wallet images live: `<baseURI>/<mood>[-crown]-1024.png`. Set once at deploy.
-    string public baseURI;
+    /// @dev The portraits, composed on chain at read time.
+    IEmogotchiArt public immutable ART;
     /// @dev Where the site lives; `animation_url` and `external_url` are `<siteURI>/pet/<id>`. Set once at deploy.
     string public siteURI;
 
@@ -247,7 +252,7 @@ contract Emogotchi {
         address lens;
         address pool;
         uint256 maxImpactBps;
-        string baseURI;
+        address art;
         string siteURI;
     }
 
@@ -255,6 +260,7 @@ contract Emogotchi {
         if (
             p.minter == address(0) || p.treasury == address(0) || p.team == address(0) || p.emo == address(0)
                 || p.wmon == address(0) || p.router == address(0) || p.lens == address(0) || p.pool == address(0)
+                || p.art == address(0)
         ) revert ZeroAddress();
         if (p.burnBps + p.treasuryBps + p.teamBps != BPS || p.reviveBurnBps > BPS) revert BadSplit();
         if (p.maxImpactBps == 0 || p.maxImpactBps > BPS) revert BadGuard();
@@ -273,7 +279,7 @@ contract Emogotchi {
         LENS = INadLens(p.lens);
         POOL = p.pool;
         MAX_IMPACT_BPS = p.maxImpactBps;
-        baseURI = p.baseURI;
+        ART = IEmogotchiArt(p.art);
         siteURI = p.siteURI;
     }
 
@@ -587,6 +593,12 @@ contract Emogotchi {
         v.mood = _mood(v);
     }
 
+    /// @notice The cat's portrait as it is now, plain SVG (the same picture tokenURI carries).
+    function imageOf(uint256 id) external view returns (string memory) {
+        View memory v = state(id);
+        return ART.image(v.mood, v.crowned);
+    }
+
     /// @notice Every cat an address holds, as of now.
     function catsOf(address owner) external view returns (View[] memory out) {
         uint256[] storage ids = _owned[owner];
@@ -693,7 +705,8 @@ contract Emogotchi {
         m[8] = "dead";
     }
 
-    /// @notice On-chain metadata: JSON with the wallet image picked from the cat's live state and the whole record as attributes.
+    /// @notice On-chain metadata: JSON with the portrait composed from the cat's live state (an SVG data
+    ///         URI) and the whole record as attributes. Nothing here depends on any server.
     function tokenURI(uint256 id) external view returns (string memory) {
         View memory v = state(id);
         string memory mood = moods()[v.mood];
@@ -703,12 +716,9 @@ contract Emogotchi {
             '{"name":"',
             displayName,
             '","description":"A cat that lives in your wallet. Feed it, wash it, play with it, put it to bed; every interaction costs 1 MON and 80% of it buys EMO and burns it. Everything about the cat is on chain.",',
-            '"image":"',
-            baseURI,
-            "/",
-            mood,
-            v.crowned ? "-crown" : "",
-            '-1024.png","external_url":"',
+            '"image":"data:image/svg+xml;base64,',
+            Base64.encode(bytes(ART.image(v.mood, v.crowned))),
+            '","external_url":"',
             siteURI,
             "/pet/",
             idStr,
@@ -1406,7 +1416,7 @@ contract Emogotchi {
     }
 }
 
-/// @dev Base64 encoder (OpenZeppelin's, MIT).
+/// @dev Base64 encoder (OpenZeppelin's, MIT), with the tail masked so bytes past the input never leak in.
 library Base64 {
     string internal constant _TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -1417,9 +1427,12 @@ library Base64 {
         assembly {
             let tablePtr := add(table, 1)
             let resultPtr := add(result, 32)
-            for { let dataPtr := data } lt(dataPtr, add(data, mload(data))) {} {
+            let end := add(data, mload(data))
+            for { let dataPtr := data } lt(dataPtr, end) {} {
                 dataPtr := add(dataPtr, 3)
                 let input := mload(dataPtr)
+                // the last group may reach past the data: its missing bytes are the lowest ones, zero them
+                if gt(dataPtr, end) { input := and(input, not(sub(shl(mul(8, sub(dataPtr, end)), 1), 1))) }
                 mstore8(resultPtr, mload(add(tablePtr, and(shr(18, input), 0x3F))))
                 resultPtr := add(resultPtr, 1)
                 mstore8(resultPtr, mload(add(tablePtr, and(shr(12, input), 0x3F))))

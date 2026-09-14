@@ -3,11 +3,13 @@ pragma solidity ^0.8.26;
 
 import {Script, console} from "forge-std/Script.sol";
 import {Emogotchi} from "../src/Emogotchi.sol";
+import {ArtDeploy} from "./ArtDeploy.sol";
+import {EmogotchiArt} from "../src/EmogotchiArt.sol";
 
 /// Mainnet (Monad, chain id 143). Every immutable comes from the environment; nothing is defaulted
 /// except the split and the nad.fun addresses checked on chain on 2026-09-10 (see README).
 ///
-///   MINTER=0x… TREASURY=0x… TEAM=0x… BASE_URI=ipfs://<cid> SITE_URI=https://emogotchi.emonad.lol \
+///   MINTER=0x… TREASURY=0x… TEAM=0x… SITE_URI=https://emogotchi.emonad.lol \
 ///   forge script script/Deploy.s.sol --rpc-url https://rpc.monad.xyz --broadcast --verify
 contract Deploy is Script {
     address constant EMO = 0x81A224F8A62f52BdE942dBF23A56df77A10b7777;
@@ -34,13 +36,15 @@ contract Deploy is Script {
         p.lens = vm.envOr("LENS", LENS);
         p.pool = vm.envOr("POOL", POOL);
         p.maxImpactBps = vm.envOr("MAX_IMPACT_BPS", uint256(50));
-        p.baseURI = vm.envString("BASE_URI");
         p.siteURI = vm.envString("SITE_URI");
 
         vm.startBroadcast();
+        EmogotchiArt art = ArtDeploy.deploy(vm);
+        p.art = address(art);
         Emogotchi game = new Emogotchi(p);
         vm.stopBroadcast();
         console.log("EMOGOTCHI", address(game));
+        console.log("ART", address(art));
         console.log("MINTER", p.minter);
         console.log("TREASURY", p.treasury);
         console.log("TEAM", p.team);
