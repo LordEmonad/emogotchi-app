@@ -91,7 +91,9 @@ export class ChainStore {
       const activeId = this.snap.activeId ?? this.watchId ?? cats[0]?.id ?? null;
       this.set({ cats, totals, spectator, activeId, loaded: true, error: null });
     } catch (e) {
-      this.set({ error: (e as Error).message, loaded: true });
+      // a failed read is not an empty wallet: `loaded` stays false until a read succeeds, so the page
+      // keeps its "looking in your wallet" screen (with the reason) instead of "no Emogotchi here"
+      this.set({ error: e instanceof ChainError ? e.message : 'Monad is not answering right now · retrying' });
     } finally {
       this.busy = false;
       this.schedule(POLL_MS);
