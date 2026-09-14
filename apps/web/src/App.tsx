@@ -4,7 +4,7 @@ import type { Director, DirectorState } from './scene/director';
 import type { PropName } from './scene/props';
 import { initial, isDirty, isSad, need, reduce, type Game, type PaidAction } from './game/state';
 import { CHAIN_MODE, chainCfg, chainStore, toGame, type ChainSnapshot } from './game/chain';
-import { EMPTY_WALLET, connectDemo, connectInjected, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, type WalletState } from './wallet';
+import { EMPTY_WALLET, connectDemo, connectInjected, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState } from './wallet';
 import { Header } from './ui/Header';
 import { ConnectModal } from './ui/ConnectModal';
 import { Landing } from './ui/Landing';
@@ -80,7 +80,10 @@ function Home({ petId }: { petId: number | null }) {
   useEffect(() => { void restore().then((w) => { if (w) setWallet(w); }); }, []);
   useEffect(() => onAccountsChanged((accs) => { if (!accs.length) { disconnect(); setWallet(EMPTY_WALLET); } else setWallet((w) => ({ ...w, address: accs[0]! })); }), []);
   useEffect(() => onChainChanged((chainId) => setWallet((w) => (w.demo ? w : { ...w, chainId }))), []);
+  const connecting = useRef(false); // one wallet request at a time, whatever the buttons do meanwhile
   const doInjected = async () => {
+    if (connecting.current) return;
+    connecting.current = true;
     setWallet((w) => ({ ...w, status: 'connecting', error: null }));
     try {
       const w = await connectInjected();
@@ -88,10 +91,10 @@ function Home({ petId }: { petId: number | null }) {
         try { await ensureChain(chainCfg.chain.id, chainCfg.chain.name, chainCfg.rpcUrl, chainCfg.explorer); w.chainId = chainCfg.chain.id; } catch { /* the banner asks again */ }
       }
       setWallet(w); setModal(false);
-    } catch (e) { setWallet((w) => ({ ...w, status: 'idle', error: (e as Error).message || 'Connection was cancelled.' })); }
+    } catch (e) { setWallet((w) => ({ ...w, status: 'idle', error: (e as Error).message || 'Connection was cancelled.' })); } finally { connecting.current = false; }
   };
   const doDemo = () => { setWallet(connectDemo()); setModal(false); };
-  const doDisconnect = () => { disconnect(); setWallet(EMPTY_WALLET); };
+  const doDisconnect = () => { const wasInjected = !wallet.demo; disconnect(); setWallet(EMPTY_WALLET); if (wasInjected) void revokeInjected(); };
 
   useEffect(() => { (window as unknown as { __pet?: unknown }).__pet = director ? { director, dispatch, chain: chainStore } : undefined; }, [director]);
 

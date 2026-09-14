@@ -47,7 +47,16 @@ export const chainName = (id: number | null) => id === MONAD.mainnet ? 'Monad' :
 export async function connectInjected(): Promise<WalletState> {
   const p = eth();
   if (!p) throw new Error('No wallet found in this browser.');
-  const accounts = (await p.request({ method: 'eth_requestAccounts' })) as string[];
+  let accounts: string[];
+  try {
+    accounts = (await p.request({ method: 'eth_requestAccounts' })) as string[];
+  } catch (e) {
+    const code = (e as { code?: number }).code;
+    if (code === 4001) throw new Error('Connection cancelled in the wallet.');
+    // MetaMask -32002: its own connect popup is still open (often behind the window) and it refuses a second one
+    if (code === -32002) throw new Error('Your wallet already has a connection request open. Open the extension, approve or cancel it there, then try again.');
+    throw e;
+  }
   const chainHex = (await p.request({ method: 'eth_chainId' })) as string;
   const address = accounts[0];
   if (!address) throw new Error('No account returned.');
@@ -59,6 +68,11 @@ export function connectDemo(): WalletState {
   return { status: 'connected', address: '0xE1110C47A7F0E1E0C47A7F0E1E0C47A7F0E1E0C4', chainId: MONAD.testnet, demo: true, error: null };
 }
 export function disconnect() { try { localStorage.removeItem(KEY); } catch { /* private mode */ } }
+/** Ask the wallet to drop this site's permission too (MetaMask and friends support wallet_revokePermissions), so a reload does not silently reconnect. */
+export async function revokeInjected(): Promise<void> {
+  const p = eth(); if (!p) return;
+  try { await p.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] }); } catch { /* older wallets: the site just forgets */ }
+}
 /** Silent reconnect on load, if the user connected before. */
 export async function restore(): Promise<WalletState | null> {
   let mode: string | null = null;
