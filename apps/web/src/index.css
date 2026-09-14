@@ -318,6 +318,8 @@
 .cat-tab { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: var(--ink, #f4f0ff); font: inherit; font-size: 13px; cursor: pointer; }
 .cat-tab.is-on { background: var(--pink, #ff4fa3); border-color: transparent; color: #1a0620; font-weight: 600; }
 .cat-tab.is-dead { opacity: .55; }
+.cat-tab-all { font-weight: 700; border-style: dashed; }
+.cat-tab-all.is-on { border-style: solid; }
 .cat-tab-crown { font-size: 12px; line-height: 1; }
 .cat-tab-name { max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pending-line { margin: 8px 0 0; text-align: center; font-size: 13px; opacity: .85; }

@@ -51,6 +51,7 @@ function Home({ petId }: { petId: number | null }) {
   const [view, setView] = useState<ViewOverride>(((params.get('view') as ViewOverride | null) ?? 'auto'));
   const [crownOverride, setCrownOverride] = useState<boolean | null>(CHAIN_MODE ? null : true); // demo: crown on for review; live: from the contract
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [allMode, setAllMode] = useState(false); // live: the "All" tab, every button acts on every cat in the wallet
   const [simName, setSimName] = useState(readName);
   useEffect(() => { if (CHAIN_MODE) return; try { if (simName) localStorage.setItem(NAME_KEY, simName); else localStorage.removeItem(NAME_KEY); } catch { /* private mode */ } }, [simName]);
 
@@ -180,6 +181,21 @@ function Home({ petId }: { petId: number | null }) {
     const d = dRef.current; if (!d || d.isBusy) return;
     if (live) {
       if (!chainStore || !owns) return;
+      if (allMode && a !== 'wake' && a !== 'revive' && a !== 'name') {
+        const touched = chainStore.allTargets(a).includes(activeCat?.id ?? -1);
+        try { await chainStore.actAll(a); } catch { return; }
+        // the room shows one cat: play the action on it if it was in the batch (a sleeping cat wakes first)
+        if (touched) {
+          if (g.sleeping && a !== 'sleep' && a !== 'clean') await d.wake();
+          if (a === 'feed') await d.feed();
+          if (a === 'wash') await d.wash();
+          if (a === 'play') await d.play();
+          if (a === 'sleep') await d.sleep();
+          if (a === 'clean') await d.clean();
+        }
+        await chainStore.refresh();
+        return;
+      }
       try { await chainStore.act(a); } catch { return; }
       if (a === 'wake') await d.wake();
       if (a === 'feed') await d.feed();
@@ -230,7 +246,9 @@ function Home({ petId }: { petId: number | null }) {
       : !connected ? 'landing' : !hasPet ? 'nopet' : !g.alive ? 'dead' : 'pet';
   useEffect(() => { if (live) return; if (view === 'dead' && g.alive) dispatch({ type: 'kill' }); if (view === 'pet' && !g.alive) dispatch({ type: 'revived' }); }, [live, view, g.alive]);
   const tabs: CatTab[] = live ? snap.cats.map((c) => ({ id: c.id, name: c.name, alive: c.alive, crowned: c.crowned })) : [];
-  const pending = live ? (snap.pending ? snap.pendingLabel : !owns && activeCat ? 'Someone else\'s cat · look but don\'t touch' : wrongChain ? `Switch your wallet to ${chainCfg?.chain.name ?? 'Monad'}` : null) : null;
+  const allCounts = live && chainStore && owns && tabs.length > 1 ? chainStore.allCounts() : null;
+  const allOn = allMode && allCounts !== null;
+  const pending = live ? (snap.pending ? snap.pendingLabel : !owns && activeCat ? 'Someone else\'s cat · look but don\'t touch' : wrongChain ? `Switch your wallet to ${chainCfg?.chain.name ?? 'Monad'}` : allOn && allCounts ? `Every button acts on all ${allCounts.total} cats${allCounts.asleep ? ` · ${allCounts.asleep} asleep wake up when fed, washed or played with` : ''} · the room shows ${name || `#${activeCat?.id ?? ''}`}` : null) : null;
   const stage = (
     <Stage onDirector={setDirector} night={g.sleeping} thought={thought} thoughtSide={dState.x > 330 ? -1 : 1} onPet={onPet}>
       <div className="toasts" aria-live="polite">
@@ -246,7 +264,7 @@ function Home({ petId }: { petId: number | null }) {
       {which === 'landing' && <Landing stage={stage} onConnect={() => setModal(true)} connecting={wallet.status === 'connecting'} />}
       {which === 'loading' && <main className="nopet"><div className="shell"><div className="empty-room"><div className="empty-dots" /><div className="empty-floor" /><div className="empty-card"><h2>Looking in your wallet…</h2>{snap.error && <p className="tnum">{snap.error}</p>}</div></div></div></main>}
       {which === 'nopet' && <NoPet address={wallet.address ?? '0x0000…0000'} onDemo={() => { if (live) doDemo(); else setHasPet(true); }} />}
-      {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onTab={(id) => chainStore?.setActive(id)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} />}
+      {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onTab={(id) => { setAllMode(false); chainStore?.setActive(id); }} all={allCounts ? { on: allOn, counts: allCounts } : undefined} onAll={() => setAllMode(true)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} />}
       {which !== 'landing' && which !== 'nopet' && which !== 'loading' && (
         <footer className="foot"><span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span><span className="foot-right"><a href="/cats">All cats</a> · <a href="/leaderboard">Leaderboard</a> · <a href="/nft">NFT preview</a> · {explorer ? <a href={explorer} target="_blank" rel="noreferrer">Contract</a> : 'Contract: soon'}</span></footer>
       )}

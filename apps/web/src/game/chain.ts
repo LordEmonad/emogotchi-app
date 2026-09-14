@@ -30,6 +30,10 @@ const PET_DEBOUNCE_MS = 1500;
 const MAX_PETS = 20;
 
 const CARE: Record<Exclude<PaidAction, 'name' | 'revive'>, CareAction> = { feed: 'feed', wash: 'wash', play: 'play', sleep: 'sleep', clean: 'clean' };
+export type BatchAction = keyof typeof CARE;
+/** How many of the wallet's cats each batch action would touch right now. */
+export type AllCounts = Record<BatchAction, number> & { total: number; asleep: number };
+const MAX_BATCH = 200; // the contract's cap per care() call
 
 export class ChainStore {
   private snap: ChainSnapshot = { owner: null, cats: [], activeId: null, spectator: null, totals: null, loaded: false, pending: null, pendingLabel: '', error: null, log: [] };
@@ -108,6 +112,32 @@ export class ChainStore {
     if (a === 'revive') return this.tx('Reviving', () => this.client.revive(cat.id), `${label('revive')} · 1000 MON → 500 MON to the burn queue`);
     if (a === 'name') throw new ChainError('Use setName.', 'wallet');
     return this.tx(label(a), () => this.client.care(cat.id, CARE[a]), `${label(a)} · 1 MON → 0.8 MON to the burn queue`);
+  }
+
+  /**
+   * The cats a batch action touches: every living cat for feed, wash and play (the contract wakes a
+   * sleeping cat for those), awake cats with energy to refill for sleep, cats with a poop for clean.
+   */
+  allTargets(a: BatchAction): number[] {
+    const mine = this.snap.cats.filter((c) => c.alive);
+    const pick = a === 'sleep' ? mine.filter((c) => !c.asleep && c.energy < 100) : a === 'clean' ? mine.filter((c) => c.poop) : mine;
+    return pick.map((c) => c.id);
+  }
+
+  allCounts(): AllCounts {
+    const mine = this.snap.cats.filter((c) => c.alive);
+    return { total: mine.length, asleep: mine.filter((c) => c.asleep).length, feed: mine.length, wash: mine.length, play: mine.length, sleep: this.allTargets('sleep').length, clean: this.allTargets('clean').length };
+  }
+
+  /** One care() transaction for every cat the action applies to; more than 200 cats means more than one. */
+  async actAll(a: BatchAction): Promise<void> {
+    const ids = this.allTargets(a);
+    if (ids.length === 0) throw new ChainError('Nothing to do.', 'wallet');
+    for (let i = 0; i < ids.length; i += MAX_BATCH) {
+      const chunk = ids.slice(i, i + MAX_BATCH);
+      const what = `${label(a)} ×${chunk.length}`;
+      await this.tx(what, () => this.client.careMany(chunk, chunk.map(() => CARE[a])), `${what} · ${chunk.length} MON → ${(chunk.length * 0.8).toFixed(1).replace(/\.0$/, '')} MON to the burn queue`);
+    }
   }
 
   async setName(name: string): Promise<void> {

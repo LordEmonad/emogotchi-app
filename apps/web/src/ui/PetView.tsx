@@ -3,6 +3,7 @@ import { Icon } from './Icon';
 import type { PropName } from '../scene/props';
 import type { DirectorState } from '../scene/director';
 import { MON_TO_NAME, MON_TO_REVIVE, TIME_SCALE, DAY, clockOf, dayOf, type Game, type PaidAction, need } from '../game/state';
+import type { AllCounts } from '../game/chain';
 
 export type CatTab = { id: number; name: string; alive: boolean; crowned: boolean };
 type Props = {
@@ -16,6 +17,9 @@ type Props = {
   tabs?: CatTab[];
   activeId?: number | null;
   onTab?: (id: number) => void;
+  /** live mode: the "All" tab; when it is on, every button acts on every cat in the wallet */
+  all?: { on: boolean; counts: AllCounts };
+  onAll?: () => void;
   /** live mode: a line under the stage while a transaction is in flight, or why actions are locked */
   pending?: string | null;
   /** live mode: no actions (not our cat, wrong chain, transaction in flight) */
@@ -26,8 +30,9 @@ type Props = {
 const BUSY_MOOD: Record<string, string> = { feed: 'eating', wash: 'bathing', play: 'playing', poop: 'busy…', clean: 'relieved', pet: 'purring', wake: 'waking up', walk: 'wandering', wander: 'wandering', rumble: 'hungry', sleep: 'dozing off', tour: 'showing off', die: 'fading…', revive: 'coming back' };
 const NEED_MOOD: Record<NonNullable<ReturnType<typeof need>>, string> = { food: 'hungry', clean: 'grubby', fun: 'bored', energy: 'sleepy', poop: 'grossed out' };
 
-export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, pending = null, locked = false, live = false }: Props) {
+export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, all, onAll, pending = null, locked = false, live = false }: Props) {
   const busy = d.busy !== null || locked;
+  const every = all?.on ? all.counts : null;
   const dead = !g.alive;
   const n = need(g);
   const avg = (g.stats.food + g.stats.clean + g.stats.fun + g.stats.energy) / 4;
@@ -44,8 +49,9 @@ export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = 
     <main className="petview">
       {tabs.length > 1 && (
         <div className="cat-tabs" role="tablist" aria-label="Your cats">
+          {all && <button role="tab" aria-selected={all.on} className={`cat-tab cat-tab-all ${all.on ? 'is-on' : ''}`} onClick={onAll}>All <span className="tnum">· {all.counts.total}</span></button>}
           {tabs.map((t) => (
-            <button key={t.id} role="tab" aria-selected={t.id === activeId} className={`cat-tab ${t.id === activeId ? 'is-on' : ''} ${t.alive ? '' : 'is-dead'}`} onClick={() => onTab?.(t.id)}>
+            <button key={t.id} role="tab" aria-selected={t.id === activeId} className={`cat-tab ${t.id === activeId && !all?.on ? 'is-on' : ''} ${t.alive ? '' : 'is-dead'}`} onClick={() => onTab?.(t.id)}>
               {t.crowned && <span className="cat-tab-crown" aria-label="wears the crown">♛</span>}<span className="tnum">#{t.id}</span>{t.name && <span className="cat-tab-name">{t.name}</span>}
             </button>
           ))}
@@ -98,19 +104,33 @@ export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = 
         </section>
       </>) : (
         <>
-          <section className="grid grid-cols-4 gap-2 sm:gap-3">
-            <Action icon="bowl" label="Feed" onClick={() => act('feed')} disabled={busy || g.sleeping} active={d.busy === 'feed'} />
-            <Action icon="sponge" label="Wash" onClick={() => act('wash')} disabled={busy || g.sleeping} active={d.busy === 'wash'} />
-            <Action icon="yarn" label="Play" onClick={() => act('play')} disabled={busy || g.sleeping} active={d.busy === 'play'} />
-            {g.sleeping
-              ? <Action icon="sun" label="Wake" onClick={() => act('wake')} disabled={busy} free active={d.busy === 'wake'} />
-              : <Action icon="moon" label="Sleep" onClick={() => act('sleep')} disabled={busy || (live && g.stats.energy >= 100)} active={d.busy === 'sleep'} />}
-          </section>
-          <div className={`clean-row ${d.poop ? 'is-on' : ''}`} aria-hidden={!d.poop}>
-            <button onClick={() => act('clean')} disabled={busy || !d.poop} className="clean-btn">
-              <Icon name="scoop" size={26} /><span>Clean up the poop</span><span className="cost">1 MON</span>
-            </button>
-          </div>
+          {every ? (<>
+            <section className="grid grid-cols-4 gap-2 sm:gap-3">
+              <Action icon="bowl" label="Feed all" onClick={() => act('feed')} disabled={busy || every.feed === 0} cost={`${every.feed} MON`} active={d.busy === 'feed'} />
+              <Action icon="sponge" label="Wash all" onClick={() => act('wash')} disabled={busy || every.wash === 0} cost={`${every.wash} MON`} active={d.busy === 'wash'} />
+              <Action icon="yarn" label="Play all" onClick={() => act('play')} disabled={busy || every.play === 0} cost={`${every.play} MON`} active={d.busy === 'play'} />
+              <Action icon="moon" label="Sleep all" onClick={() => act('sleep')} disabled={busy || every.sleep === 0} cost={`${every.sleep} MON`} active={d.busy === 'sleep'} />
+            </section>
+            <div className={`clean-row ${every.clean > 0 ? 'is-on' : ''}`} aria-hidden={every.clean === 0}>
+              <button onClick={() => act('clean')} disabled={busy || every.clean === 0} className="clean-btn">
+                <Icon name="scoop" size={26} /><span>{every.clean === 1 ? 'Clean up the poop' : `Clean up ${every.clean} poops`}</span><span className="cost">{every.clean} MON</span>
+              </button>
+            </div>
+          </>) : (<>
+            <section className="grid grid-cols-4 gap-2 sm:gap-3">
+              <Action icon="bowl" label="Feed" onClick={() => act('feed')} disabled={busy || g.sleeping} active={d.busy === 'feed'} />
+              <Action icon="sponge" label="Wash" onClick={() => act('wash')} disabled={busy || g.sleeping} active={d.busy === 'wash'} />
+              <Action icon="yarn" label="Play" onClick={() => act('play')} disabled={busy || g.sleeping} active={d.busy === 'play'} />
+              {g.sleeping
+                ? <Action icon="sun" label="Wake" onClick={() => act('wake')} disabled={busy} free active={d.busy === 'wake'} />
+                : <Action icon="moon" label="Sleep" onClick={() => act('sleep')} disabled={busy || (live && g.stats.energy >= 100)} active={d.busy === 'sleep'} />}
+            </section>
+            <div className={`clean-row ${d.poop ? 'is-on' : ''}`} aria-hidden={!d.poop}>
+              <button onClick={() => act('clean')} disabled={busy || !d.poop} className="clean-btn">
+                <Icon name="scoop" size={26} /><span>Clean up the poop</span><span className="cost">1 MON</span>
+              </button>
+            </div>
+          </>)}
           <section className="record" aria-label="Lifetime record">
             <span className="record-title">On chain forever</span>
             <Stat n={g.record.feeds} l="feeds" /><Stat n={g.record.washes} l="washes" /><Stat n={g.record.plays} l="plays" /><Stat n={g.record.naps} l="naps" />
@@ -144,12 +164,12 @@ function Meter({ icon, label, v }: { icon: PropName; label: string; v: number })
   );
 }
 
-function Action({ icon, label, onClick, disabled, free, active }: { icon: PropName; label: string; onClick: () => void; disabled?: boolean; free?: boolean; active?: boolean }) {
+function Action({ icon, label, onClick, disabled, free, active, cost }: { icon: PropName; label: string; onClick: () => void; disabled?: boolean; free?: boolean; active?: boolean; cost?: string }) {
   return (
     <button onClick={onClick} disabled={disabled} className={`action ${active ? 'is-active' : ''}`}>
       <span className="action-disc"><Icon name={icon} size={34} /></span>
       <span className="action-label">{label}</span>
-      <span className="cost">{free ? 'free' : '1 MON'}</span>
+      <span className="cost">{free ? 'free' : cost ?? '1 MON'}</span>
     </button>
   );
 }
