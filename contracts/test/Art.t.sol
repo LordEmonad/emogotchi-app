@@ -68,5 +68,8 @@ contract ArtTest is Test {
         // fresh cat: happy, no crown
         assertEq(keccak256(bytes(g.imageOf(1))), keccak256(bytes(art.image(1, false))));
         assertEq(art.chunkCount() > 30, true);
+        string memory cu = g.contractURI();
+        assertEq(bytes(cu).length > 100_000, true);
+        assertEq(bytes(cu)[0], "d");
     }
 }

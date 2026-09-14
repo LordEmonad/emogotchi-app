@@ -593,6 +593,20 @@ contract Emogotchi {
         v.mood = _mood(v);
     }
 
+    /// @notice Collection metadata (ERC-7572): name, description and a collection image, the crowned
+    ///         happy cat, composed on chain like every portrait.
+    function contractURI() external view returns (string memory) {
+        string memory json = string.concat(
+            '{"name":"Emogotchi","description":"A cat that lives in your wallet. Feed it, wash it, play with it, put it to bed; every interaction costs 1 MON and 80% of it buys EMO and burns it. Everything about the cat, its picture included, is on chain. By Emonad.",',
+            '"image":"data:image/svg+xml;base64,',
+            Base64.encode(bytes(ART.image(1, true))),
+            '","external_link":"',
+            siteURI,
+            '"}'
+        );
+        return string.concat("data:application/json;base64,", Base64.encode(bytes(json)));
+    }
+
     /// @notice The cat's portrait as it is now, plain SVG (the same picture tokenURI carries).
     function imageOf(uint256 id) external view returns (string memory) {
         View memory v = state(id);

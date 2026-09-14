@@ -28,7 +28,9 @@ contract DeployLocal is Script {
         MockWMON wmon = new MockWMON();
         address pool = address(0x900D);
         MockNad nad = new MockNad(emo, wmon, pool, 10_000 ether, 42_000_000 ether);
-        EmogotchiArt art = ArtDeploy.deploy(vm);
+        // ART=0x… reuses an art contract already on this chain (the portraits do not change between game deploys)
+        address artAddr = vm.envOr("ART", address(0));
+        EmogotchiArt art = artAddr == address(0) ? ArtDeploy.deploy(vm) : EmogotchiArt(artAddr);
 
         Emogotchi.Params memory p;
         p.minter = vm.envOr("MINTER", broadcaster);
