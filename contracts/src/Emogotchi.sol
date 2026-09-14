@@ -600,7 +600,11 @@ contract Emogotchi {
             '{"name":"Emogotchi","description":"A cat that lives in your wallet. Feed it, wash it, play with it, put it to bed; every interaction costs 1 MON and 80% of it buys EMO and burns it. Everything about the cat, its picture included, is on chain. By Emonad.",',
             '"image":"data:image/svg+xml;base64,',
             Base64.encode(bytes(ART.image(1, true))),
-            '","external_link":"',
+            '","banner_image":"',
+            siteURI,
+            '/brand/opensea-banner.png","featured_image":"',
+            siteURI,
+            '/brand/opensea-featured.png","external_link":"',
             siteURI,
             '"}'
         );
