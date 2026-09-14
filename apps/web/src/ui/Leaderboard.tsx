@@ -67,7 +67,7 @@ export function Leaderboard({ me }: { me?: string | null }) {
     <main className="lb">
       <div className="lb-head">
         <h1>Best kept cats</h1>
-        <p>Care score is your cat's average meters over the last 7 days. The top 100 cats wear the crown that week; ties at the 100th place extend the list. The longer streak only decides the order they're listed in. Named cats show their name; the rest show their owner's wallet name.</p>
+        <p>Care score is your cat's average meters over the last 7 days, live. The 100 best kept cats wear the crown right now: pass the 100th and you take it. A cat needs a week of care history before it can rank. The longer streak breaks ties. Named cats show their name; the rest show their owner's wallet name.</p>
         <div className="lb-tabs" role="tablist"><button className="is-on" role="tab">This week</button><button role="tab">All time</button><button role="tab">Most burned</button></div>
       </div>
 
