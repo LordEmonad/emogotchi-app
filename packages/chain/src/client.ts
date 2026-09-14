@@ -81,6 +81,10 @@ export class ChainError extends Error {
 
 type Signer = { provider: EIP1193Provider; address: Address };
 
+const artAbi = [
+  { type: 'function', name: 'image', stateMutability: 'view', inputs: [{ name: 'mood', type: 'uint8' }, { name: 'crowned', type: 'bool' }], outputs: [{ name: '', type: 'string' }] },
+] as const;
+
 /**
  * The live contract. Reads through the public RPC; writes through the connected wallet's provider.
  * No indexer, no backend: everything the site shows comes from `state()`, `catsOf()`, `crownList()`
@@ -103,6 +107,26 @@ export class ChainClient {
     return toView(v);
   }
 
+  /** Many cats in one RPC request (multicall3), falling back to paced single reads: public RPCs allow ~15 requests a second. */
+  async catsByIds(ids: number[]): Promise<CatView[]> {
+    if (ids.length === 0) return [];
+    try {
+      const res = await this.pub.multicall({
+        multicallAddress: '0xcA11bde05977b3631167028862bE2a173976CA11',
+        allowFailure: false,
+        contracts: ids.map((id) => ({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'state' as const, args: [BigInt(id)] as const })),
+      });
+      return (res as RawView[]).map(toView);
+    } catch {
+      const out: CatView[] = [];
+      for (const id of ids) {
+        out.push(await this.cat(id));
+        await new Promise((r) => setTimeout(r, 80));
+      }
+      return out;
+    }
+  }
+
   async catsOf(owner: Address): Promise<CatView[]> {
     const vs = await this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'catsOf', args: [owner] });
     return vs.map(toView);
@@ -122,6 +146,28 @@ export class ChainClient {
   async crownList(): Promise<CrownEntry[]> {
     const [ids, scores, streaks, alive] = await this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'crownList' });
     return ids.map((id, i) => ({ id: Number(id), score: Number(scores[i]!) / 100, streak: Number(streaks[i]!), alive: alive[i]! }));
+  }
+
+  async imageOf(id: number): Promise<string> {
+    return this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'imageOf', args: [BigInt(id)] });
+  }
+
+  private artAddr: Address | null = null;
+  private artCache = new Map<string, Promise<string>>();
+
+  /** The portrait for a mood and crown state, from the art contract, cached: there are only 18 of them. */
+  artImage(mood: Mood, crowned: boolean): Promise<string> {
+    const key = `${mood}:${crowned ? 1 : 0}`;
+    let p = this.artCache.get(key);
+    if (!p) {
+      p = (async () => {
+        this.artAddr ??= await this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'ART' });
+        return this.pub.readContract({ address: this.artAddr, abi: artAbi, functionName: 'image', args: [MOODS.indexOf(mood), crowned] });
+      })();
+      p.catch(() => this.artCache.delete(key));
+      this.artCache.set(key, p);
+    }
+    return p;
   }
 
   async tokenURI(id: number): Promise<string> {

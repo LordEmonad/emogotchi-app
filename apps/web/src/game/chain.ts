@@ -168,7 +168,7 @@ export class ChainStore {
 }
 
 export const chainStore = chainClient ? new ChainStore(chainClient) : null;
-if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __chain?: unknown }).__chain = chainStore;
+if (import.meta.env.DEV && typeof window !== 'undefined') { const w = window as unknown as { __chain?: unknown; __client?: unknown }; w.__chain = chainStore; w.__client = chainClient; }
 
 /** The contract's view of a cat in the shape the page already renders. */
 export function toGame(v: CatView, totals: Totals | null, log: string[]): Game {

@@ -14,6 +14,7 @@ import { NftPreview } from './ui/NftPreview';
 import { NftArt, NFT_STATES, type NftState } from './ui/NftArt';
 import { DevDrawer, type ViewOverride } from './ui/DevDrawer';
 import { Leaderboard } from './ui/Leaderboard';
+import { Gallery } from './ui/Gallery';
 import { Icon } from './ui/Icon';
 
 const NEED_ICON: Record<NonNullable<ReturnType<typeof need>>, PropName> = { food: 'bowl', clean: 'sponge', fun: 'yarn', energy: 'moon', poop: 'poop' };
@@ -34,6 +35,7 @@ export function App() {
     return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><NftPreview /></div>;
   }
   if (path === '/leaderboard') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Leaderboard /><footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right"><a href="/nft">NFT preview</a></span></footer></div>;
+  if (path === '/cats' || path === '/collection') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Gallery /><footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right"><a href="/leaderboard">Leaderboard</a></span></footer></div>;
   const pet = /^\/pet\/(\d+)$/.exec(path);
   return <Home petId={pet ? Number(pet[1]) : null} />;
 }
@@ -246,7 +248,7 @@ function Home({ petId }: { petId: number | null }) {
       {which === 'nopet' && <NoPet address={wallet.address ?? '0x0000…0000'} onDemo={() => { if (live) doDemo(); else setHasPet(true); }} />}
       {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onTab={(id) => chainStore?.setActive(id)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} />}
       {which !== 'landing' && which !== 'nopet' && which !== 'loading' && (
-        <footer className="foot"><span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span><span className="foot-right"><a href="/leaderboard">Leaderboard</a> · <a href="/nft">NFT preview</a> · {explorer ? <a href={explorer} target="_blank" rel="noreferrer">Contract</a> : 'Contract: soon'}</span></footer>
+        <footer className="foot"><span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span><span className="foot-right"><a href="/cats">All cats</a> · <a href="/leaderboard">Leaderboard</a> · <a href="/nft">NFT preview</a> · {explorer ? <a href={explorer} target="_blank" rel="noreferrer">Contract</a> : 'Contract: soon'}</span></footer>
       )}
       <ConnectModal open={modal} onClose={() => setModal(false)} onInjected={() => void doInjected()} onDemo={doDemo} error={wallet.error} busy={wallet.status === 'connecting'} />
       {DEV && <DevDrawer director={director} dispatch={dispatch} view={view} setView={setView} crown={crown} setCrown={setCrownOverride} speed={g.speed} onConnectDemo={doDemo} onDisconnect={doDisconnect} live={live} onCrank={() => void chainStore?.crank()} />}

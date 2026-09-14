@@ -84,9 +84,9 @@ export const emogotchiAbi = [
             "internalType": "uint256"
           },
           {
-            "name": "baseURI",
-            "type": "string",
-            "internalType": "string"
+            "name": "art",
+            "type": "address",
+            "internalType": "address"
           },
           {
             "name": "siteURI",
@@ -101,6 +101,19 @@ export const emogotchiAbi = [
   {
     "type": "receive",
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "ART",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IEmogotchiArt"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -583,19 +596,6 @@ export const emogotchiAbi = [
   },
   {
     "type": "function",
-    "name": "baseURI",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "care",
     "inputs": [
       {
@@ -1019,6 +1019,19 @@ export const emogotchiAbi = [
   },
   {
     "type": "function",
+    "name": "contractURI",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "crankBurn",
     "inputs": [
       {
@@ -1110,6 +1123,25 @@ export const emogotchiAbi = [
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "imageOf",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
