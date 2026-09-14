@@ -9,7 +9,11 @@ import {MockEMO, MockWMON, MockNad} from "../test/mocks/Mocks.sol";
 /// neither EMO nor nad.fun, so the burn goes through the mock pool there.
 ///
 ///   forge script script/DeployLocal.s.sol --rpc-url https://testnet-rpc.monad.xyz --broadcast \
-///     --keystore ~/.monskills/keystore/<file> --password ''
+///     --sender <deployer> --keystore ~/.monskills/keystore/<file> --password '' --disable-code-size-limit
+///
+/// `--sender` makes the broadcaster the default MINTER / TREASURY / TEAM (msg.sender is read before the
+/// broadcast starts); `--disable-code-size-limit` because the game is 30.7 KB and forge simulates with
+/// Ethereum's 24 KB limit while Monad allows 128 KB.
 ///
 /// Env (all optional): TREASURY, TEAM, MINTER (defaults to the broadcaster), MAX_SUPPLY (1000),
 /// WELCOME (7 days), BASE_URI, SITE_URI, MINT_TO + MINT_COUNT to mint test cats right away.
