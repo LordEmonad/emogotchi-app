@@ -17,6 +17,7 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "puppeteer-core": "^23.11.1"
+    "puppeteer-core": "^23.11.1",
+    "viem": "^2.21.0"
   }
 }

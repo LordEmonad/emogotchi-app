@@ -64,7 +64,7 @@ export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = 
           </span>
         ) : (
           <button className="name-btn" onClick={() => { setDraft(name); setEditing(true); }} disabled={dead || locked} title={name ? `Rename · ${MON_TO_NAME} MON` : `Name your cat · ${MON_TO_NAME} MON`}>
-            {name || <span className="name-empty">Name your cat</span>}<span className="name-pen" aria-hidden>✎</span>{!name && <span className="name-cost">{MON_TO_NAME} MON</span>}
+            {name || <span className="name-empty">{locked ? 'Unnamed' : 'Name your cat'}</span>}{!locked && <span className="name-pen" aria-hidden>✎</span>}{!name && !locked && <span className="name-cost">{MON_TO_NAME} MON</span>}
           </button>
         )}
         <span className="name-sep">·</span>
@@ -104,7 +104,7 @@ export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = 
             <Action icon="yarn" label="Play" onClick={() => act('play')} disabled={busy || g.sleeping} active={d.busy === 'play'} />
             {g.sleeping
               ? <Action icon="sun" label="Wake" onClick={() => act('wake')} disabled={busy} free active={d.busy === 'wake'} />
-              : <Action icon="moon" label="Sleep" onClick={() => act('sleep')} disabled={busy} active={d.busy === 'sleep'} />}
+              : <Action icon="moon" label="Sleep" onClick={() => act('sleep')} disabled={busy || (live && g.stats.energy >= 100)} active={d.busy === 'sleep'} />}
           </section>
           <div className={`clean-row ${d.poop ? 'is-on' : ''}`} aria-hidden={!d.poop}>
             <button onClick={() => act('clean')} disabled={busy || !d.poop} className="clean-btn">

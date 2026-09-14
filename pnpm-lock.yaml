@@ -11,6 +11,9 @@ importers:
       puppeteer-core:
         specifier: ^23.11.1
         version: 23.11.1
+      viem:
+        specifier: ^2.21.0
+        version: 2.56.5(typescript@5.9.3)(zod@3.23.8)
 
   apps/web:
     dependencies:

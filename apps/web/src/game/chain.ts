@@ -145,8 +145,8 @@ export class ChainStore {
       const t = setTimeout(() => { if (this.snap.pending) this.set({ pending: 'chain', pendingLabel: `${what} · waiting for Monad` }); }, 1500);
       await p;
       clearTimeout(t);
+      // the receipt is in: release the buttons and let the scene play the action; the caller refreshes after
       this.set({ pending: null, pendingLabel: '', log: [line, ...this.snap.log].slice(0, 6) });
-      await this.refresh();
     } catch (e) {
       const msg = e instanceof ChainError ? e.message : (e as Error).message;
       this.set({ pending: null, pendingLabel: '', error: msg });
@@ -168,6 +168,7 @@ export class ChainStore {
 }
 
 export const chainStore = chainClient ? new ChainStore(chainClient) : null;
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __chain?: unknown }).__chain = chainStore;
 
 /** The contract's view of a cat in the shape the page already renders. */
 export function toGame(v: CatView, totals: Totals | null, log: string[]): Game {

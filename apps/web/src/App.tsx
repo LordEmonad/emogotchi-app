@@ -179,13 +179,14 @@ function Home({ petId }: { petId: number | null }) {
     if (live) {
       if (!chainStore || !owns) return;
       try { await chainStore.act(a); } catch { return; }
-      if (a === 'wake') { await d.wake(); return; }
+      if (a === 'wake') await d.wake();
       if (a === 'feed') await d.feed();
       if (a === 'wash') await d.wash();
       if (a === 'play') await d.play();
       if (a === 'sleep') await d.sleep();
       if (a === 'clean') await d.clean();
       if (a === 'revive') await d.revive();
+      await chainStore.refresh(); // the meters catch up once the scene has played the action
       return;
     }
     if (a === 'wake') { dispatch({ type: 'slept', on: false }); await d.wake(); return; }
@@ -202,6 +203,7 @@ function Home({ petId }: { petId: number | null }) {
       if (!chainStore || !owns) return;
       try { await chainStore.setName(next); } catch { return; }
       void dRef.current?.pet(1);
+      await chainStore.refresh();
       return;
     }
     dispatch({ type: 'pay', action: 'name' }); dispatch({ type: 'named' }); setSimName(next); void dRef.current?.pet(1);
@@ -219,7 +221,8 @@ function Home({ petId }: { petId: number | null }) {
 
   // ---- which view ----
   const liveHasCat = live && (snap.cats.length > 0 || (petId !== null && snap.spectator !== null));
-  const liveLoading = live && !snap.loaded;
+  // loading until the store has read the cats of the wallet that is connected now (not a previous one)
+  const liveLoading = live && (!snap.loaded || (connected && (snap.owner ?? '').toLowerCase() !== (wallet.address ?? '').toLowerCase()));
   const which: Exclude<ViewOverride, 'auto'> | 'loading' = view !== 'auto' ? view
     : live ? (petId === null && !connected ? 'landing' : liveLoading ? 'loading' : !liveHasCat ? 'nopet' : !g.alive ? 'dead' : 'pet')
       : !connected ? 'landing' : !hasPet ? 'nopet' : !g.alive ? 'dead' : 'pet';
