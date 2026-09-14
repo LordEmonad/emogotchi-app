@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { NftArt, type NftState } from './NftArt';
+import { CHAIN_MODE, chainClient } from '../game/chain';
+import { shortAddr } from '../wallet';
 
 /**
  * /leaderboard. Ranked by care score: the average of the four meters over the last 7 days,
@@ -25,12 +28,41 @@ const MOCK: Row[] = [
 
 const fmt = (n: number) => n.toLocaleString();
 
+/** Live: the contract's crown list, each cat's state read for its name, owner and mood. */
+function useLiveRows(): { rows: Row[] | null; error: string | null } {
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const client = chainClient;
+    if (!client) return;
+    let dead = false;
+    const load = async () => {
+      try {
+        const list = await client.crownList();
+        const views = await Promise.all(list.map((e) => client.cat(e.id)));
+        const built = views
+          .map((v) => ({ v, live: list.find((e) => e.id === v.id)! }))
+          .filter(({ v }) => v.alive)
+          .sort((a, b) => b.live.score - a.live.score || b.live.streak - a.live.streak)
+          .map(({ v, live }, i) => ({ rank: i + 1, name: v.name || `Emogotchi #${v.id}`, named: !!v.name, owner: shortAddr(v.owner), score: live.score, streak: v.streak, burned: Math.round(Number(v.monPaid / 1_000_000_000_000_000n) / 1000 * 0.8), state: v.mood as NftState }));
+        if (!dead) { setRows(built); setError(null); }
+      } catch (e) { if (!dead) setError((e as Error).message); }
+    };
+    void load();
+    const id = setInterval(() => void load(), 15000);
+    return () => { dead = true; clearInterval(id); };
+  }, []);
+  return { rows, error };
+}
+
 export function Leaderboard({ me }: { me?: string | null }) {
-  const top = MOCK.slice(0, 3); const rest = MOCK.slice(3);
-  // the top 100 wear the crown; anyone tied with the 100th does too. The mock has fewer than 100, so all of them qualify
+  const liveRows = useLiveRows();
+  const data: Row[] = CHAIN_MODE ? (liveRows.rows ?? []) : MOCK;
+  const top = data.slice(0, 3); const rest = data.slice(3);
+  // live: everyone in the list wears the crown. Demo: the top 100, ties at the 100th place too
   const CROWN_SLOTS = 100;
-  const cutoff = MOCK[Math.min(CROWN_SLOTS, MOCK.length) - 1]?.score ?? 0;
-  const crowned = (r: Row) => r.score >= cutoff;
+  const cutoff = data[Math.min(CROWN_SLOTS, data.length) - 1]?.score ?? 0;
+  const crowned = (r: Row) => CHAIN_MODE || r.score >= cutoff;
   return (
     <main className="lb">
       <div className="lb-head">
@@ -65,7 +97,9 @@ export function Leaderboard({ me }: { me?: string | null }) {
           </div>
         ))}
       </div>
-      <p className="lb-note">Live once the contract and indexer are up. Numbers here are placeholders.</p>
+      {CHAIN_MODE
+        ? <p className="lb-note">{liveRows.error ? `Could not read the contract: ${liveRows.error}` : liveRows.rows === null ? 'Reading the crown list from the contract…' : data.length === 0 ? 'No cat wears the crown yet. A cat needs a week of care history before it can rank.' : 'Live from the contract: every cat here wears the crown right now. Scores are the live 7-day average.'}</p>
+        : <p className="lb-note">Live once the contract and indexer are up. Numbers here are placeholders.</p>}
     </main>
   );
 }

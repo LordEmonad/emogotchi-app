@@ -1,0 +1,39 @@
+import { defineChain, type Chain } from 'viem';
+import { monad, monadTestnet } from 'viem/chains';
+
+export type Address = `0x${string}`;
+
+/** A local Foundry/anvil chain for end-to-end runs. */
+export const anvil: Chain = defineChain({
+  id: 31337,
+  name: 'Anvil',
+  nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
+  rpcUrls: { default: { http: ['http://127.0.0.1:8545'] } },
+});
+
+export const CHAINS: Record<number, Chain> = { 143: monad, 10143: monadTestnet, 31337: anvil };
+
+export type ChainConfig = {
+  chain: Chain;
+  rpcUrl: string;
+  contract: Address;
+  explorer: string | null;
+};
+
+/**
+ * Build the config from Vite env vars: VITE_CHAIN_ID (143 | 10143 | 31337), VITE_CONTRACT_ADDRESS,
+ * VITE_RPC_URL (optional override). No contract address means the site runs its local simulation.
+ */
+export function configFromEnv(env: Record<string, string | undefined>): ChainConfig | null {
+  const contract = env.VITE_CONTRACT_ADDRESS as Address | undefined;
+  if (!contract || !/^0x[0-9a-fA-F]{40}$/.test(contract)) return null;
+  const chainId = Number(env.VITE_CHAIN_ID ?? 143);
+  const chain = CHAINS[chainId];
+  if (!chain) throw new Error(`Unsupported chain id ${chainId}`);
+  return {
+    chain,
+    rpcUrl: env.VITE_RPC_URL ?? chain.rpcUrls.default.http[0]!,
+    contract,
+    explorer: chain.blockExplorers?.default.url ?? null,
+  };
+}

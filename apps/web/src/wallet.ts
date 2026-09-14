@@ -18,6 +18,28 @@ type Eip1193 = { request: (args: { method: string; params?: unknown[] }) => Prom
 const eth = () => (window as unknown as { ethereum?: Eip1193 }).ethereum;
 
 export const hasInjected = () => typeof window !== 'undefined' && !!eth();
+/** The injected EIP-1193 provider, for signing. */
+export const getProvider = () => eth() ?? null;
+/** Switch the wallet to `chainId`, adding the network if the wallet has never seen it. */
+export async function ensureChain(chainId: number, name: string, rpcUrl: string, explorer: string | null): Promise<void> {
+  const p = eth(); if (!p) return;
+  const hex = `0x${chainId.toString(16)}`;
+  const current = (await p.request({ method: 'eth_chainId' })) as string;
+  if (current?.toLowerCase() === hex) return;
+  try {
+    await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] });
+  } catch (e) {
+    const code = (e as { code?: number }).code;
+    if (code !== 4902 && code !== -32603) throw e;
+    await p.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName: name, nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 }, rpcUrls: [rpcUrl], blockExplorerUrls: explorer ? [explorer] : undefined }] });
+  }
+}
+export function onChainChanged(fn: (chainId: number) => void) {
+  const p = eth(); if (!p?.on) return () => {};
+  const h = (...a: unknown[]) => fn(parseInt(a[0] as string, 16));
+  p.on('chainChanged', h);
+  return () => p.removeListener?.('chainChanged', h);
+}
 export const isMobile = () => typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 export const chainName = (id: number | null) => id === MONAD.mainnet ? 'Monad' : id === MONAD.testnet ? 'Monad testnet' : id === null ? '' : `chain ${id}`;

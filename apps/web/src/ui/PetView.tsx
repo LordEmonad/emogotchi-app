@@ -4,6 +4,7 @@ import type { PropName } from '../scene/props';
 import type { DirectorState } from '../scene/director';
 import { MON_TO_NAME, MON_TO_REVIVE, TIME_SCALE, DAY, clockOf, dayOf, type Game, type PaidAction, need } from '../game/state';
 
+export type CatTab = { id: number; name: string; alive: boolean; crowned: boolean };
 type Props = {
   stage: ReactNode;
   g: Game;
@@ -11,13 +12,22 @@ type Props = {
   name: string;
   onName: (name: string) => void;
   act: (a: PaidAction | 'wake') => void;
+  /** live mode: the wallet's cats, for switching between them */
+  tabs?: CatTab[];
+  activeId?: number | null;
+  onTab?: (id: number) => void;
+  /** live mode: a line under the stage while a transaction is in flight, or why actions are locked */
+  pending?: string | null;
+  /** live mode: no actions (not our cat, wrong chain, transaction in flight) */
+  locked?: boolean;
+  live?: boolean;
 };
 
 const BUSY_MOOD: Record<string, string> = { feed: 'eating', wash: 'bathing', play: 'playing', poop: 'busy…', clean: 'relieved', pet: 'purring', wake: 'waking up', walk: 'wandering', wander: 'wandering', rumble: 'hungry', sleep: 'dozing off', tour: 'showing off', die: 'fading…', revive: 'coming back' };
 const NEED_MOOD: Record<NonNullable<ReturnType<typeof need>>, string> = { food: 'hungry', clean: 'grubby', fun: 'bored', energy: 'sleepy', poop: 'grossed out' };
 
-export function PetView({ stage, g, d, name, onName, act }: Props) {
-  const busy = d.busy !== null;
+export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, pending = null, locked = false, live = false }: Props) {
+  const busy = d.busy !== null || locked;
   const dead = !g.alive;
   const n = need(g);
   const avg = (g.stats.food + g.stats.clean + g.stats.fun + g.stats.energy) / 4;
@@ -32,7 +42,17 @@ export function PetView({ stage, g, d, name, onName, act }: Props) {
 
   return (
     <main className="petview">
+      {tabs.length > 1 && (
+        <div className="cat-tabs" role="tablist" aria-label="Your cats">
+          {tabs.map((t) => (
+            <button key={t.id} role="tab" aria-selected={t.id === activeId} className={`cat-tab ${t.id === activeId ? 'is-on' : ''} ${t.alive ? '' : 'is-dead'}`} onClick={() => onTab?.(t.id)}>
+              {t.crowned && <span className="cat-tab-crown" aria-label="wears the crown">♛</span>}<span className="tnum">#{t.id}</span>{t.name && <span className="cat-tab-name">{t.name}</span>}
+            </button>
+          ))}
+        </div>
+      )}
       <div className={`shell ${dead ? 'is-dead' : ''}`}>{stage}</div>
+      {pending && <p className={`pending-line ${locked ? '' : 'is-info'}`} aria-live="polite">{pending}</p>}
 
       <div className="nameplate">
         {editing ? (
@@ -43,12 +63,12 @@ export function PetView({ stage, g, d, name, onName, act }: Props) {
             <button className="name-cancel" onMouseDown={(e) => e.preventDefault()} onClick={() => setEditing(false)}>✕</button>
           </span>
         ) : (
-          <button className="name-btn" onClick={() => { setDraft(name); setEditing(true); }} disabled={dead} title={name ? `Rename · ${MON_TO_NAME} MON` : `Name your cat · ${MON_TO_NAME} MON`}>
+          <button className="name-btn" onClick={() => { setDraft(name); setEditing(true); }} disabled={dead || locked} title={name ? `Rename · ${MON_TO_NAME} MON` : `Name your cat · ${MON_TO_NAME} MON`}>
             {name || <span className="name-empty">Name your cat</span>}<span className="name-pen" aria-hidden>✎</span>{!name && <span className="name-cost">{MON_TO_NAME} MON</span>}
           </button>
         )}
         <span className="name-sep">·</span>
-        <span className="name-day tnum" title={`Demo clock: one day passes every ${Math.round(DAY / TIME_SCALE / 60)} minutes`}>{dead && g.diedOnDay ? `Died on day ${g.diedOnDay}` : `Day ${day} · ${clockOf(g.t)}`}</span>
+        <span className="name-day tnum" title={live ? 'Days since this cat\'s clock started' : `Demo clock: one day passes every ${Math.round(DAY / TIME_SCALE / 60)} minutes`}>{dead && g.diedOnDay ? `Died on day ${g.diedOnDay}` : live ? `Day ${day}` : `Day ${day} · ${clockOf(g.t)}`}</span>
         <span className="name-sep">·</span>
         <span className={`name-mood mood-${mood.replace(/[\s…]/g, '-')}`}>{mood}</span>
       </div>
@@ -69,7 +89,7 @@ export function PetView({ stage, g, d, name, onName, act }: Props) {
           <button className="btn btn-pink btn-lg revive-btn" onClick={() => act('revive')} disabled={busy}>
             <Icon name="flame" size={22} /> Revive · {MON_TO_REVIVE.toLocaleString()} MON
           </button>
-          <span className="revive-fine">Comes back with every meter at 60. 80% of the MON buys EMO and burns it, like everything else. The death stays on its record forever.</span>
+          <span className="revive-fine">Comes back with every meter at 60. Half of the MON buys EMO and burns it; the death stays on its record forever.</span>
         </section>
         <section className="record" aria-label="Lifetime record">
           <span className="record-title">On chain forever</span>
@@ -96,7 +116,7 @@ export function PetView({ stage, g, d, name, onName, act }: Props) {
             <Stat n={g.record.feeds} l="feeds" /><Stat n={g.record.washes} l="washes" /><Stat n={g.record.plays} l="plays" /><Stat n={g.record.naps} l="naps" />
             <Stat n={g.record.cleanups} l="cleanups" /><Stat n={g.record.pets} l="pets" /><Stat n={g.record.deaths} l="deaths" /><Stat n={g.burnedEmo} l="EMO burned" />
           </section>
-          <p className="caption demo-clock">Demo clock: a day passes every {Math.round(DAY / TIME_SCALE / 60)} minutes, so you can watch a whole life. On chain, a day is a day.</p>
+          {!live && <p className="caption demo-clock">Demo clock: a day passes every {Math.round(DAY / TIME_SCALE / 60)} minutes, so you can watch a whole life. On chain, a day is a day.</p>}
           <p className="caption">Every interaction costs <span className="text-ink">1 MON</span>. 80% of it buys <span className="text-pink">EMO</span> and burns it on the spot. Petting only costs gas, and the first pet each day is +5 fun. Tap the cat.</p>
         </>
       )}

@@ -3,9 +3,9 @@ import type { Director } from '../scene/director';
 import type { Event } from '../game/state';
 
 export type ViewOverride = 'auto' | 'landing' | 'pet' | 'nopet' | 'dead';
-type Props = { director: Director | null; dispatch: (e: Event) => void; view: ViewOverride; setView: (v: ViewOverride) => void; crown: boolean; setCrown: (b: boolean) => void; speed: number; onConnectDemo: () => void; onDisconnect: () => void };
+type Props = { director: Director | null; dispatch: (e: Event) => void; view: ViewOverride; setView: (v: ViewOverride) => void; crown: boolean; setCrown: (b: boolean | null) => void; speed: number; onConnectDemo: () => void; onDisconnect: () => void; live?: boolean; onCrank?: () => void };
 
-export function DevDrawer({ director, dispatch, view, setView, crown, setCrown, speed, onConnectDemo, onDisconnect }: Props) {
+export function DevDrawer({ director, dispatch, view, setView, crown, setCrown, speed, onConnectDemo, onDisconnect, live = false, onCrank }: Props) {
   const [open, setOpen] = useState(false);
   const B = ({ l, fn }: { l: string; fn: () => unknown }) => <button onClick={() => void fn()} className="dev-b">{l}</button>;
   return (
@@ -15,12 +15,13 @@ export function DevDrawer({ director, dispatch, view, setView, crown, setCrown, 
         <div className="dev-panel">
           <div className="dev-row"><span>View</span>{(['auto', 'landing', 'pet', 'nopet', 'dead'] as ViewOverride[]).map((v) => <button key={v} className={`dev-b ${view === v ? 'is-on' : ''}`} onClick={() => setView(v)}>{v}</button>)}</div>
           <div className="dev-row"><span>Wallet</span><B l="connect demo" fn={onConnectDemo} /><B l="disconnect" fn={onDisconnect} /></div>
-          <div className="dev-row"><span>Life</span><B l="kill" fn={() => dispatch({ type: 'kill' })} /><B l="revive" fn={() => { dispatch({ type: 'revived' }); return director?.revive(); }} /></div>
-          <div className="dev-row"><span>Stats</span>
+          {live && <div className="dev-row"><span>Chain</span><B l="crank burn" fn={() => onCrank?.()} /><B l="crown: contract" fn={() => setCrown(null)} /></div>}
+          {!live && <div className="dev-row"><span>Life</span><B l="kill" fn={() => dispatch({ type: 'kill' })} /><B l="revive" fn={() => { dispatch({ type: 'revived' }); return director?.revive(); }} /></div>}
+          {!live && <div className="dev-row"><span>Stats</span>
             <B l="sad" fn={() => dispatch({ type: 'set', stats: { food: 10, fun: 10, clean: 10 } })} /><B l="dirty" fn={() => dispatch({ type: 'set', stats: { clean: 20 } })} /><B l="starve" fn={() => dispatch({ type: 'set', stats: { food: 0 } })} /><B l="fill" fn={() => dispatch({ type: 'set', stats: { food: 100, fun: 100, clean: 100, energy: 100 } })} />
             <label>speed <select value={speed} onChange={(e) => dispatch({ type: 'speed', speed: Number(e.target.value) })}>{[1, 3, 10, 30].map((s) => <option key={s} value={s}>×{s}</option>)}</select></label>
             <label><input type="checkbox" checked={crown} onChange={(e) => setCrown(e.target.checked)} /> crown</label>
-          </div>
+          </div>}
           <div className="dev-row"><span>Anim</span>
             <B l="walk ←" fn={() => director?.walk(130)} /><B l="walk →" fn={() => director?.walk(470)} /><B l="feed" fn={() => director?.feed()} /><B l="poop" fn={() => director?.poop().then(() => dispatch({ type: 'pooped' }))} /><B l="clean" fn={() => director?.clean()} />
             <B l="wash" fn={() => director?.wash()} /><B l="play" fn={() => director?.play()} /><B l="pet" fn={() => director?.pet(1)} /><B l="sleep" fn={() => { dispatch({ type: 'slept', on: true }); return director?.sleep(); }} /><B l="wake" fn={() => { dispatch({ type: 'slept', on: false }); return director?.wake(); }} />

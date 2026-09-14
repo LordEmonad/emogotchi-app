@@ -45,8 +45,8 @@ export const TIME_SCALE = 180;
 export const HOUR = 3600; export const DAY = 24 * HOUR;
 /** Hours for a full meter to drain to zero (awake). Every care fills its meter, so each one is due once every 24 h from the last time it was done. */
 export const DRAIN_H = { food: 24, clean: 24, fun: 24, energy: 24 } as const;
-/** Asleep: energy refills in 8 h, the rest drain at a fraction of their awake rate. */
-export const SLEEP_REFILL_H = 8; export const SLEEP_DRAIN = 0.25;
+/** Asleep: energy refills in 8 h; the other meters drain at their normal rate, as on chain. */
+export const SLEEP_REFILL_H = 8; export const SLEEP_DRAIN = 1;
 /** Hours after a meal until it needs the litter tray. */
 export const POOP_AFTER_H = 4;
 /** A poop on the floor drains cleanliness this much faster. */
