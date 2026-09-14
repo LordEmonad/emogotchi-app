@@ -52,7 +52,7 @@ contract ForkTest is Test {
         assertEq(g.pendingBurnMon(), 11.2 ether);
 
         uint256 deadBefore = IERC20Balance(EMO).balanceOf(g.BURN_ADDRESS());
-        g.crankBurn(type(uint256).max);
+        g.crankBurn(type(uint256).max, 0);
         uint256 burned = IERC20Balance(EMO).balanceOf(g.BURN_ADDRESS()) - deadBefore;
         console.log("EMO burned by 11.2 MON", burned / 1e18);
         assertGt(burned, 0, "no EMO burned");
@@ -66,7 +66,7 @@ contract ForkTest is Test {
         g.revive{value: 1000 ether}(2);
         assertEq(g.pendingBurnMon(), 500 ether);
         assertEq(g.teamOwed(), 1.4 ether + 500 ether);
-        g.crankBurn(type(uint256).max);
+        g.crankBurn(type(uint256).max, 0);
         console.log("EMO burned by a revive", (g.totalEmoBurned() - burned) / 1e18);
         assertEq(g.pendingBurnMon(), 0);
         g.sweep();

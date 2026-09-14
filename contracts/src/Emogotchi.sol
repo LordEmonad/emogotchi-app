@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 /// @notice nad.fun DexRouter: buys a graduated token with native MON.
 interface INadRouter {
@@ -97,6 +97,8 @@ contract Emogotchi {
     error InvalidToken();
     error UnsafeRecipient();
     error LengthMismatch();
+    error BadAction();
+    error BadGuard();
 
     // ---------------------------------------------------------------- events (ERC-721)
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
@@ -118,6 +120,7 @@ contract Emogotchi {
     event Burn(uint256 monIn, uint256 emoOut);
     event BurnQueued(uint256 monQueued, uint256 pendingTotal);
     event Swept(uint256 toTreasury, uint256 toTeam);
+    event Skimmed(uint256 amount);
 
     // ---------------------------------------------------------------- constants
     uint256 public constant PRICE = 1 ether;
@@ -254,6 +257,7 @@ contract Emogotchi {
                 || p.wmon == address(0) || p.router == address(0) || p.lens == address(0) || p.pool == address(0)
         ) revert ZeroAddress();
         if (p.burnBps + p.treasuryBps + p.teamBps != BPS || p.reviveBurnBps > BPS) revert BadSplit();
+        if (p.maxImpactBps == 0 || p.maxImpactBps > BPS) revert BadGuard();
         MINTER = p.minter;
         MAX_SUPPLY = p.maxSupply;
         WELCOME = p.welcome;
@@ -442,12 +446,23 @@ contract Emogotchi {
 
     // ================================================================ permissionless plumbing
 
-    /// @notice Push accumulated burn MON through nad.fun, up to maxMon, under the impact guard.
-    function crankBurn(uint256 maxMon) external nonReentrant {
+    /// @notice Push accumulated burn MON through nad.fun, up to maxMon, under the impact guard. `minEmoOut`
+    ///         is an optional floor from the caller (a quote taken in an earlier block); the swap uses the
+    ///         higher of it and the contract's own guard, and a fill below it is queued, never lost.
+    function crankBurn(uint256 maxMon, uint256 minEmoOut) external nonReentrant {
         uint256 amount = pendingBurnMon < maxMon ? pendingBurnMon : maxMon;
         if (amount == 0) revert NothingToDo();
         pendingBurnMon -= amount;
-        _burn(amount);
+        _burn(amount, minEmoOut);
+    }
+
+    /// @notice MON that reached the contract outside the protocol (forced sends) joins the burn queue. Anyone.
+    function skim() external nonReentrant {
+        uint256 tracked = pendingBurnMon + treasuryOwed + teamOwed;
+        uint256 excess = address(this).balance - tracked;
+        if (excess == 0) revert NothingToDo();
+        pendingBurnMon += excess;
+        emit Skimmed(excess);
     }
 
     /// @notice Pay the treasury and the team what they are owed. Anyone. A share whose receiver refuses stays owed.
@@ -585,17 +600,37 @@ contract Emogotchi {
         return _scoreCalc(id, _cats[id], block.timestamp);
     }
 
-    /// @notice The crown list as ranked: ids, scores at their last ranking, streaks. Unordered.
-    function crownList() external view returns (uint256[] memory ids, uint256[] memory scores, uint256[] memory streaks) {
+    /// @notice The crown list: ids, live scores (0 for a cat that died since its last ranking), stored
+    ///         streaks, and whether each cat is alive. Unordered. Entries only refresh on chain when the cat
+    ///         is touched or poked; the live columns show what a poke would record.
+    function crownList()
+        external
+        view
+        returns (uint256[] memory ids, uint256[] memory scores, uint256[] memory streaks, bool[] memory alive)
+    {
         uint256 n = _crownLen;
         ids = new uint256[](n);
         scores = new uint256[](n);
         streaks = new uint256[](n);
+        alive = new bool[](n);
         for (uint256 i = 0; i < n; i++) {
             uint256 e = _entry(i);
-            ids[i] = e >> 32;
-            scores[i] = (e >> 16) & 0xFFFF;
+            uint256 id = e >> 32;
+            ids[i] = id;
             streaks[i] = e & 0xFFFF;
+            alive[i] = _alive(id, _cats[id]);
+            scores[i] = alive[i] ? _scoreCalc(id, _cats[id], block.timestamp) : 0;
+        }
+    }
+
+    /// @notice A page of an address's cats, for holders too large for catsOf in one call.
+    function catsOfRange(address owner, uint256 start, uint256 count) external view returns (View[] memory out) {
+        uint256[] storage ids = _owned[owner];
+        if (start >= ids.length) return out;
+        uint256 end = start + count > ids.length ? ids.length : start + count;
+        out = new View[](end - start);
+        for (uint256 i = start; i < end; i++) {
+            out[i - start] = state(ids[i]);
         }
     }
 
@@ -764,7 +799,7 @@ contract Emogotchi {
             c.lastWashed = uint40(now_ - ((100 - next) * DRAIN) / 100);
             c.cleanups += 1;
         } else {
-            revert BadCount();
+            revert BadAction();
         }
         if (action != 3) {
             // a sleeping cat is woken to be fed, played with, washed or cleaned up after
@@ -1186,14 +1221,20 @@ contract Emogotchi {
     /// @dev Buy EMO with `monIn` through nad.fun and send it to the burn address. Amounts above the
     ///      impact guard, a lens that names another router, and any router failure are queued instead
     ///      of lost. Returns EMO burned.
-    function _burn(uint256 monIn) private returns (uint256 emoOut) {
-        uint256 depth = IERC20Balance(WMON).balanceOf(POOL);
+    function _burn(uint256 monIn, uint256 minEmoOut) private returns (uint256 emoOut) {
+        uint256 depth;
+        try IERC20Balance(WMON).balanceOf(POOL) returns (uint256 d) {
+            depth = d;
+        } catch {
+            depth = 0;
+        }
         uint256 maxIn = (depth * MAX_IMPACT_BPS) / BPS;
         if (depth == 0 || monIn > maxIn) return _queue(monIn);
 
         (address router, uint256 quoted) = _safeQuote(monIn);
         if (router != address(ROUTER) || quoted == 0) return _queue(monIn);
         uint256 minOut = (quoted * (BPS - MAX_IMPACT_BPS)) / BPS;
+        if (minEmoOut > minOut) minOut = minEmoOut;
 
         try ROUTER.buy{value: monIn}(
             INadRouter.BuyParams({amountOutMin: minOut, token: EMO, to: BURN_ADDRESS, deadline: block.timestamp})

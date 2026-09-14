@@ -597,7 +597,7 @@ contract BatchTest is Base {
         acts[0] = 9;
         ids[0] = 1;
         vm.prank(alice);
-        vm.expectRevert(Emogotchi.BadCount.selector);
+        vm.expectRevert(Emogotchi.BadAction.selector);
         g.care{value: 1 ether}(ids, acts);
         ids = new uint256[](201);
         acts = new uint8[](201);
@@ -739,13 +739,13 @@ contract AccountingTest is Base {
         feed(1);
         feed(2);
         vm.expectRevert(Emogotchi.NothingToDo.selector);
-        g.crankBurn(0);
-        g.crankBurn(1 ether);
+        g.crankBurn(0, 0);
+        g.crankBurn(1 ether, 0);
         assertEq(g.pendingBurnMon(), 0.6 ether);
         assertGt(g.totalEmoBurned(), 0);
         assertEq(g.totalMonBurned(), 1 ether);
         assertEq(emo.balanceOf(g.BURN_ADDRESS()), g.totalEmoBurned());
-        g.crankBurn(type(uint256).max);
+        g.crankBurn(type(uint256).max, 0);
         assertEq(g.pendingBurnMon(), 0);
         assertInvariant();
     }
@@ -753,15 +753,15 @@ contract AccountingTest is Base {
     function test_crankQueuesOnRouterFailure() public {
         feed(1);
         nad.setFailNext(true);
-        g.crankBurn(type(uint256).max);
+        g.crankBurn(type(uint256).max, 0);
         assertEq(g.pendingBurnMon(), 0.8 ether);
         assertEq(g.totalEmoBurned(), 0);
         nad.setFailNext(false);
         nad.setLensRouter(address(0xBAD));
-        g.crankBurn(type(uint256).max);
+        g.crankBurn(type(uint256).max, 0);
         assertEq(g.pendingBurnMon(), 0.8 ether);
         nad.setLensRouter(address(nad));
-        g.crankBurn(type(uint256).max);
+        g.crankBurn(type(uint256).max, 0);
         assertEq(g.pendingBurnMon(), 0);
         assertInvariant();
     }
@@ -769,11 +769,55 @@ contract AccountingTest is Base {
     function test_impactGuard() public {
         nad.setReserves(100 ether, 420_000 ether); // guard = 0.5 MON
         feed(1);
-        g.crankBurn(type(uint256).max); // 0.8 > 0.5: queued
+        g.crankBurn(type(uint256).max, 0); // 0.8 > 0.5: queued
         assertEq(g.pendingBurnMon(), 0.8 ether);
-        g.crankBurn(0.5 ether);
+        g.crankBurn(0.5 ether, 0);
         assertEq(g.pendingBurnMon(), 0.3 ether);
         assertGt(g.totalEmoBurned(), 0);
+    }
+
+    function test_skimForcedMon() public {
+        feed(1);
+        vm.expectRevert(Emogotchi.NothingToDo.selector);
+        g.skim();
+        vm.deal(address(g), address(g).balance + 3 ether); // forced MON (selfdestruct / coinbase)
+        g.skim();
+        assertEq(g.pendingBurnMon(), 3.8 ether);
+        assertInvariant();
+    }
+
+    function test_callerMinOutQueuesInsteadOfBadFill() public {
+        feed(1);
+        g.crankBurn(type(uint256).max, type(uint256).max); // impossible floor: queued, nothing lost
+        assertEq(g.pendingBurnMon(), 0.8 ether);
+        assertEq(g.totalEmoBurned(), 0);
+        g.crankBurn(type(uint256).max, 1);
+        assertEq(g.pendingBurnMon(), 0);
+        assertInvariant();
+    }
+
+    function test_wmonRevertQueues() public {
+        feed(1);
+        vm.mockCallRevert(address(wmon), abi.encodeWithSignature("balanceOf(address)", pool), "down");
+        g.crankBurn(type(uint256).max, 0);
+        assertEq(g.pendingBurnMon(), 0.8 ether);
+        vm.clearMockedCalls();
+        g.crankBurn(type(uint256).max, 0);
+        assertEq(g.pendingBurnMon(), 0);
+    }
+
+    function test_badGuardAndBadAction() public {
+        Emogotchi.Params memory p = params(minter, 10);
+        p.maxImpactBps = 0;
+        vm.expectRevert(Emogotchi.BadGuard.selector);
+        new Emogotchi(p);
+        uint256[] memory ids = new uint256[](1);
+        uint8[] memory acts = new uint8[](1);
+        ids[0] = 1;
+        acts[0] = 7;
+        vm.prank(alice);
+        vm.expectRevert(Emogotchi.BadAction.selector);
+        g.care{value: 1 ether}(ids, acts);
     }
 
     function test_sweep() public {
@@ -817,7 +861,7 @@ contract AccountingTest is Base {
             vm.prank(alice);
             g.revive{value: 1000 ether}(1);
         }
-        if (c % 2 == 0) g.crankBurn(type(uint256).max);
+        if (c % 2 == 0) g.crankBurn(type(uint256).max, 0);
         if (c % 3 == 0) g.sweep();
         assertInvariant();
     }
@@ -944,7 +988,7 @@ contract CrownTest is Base {
 
     function test_fillAndEvict() public {
         buildScores(100, 4);
-        (uint256[] memory ids,,) = c.crownList();
+        (uint256[] memory ids,,,) = c.crownList();
         assertEq(ids.length, 100);
         assertTrue(c.crowned(1));
         assertTrue(c.crowned(100));
@@ -959,7 +1003,7 @@ contract CrownTest is Base {
             if (r % 4 == 3) feedAll(100);
         }
         assertTrue(c.crowned(101));
-        (ids,,) = c.crownList();
+        (ids,,,) = c.crownList();
         assertEq(ids.length, 100);
         uint256 crownedCount;
         for (uint256 id = 1; id <= 101; id++) if (c.crowned(id)) crownedCount++;
@@ -994,7 +1038,7 @@ contract CrownTest is Base {
         }
         assertTrue(c.crowned(102));
         assertTrue(c.crowned(101));
-        (uint256[] memory ids,,) = c.crownList();
+        (uint256[] memory ids,,,) = c.crownList();
         assertEq(ids.length, 100);
         uint256 alive;
         for (uint256 id = 1; id <= 102; id++) if (c.state(id).alive) alive++;
@@ -1003,7 +1047,7 @@ contract CrownTest is Base {
 
     function test_zeroScoreNeverCrowned() public {
         buildScores(3, 1); // first care: score 0
-        (uint256[] memory ids,,) = c.crownList();
+        (uint256[] memory ids,,,) = c.crownList();
         assertEq(ids.length, 0);
         assertFalse(c.crowned(1));
         buildScores(3, 1);
@@ -1016,18 +1060,36 @@ contract CrownTest is Base {
         warp(48 hours);
         c.poke(3);
         assertFalse(c.crowned(3));
-        (uint256[] memory ids,,) = c.crownList();
+        (uint256[] memory ids,,,) = c.crownList();
         assertEq(ids.length, 4);
         for (uint256 i = 0; i < ids.length; i++) assertTrue(ids[i] != 3);
         assertFalse(c.state(3).crowned);
     }
 
+    function test_crownListIsLive() public {
+        buildScores(3, 4);
+        (, uint256[] memory s0,, bool[] memory alive0) = c.crownList();
+        assertTrue(alive0[0]);
+        warp(3 days);
+        (uint256[] memory ids, uint256[] memory s1,, bool[] memory alive1) = c.crownList();
+        assertEq(ids.length, 3);
+        for (uint256 i = 0; i < 3; i++) {
+            assertFalse(alive1[i]);
+            assertEq(s1[i], 0);
+            assertGt(s0[i], 0);
+        }
+        Emogotchi.View[] memory page = c.catsOfRange(alice, 1, 2);
+        assertEq(page.length, 2);
+        assertEq(page[0].id, 2);
+        assertEq(c.catsOfRange(alice, 999, 5).length, 0);
+    }
+
     function test_pokeRefreshesRank() public {
         buildScores(3, 4);
-        (, uint256[] memory scores0,) = c.crownList();
+        (, uint256[] memory scores0,,) = c.crownList();
         warp(3 days);
         c.poke(1);
-        (uint256[] memory ids, uint256[] memory scores,) = c.crownList();
+        (uint256[] memory ids, uint256[] memory scores,,) = c.crownList();
         for (uint256 i = 0; i < ids.length; i++) {
             if (ids[i] == 1) assertLt(scores[i], scores0[i]);
         }
