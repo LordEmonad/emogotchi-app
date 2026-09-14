@@ -59,10 +59,10 @@ interface IERC721Receiver {
  *         - Care score, 0..100: the average of the four meters over roughly the last SCORE_WINDOW,
  *           evaluated whenever it is read, so it climbs with care and decays by itself. A fresh
  *           cat starts at 0; a dead cat scores 0.
- *         - Crown: the CROWNS highest non-zero scores wear the crown, live. Every paid care re-ranks
- *           the cat; entering the list evicts the lowest, whose live score is refreshed first. Ties
- *           break on streak, then the incumbent keeps its place. Anyone can poke a cat to refresh
- *           its rank.
+ *         - Crown: the CROWNS highest scores among cats with at least SCORE_WINDOW of history wear the
+ *           crown, live. Every paid care re-ranks the cat; entering the list evicts the lowest, whose
+ *           live score is refreshed first. Ties break on streak, then the incumbent keeps its place.
+ *           Anyone can poke a cat to refresh its rank. A revived cat starts its week again.
  *         - Split of every 1 MON action and of naming: BURN_BPS accumulates for the buy-and-burn,
  *           TREASURY_BPS and TEAM_BPS accumulate for their addresses. A revive splits
  *           REVIVE_BURN_BPS to the burn and the rest to the team. Nothing a user sends depends
@@ -499,6 +499,7 @@ contract Emogotchi {
         bool asleep;
         bool poop;
         bool crowned;
+        bool crownEligible; // at least SCORE_WINDOW of history since the clock started or the last revive
         uint8 food;
         uint8 clean;
         uint8 fun;
@@ -581,6 +582,7 @@ contract Emogotchi {
         v.poop = _poop(c.poopAt, t);
         v.poopAt = c.poopAt;
         v.score = alive ? uint16(_scoreFrom(c, t)) : 0;
+        v.crownEligible = alive && now_ - c.scoreFrom >= SCORE_WINDOW;
         v.crowned = alive && _crownIndex[id] != 0;
         v.mood = _mood(v);
     }
@@ -979,7 +981,7 @@ contract Emogotchi {
     ///      A zero score never holds a crown.
     function _rank(uint256 id, uint256 score, uint256 streak) private {
         emit Score(id, score, streak);
-        if (score == 0) {
+        if (score == 0 || block.timestamp - _cats[id].scoreFrom < SCORE_WINDOW) {
             _uncrown(id);
             return;
         }
@@ -1011,6 +1013,7 @@ contract Emogotchi {
         uint256 minId = minEntry >> 32;
         // self-heal: the lowest entry's stored score may be stale; refresh it before comparing
         uint256 liveMinKey = _key(_scoreCalc(minId, _cats[minId], block.timestamp), _cats[minId].streak);
+        if (block.timestamp - _cats[minId].scoreFrom < SCORE_WINDOW) liveMinKey = 0; // revived since: not eligible
         if (liveMinKey < (minEntry & KEY_MASK)) {
             minEntry = (minId << 32) | liveMinKey;
             _setEntry(minIdx, minEntry);

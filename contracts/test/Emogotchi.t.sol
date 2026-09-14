@@ -986,8 +986,33 @@ contract CrownTest is Base {
         }
     }
 
+    /// @dev A week of once-every-6h care for cats 1..n, then one more care: the first care after 7 full
+    ///      days of history is the first one that can rank the cat (the clock starts at the first care).
+    function week(uint256 n) internal {
+        buildScores(n, 29);
+    }
+
+    function test_noCrownBeforeAWeek() public {
+        buildScores(3, 28); // the 28th care is 6h short of a week since the first one
+        assertFalse(c.crowned(1));
+        assertFalse(c.state(1).crownEligible);
+        assertGt(c.scoreOf(1), 0);
+        buildScores(3, 1);
+        assertTrue(c.state(1).crownEligible);
+        assertTrue(c.crowned(1));
+        // revive resets the week
+        warp(48 hours);
+        vm.prank(alice);
+        c.revive{value: 1000 ether}(1);
+        assertFalse(c.crowned(1));
+        buildScores(1, 27);
+        assertFalse(c.crowned(1));
+        buildScores(1, 1);
+        assertTrue(c.crowned(1));
+    }
+
     function test_fillAndEvict() public {
-        buildScores(100, 4);
+        week(100);
         (uint256[] memory ids,,,) = c.crownList();
         assertEq(ids.length, 100);
         assertTrue(c.crowned(1));
@@ -997,7 +1022,7 @@ contract CrownTest is Base {
         careAll(101);
         assertFalse(c.crowned(101));
         // cat 101 cared for 4x a day while the rest only get fed once a day: it outscores the lowest and takes a crown
-        for (uint256 r = 0; r < 12; r++) {
+        for (uint256 r = 0; r < 28; r++) {
             warp(6 hours);
             careAll(101);
             if (r % 4 == 3) feedAll(100);
@@ -1012,7 +1037,7 @@ contract CrownTest is Base {
 
     function test_tieKeepsIncumbent() public {
         // all 100 cats end with identical stored scores and streaks; cat 101 matches exactly and stays out
-        buildScores(101, 2);
+        week(101);
         assertTrue(c.crowned(1));
         assertTrue(c.crowned(100));
         assertFalse(c.crowned(101));
@@ -1021,28 +1046,33 @@ contract CrownTest is Base {
     }
 
     function test_staleMinIsRefreshedAndEvicted() public {
-        buildScores(100, 4);
+        week(100);
         // the list is full and equal; the 100 drop to a feed a day (stored scores stay stale-high), cat 101 keeps going
-        for (uint256 r = 0; r < 8; r++) {
+        for (uint256 r = 0; r < 28; r++) {
             warp(6 hours);
             careAll(101);
             if (r % 4 == 3) feedAll(100);
         }
         assertTrue(c.crowned(101));
-        // cat 102 arrives later: another stale entry is refreshed and goes
-        for (uint256 r = 0; r < 8; r++) {
+        // a newly minted cat arrives later (the untouched ones from setUp died of old age by now):
+        // another stale entry is refreshed and goes
+        vm.prank(minter);
+        c.mintMany(alice, 1);
+        uint256 newcomer = c.totalSupply();
+        for (uint256 r = 0; r < 30; r++) {
             warp(6 hours);
-            careAll(102);
+            careAll(newcomer);
             careAll(101);
             if (r % 4 == 3) feedAll(100);
         }
-        assertTrue(c.crowned(102));
+        assertTrue(c.crowned(newcomer));
         assertTrue(c.crowned(101));
         (uint256[] memory ids,,,) = c.crownList();
         assertEq(ids.length, 100);
         uint256 alive;
-        for (uint256 id = 1; id <= 102; id++) if (c.state(id).alive) alive++;
-        assertEq(alive, 102);
+        for (uint256 id = 1; id <= 101; id++) if (c.state(id).alive) alive++;
+        assertEq(alive, 101);
+        assertTrue(c.state(newcomer).alive);
     }
 
     function test_zeroScoreNeverCrowned() public {
@@ -1050,12 +1080,10 @@ contract CrownTest is Base {
         (uint256[] memory ids,,,) = c.crownList();
         assertEq(ids.length, 0);
         assertFalse(c.crowned(1));
-        buildScores(3, 1);
-        assertTrue(c.crowned(1));
     }
 
     function test_deathUncrowns() public {
-        buildScores(5, 2);
+        week(5);
         assertTrue(c.crowned(3));
         warp(48 hours);
         c.poke(3);
@@ -1067,7 +1095,7 @@ contract CrownTest is Base {
     }
 
     function test_crownListIsLive() public {
-        buildScores(3, 4);
+        week(3);
         (, uint256[] memory s0,, bool[] memory alive0) = c.crownList();
         assertTrue(alive0[0]);
         warp(3 days);
@@ -1085,7 +1113,7 @@ contract CrownTest is Base {
     }
 
     function test_pokeRefreshesRank() public {
-        buildScores(3, 4);
+        week(3);
         (, uint256[] memory scores0,,) = c.crownList();
         warp(3 days);
         c.poke(1);
@@ -1096,14 +1124,14 @@ contract CrownTest is Base {
     }
 
     function test_uriShowsCrown() public {
-        buildScores(1, 2);
+        week(1);
         string memory u = c.tokenURI(1);
         assertTrue(bytes(u).length > 0);
         assertTrue(c.state(1).crowned);
     }
 
     function test_gasOfCrownedFeed() public {
-        buildScores(100, 4);
+        week(100);
         warp(6 hours);
         vm.prank(alice);
         uint256 g0 = gasleft();
