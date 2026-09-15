@@ -145,40 +145,37 @@ export function Claim() {
           <div className="hero-copy">
             <p className="eyebrow"><Icon name="heart" size={14} /> The claim</p>
             <h1>Is your wallet<br /><span className="grad">on the list?</span></h1>
-            <p className="lede">Emogotchi is airdropped to Monad. Some wallets are on the claim list instead: one cat each, first come, until the window closes. Nobody is told which wallets. Connect and find out.</p>
+            <p className="lede">The airdrop went to wallets that claimed the MON airdrop, hold a Monad Card, or hold EMO. Everyone else on the list claims here.</p>
             <div className="claim-card" data-status={status}>
-              {status === 'off' && <><h2>Not open yet</h2><p>The claim opens with mainnet.</p></>}
-              {status === 'loading' && <><h2>Checking the window…</h2></>}
-              {status === 'soon' && <><h2>Opens in {fmtLeft(until)}</h2><p>Come back when the window opens. Being early does not help; being on the list does.</p></>}
+              {status === 'off' && <><h2>Not open yet</h2></>}
+              {status === 'loading' && <><h2>Checking…</h2></>}
+              {status === 'soon' && <><h2>Opens in {fmtLeft(until)}</h2></>}
               {status === 'connect' && <>
-                <h2>{view?.left.toLocaleString()} cats left · closes in {fmtLeft(left)}</h2>
-                <p>Connect a wallet to see if it is on the list. Connecting only reads your address.</p>
+                <h2>Claim here</h2>
+                <p className="tnum">{view?.left.toLocaleString()} left · closes in {fmtLeft(left)}</p>
                 <button className="btn btn-pink btn-lg" onClick={() => setModal(true)} disabled={wallet.status === 'connecting'}>{wallet.status === 'connecting' ? 'Connecting…' : 'Check my wallet'}</button>
               </>}
-              {status === 'checking' && <><h2>Looking for your wallet…</h2></>}
+              {status === 'checking' && <><h2>Checking your wallet…</h2></>}
               {status === 'not-listed' && <>
                 <h2>Not on the list</h2>
-                <p className="tnum">{wallet.address?.slice(0, 6)}…{wallet.address?.slice(-4)} is not on the claim list.</p>
-                <p>Try another wallet, or <a href="/">play with the demo cat</a> while the marketplace fills up.</p>
+                <p className="tnum">{wallet.address?.slice(0, 6)}…{wallet.address?.slice(-4)}</p>
               </>}
               {status === 'claimed' && <>
                 <h2>Already claimed</h2>
-                <p>This wallet already has its cat. One each, that is the rule.</p>
                 <a className="btn btn-pink btn-lg" href="/">Go look after it →</a>
               </>}
-              {status === 'gone' && <><h2>All claimed</h2><p>Every cat in the window is gone. The marketplace is the only way in now.</p></>}
-              {status === 'closed' && <><h2>The window has closed</h2><p>Unclaimed cats are never minted. The supply is final.</p></>}
-              {status === 'sealed' && <><h2>The supply is final</h2><p>No more cats will ever be minted.</p></>}
+              {status === 'gone' && <><h2>All claimed</h2></>}
+              {status === 'closed' && <><h2>Closed</h2><p>The rest are burned forever.</p></>}
+              {status === 'sealed' && <><h2>Supply is final</h2></>}
               {(status === 'open' || status === 'sending') && <>
                 <h2>You are on the list</h2>
-                <p className="tnum">{view?.left.toLocaleString()} cats left · closes in {fmtLeft(left)}</p>
-                <p>One transaction, gas only. The cat is yours the moment it lands.</p>
+                <p className="tnum">{view?.left.toLocaleString()} left · closes in {fmtLeft(left)}</p>
                 {wrongChain && <p className="claim-warn">Switch your wallet to {chainCfg?.chain.name ?? 'Monad'} first.</p>}
                 <button className="btn btn-pink btn-lg" onClick={() => void claim()} disabled={status === 'sending'}>{status === 'sending' ? 'Claiming… confirm in your wallet' : 'Claim my cat'}</button>
               </>}
               {status === 'done' && <>
                 <h2>It is yours</h2>
-                <p>Emogotchi #{catId} is in your wallet. It sleeps through its first week, then the clock starts.</p>
+                <p>Emogotchi #{catId} is in your wallet.</p>
                 <a className="btn btn-pink btn-lg" href="/">Go look after it →</a>
               </>}
               {error && <p className="claim-err">{error}</p>}
@@ -186,13 +183,12 @@ export function Claim() {
           </div>
           <div className="hero-stage">
             <div className="shell">{stage}</div>
-            <p className="hero-cap">Feeding, washing, playing, the poop, the bath, the nap. This is the job.</p>
           </div>
         </section>
         <section className="claim-rules" aria-label="The rules">
-          <div className="feature"><span className="feature-ico"><Icon name="heart" size={40} /></span><h3>One per wallet</h3><p>The contract remembers who claimed. Wallets that got a cat in the airdrop are not on this list.</p></div>
-          <div className="feature"><span className="feature-ico"><Icon name="moon" size={40} /></span><h3>Seven days</h3><p>The window lasts as long as a new cat's welcome sleep. When it closes, whatever is left is never minted.</p></div>
-          <div className="feature"><span className="feature-ico"><Icon name="flame" size={40} /></span><h3>Then the real thing</h3><p>Every meal, bath and ball of yarn is 1 MON, and 80% of it buys EMO and burns it.</p></div>
+          <span><Icon name="heart" size={20} /> One per wallet</span>
+          <span><Icon name="moon" size={20} /> Seven days</span>
+          <span><Icon name="flame" size={20} /> Whatever is left is burned forever</span>
         </section>
       </main>
       <footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right"><a href="/leaderboard">Leaderboard</a> · <a href="/cats">All cats</a></span></footer>
