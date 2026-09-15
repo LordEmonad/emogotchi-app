@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { Icon } from './Icon';
 
-type Props = { stage: ReactNode; onConnect: () => void; connecting: boolean };
+type Props = { stage: ReactNode; onConnect: () => void; connecting: boolean; claimHref?: string | null };
 
-export function Landing({ stage, onConnect, connecting }: Props) {
+export function Landing({ stage, onConnect, connecting, claimHref = null }: Props) {
   return (
     <main className="landing">
       <section className="hero">
@@ -13,6 +13,7 @@ export function Landing({ stage, onConnect, connecting }: Props) {
           <p className="lede">Emogotchi is a cat you keep alive on Monad. Every bowl of food, every bath, every ball of yarn costs 1 MON, and 80% of every interaction buys EMO and burns it on the spot. Forget it long enough and it dies.</p>
           <div className="cta-row">
             <button className="btn btn-pink btn-lg" onClick={onConnect} disabled={connecting}>{connecting ? 'Connecting…' : 'Connect wallet'}</button>
+            {claimHref && <a className="btn btn-ghost btn-lg" href={claimHref}>Am I on the claim list?</a>}
             <a className="btn btn-ghost btn-lg" href="#how">How it works</a>
           </div>
           <p className="fine">Works on a PC, or in your mobile wallet's browser on your phone.</p>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { chainName, shortAddr, type WalletState } from '../wallet';
+import { chainCfg } from '../game/chain';
 
 type Props = {
   wallet: WalletState;
@@ -27,7 +28,7 @@ export function Header({ wallet, onConnect, onDisconnect, spentMon, burnedEmo, c
         <span className="wordmark-heart" aria-hidden><Icon name="heart" size={22} /></span>
         <span className="wordmark">Emogotchi</span>
       </a>
-      <nav className="hdr-nav hide-sm"><a href="/leaderboard">Leaderboard</a><a href="/nft">NFT</a><a href="/#faq">FAQ</a></nav>
+      <nav className="hdr-nav hide-sm">{chainCfg?.drop && <a className="nav-claim" href="/claim">Claim</a>}<a href="/leaderboard">Leaderboard</a><a href="/nft">NFT</a><a href="/#faq">FAQ</a></nav>
       <div className="hdr-right">
         {connected && spentMon !== undefined && (
           <span className="chip tnum hide-sm"><Icon name="coin" size={16} /> {spentMon} MON</span>
