@@ -5,19 +5,189 @@
   "excludeContracts": true,
   "_note": "Draft researched 2026-09-15. Sources marked verified were checked on Monad mainnet (name, standard, supply). Addresses still missing are listed under _todo.",
   "sources": [
-    { "label": "Molandaks", "type": "erc721", "address": "0x36982448e77658b8f58f4665696e3173d1e696c2", "verified": true, "supply": 3333 },
-    { "label": "Chewy", "type": "erc721", "address": "0xe1ddf619bb352e6eb25367be99606be02836cbbc", "verified": true, "supply": 2450 },
-    { "label": "skrumpeys", "type": "erc721", "address": "0xb0dad798c80e40dd6b8e8545074c6a5b7b97d2c0", "verified": true, "supply": 3333 },
-    { "label": "The Daks", "type": "erc721", "address": "0x9f8514cebee138b61806d4651f51d26c8098b463", "verified": true, "supply": 3333 },
-    { "label": "r3tards", "type": "erc721", "address": "0x200723a706de0013316e5cd8eba2b3f53dd90c29", "verified": true, "supply": 1033 },
-    { "label": "Monad Simp Cult", "type": "erc721", "address": "0xd8830709f8527033e03f44217ad093624997e60f", "verified": true, "supply": 421 },
-    { "label": "CHOG", "type": "erc20", "address": "0x350035555e10d9afaf1566aaebfced5ba6c27777", "decimals": 18, "min": 0, "verified": true },
-    { "label": "JAMES", "type": "erc20", "address": "0x43cf5407bda1400498b8064d50a7e17528d87777", "decimals": 18, "min": 0, "verified": true },
-    { "label": "MOLANDAK", "type": "erc20", "address": "0x7b2728c04ad436153285702e969e6efac3a97777", "decimals": 18, "min": 0, "verified": true },
-    { "label": "MOYAKI", "type": "erc20", "address": "0xde22b2d5b92364fec7065c638ad82509949f7777", "decimals": 18, "min": 0, "verified": true },
-    { "label": "FLING", "type": "erc20", "address": "0xa9da3c77ec7cdc4dfaa1fe142af583543d1c540f", "decimals": 18, "min": 0, "verified": true },
-    { "label": "Salmonad", "type": "erc20", "address": "0xdb85854437030dc327100dd6942f21a27a2c7777", "decimals": 18, "min": 0, "verified": true },
-    { "label": "Mouch", "type": "erc20", "address": "0x23c26bd5d55e0d3c1985e23ef2a377c0e2547777", "decimals": 18, "min": 0, "verified": true }
+    {
+      "label": "Molandaks",
+      "type": "erc721",
+      "address": "0x36982448e77658b8f58f4665696e3173d1e696c2",
+      "verified": true,
+      "supply": 3333
+    },
+    {
+      "label": "Chewy",
+      "type": "erc721",
+      "address": "0xe1ddf619bb352e6eb25367be99606be02836cbbc",
+      "verified": true,
+      "supply": 2450
+    },
+    {
+      "label": "skrumpeys",
+      "type": "erc721",
+      "address": "0xb0dad798c80e40dd6b8e8545074c6a5b7b97d2c0",
+      "verified": true,
+      "supply": 3333
+    },
+    {
+      "label": "The Daks",
+      "type": "erc721",
+      "address": "0x9f8514cebee138b61806d4651f51d26c8098b463",
+      "verified": true,
+      "supply": 3333
+    },
+    {
+      "label": "r3tards",
+      "type": "erc721",
+      "address": "0x200723a706de0013316e5cd8eba2b3f53dd90c29",
+      "verified": true,
+      "supply": 1033
+    },
+    {
+      "label": "Monad Simp Cult",
+      "type": "erc721",
+      "address": "0xd8830709f8527033e03f44217ad093624997e60f",
+      "verified": true,
+      "supply": 421
+    },
+    {
+      "label": "CHOG",
+      "type": "erc20",
+      "address": "0x350035555e10d9afaf1566aaebfced5ba6c27777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "JAMES",
+      "type": "erc20",
+      "address": "0x43cf5407bda1400498b8064d50a7e17528d87777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "MOLANDAK",
+      "type": "erc20",
+      "address": "0x7b2728c04ad436153285702e969e6efac3a97777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "MOYAKI",
+      "type": "erc20",
+      "address": "0xde22b2d5b92364fec7065c638ad82509949f7777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "FLING",
+      "type": "erc20",
+      "address": "0xa9da3c77ec7cdc4dfaa1fe142af583543d1c540f",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "Salmonad",
+      "type": "erc20",
+      "address": "0xdb85854437030dc327100dd6942f21a27a2c7777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "Mouch",
+      "type": "erc20",
+      "address": "0x23c26bd5d55e0d3c1985e23ef2a377c0e2547777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "BOB",
+      "type": "erc20",
+      "address": "0x21e325b059cd83d4037c82f0f5998ba2df3d7777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "shramp",
+      "type": "erc20",
+      "address": "0x42a4aa89864a794de135b23c6a8d2e05513d7777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "EGGMON",
+      "type": "erc20",
+      "address": "0xd10cf12099f5fb424bc77401df49f0c785657777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "Monigga",
+      "type": "erc20",
+      "address": "0x73b62ff5cfea3fb857dbe84a57f1631630247777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "Busy Land",
+      "type": "erc20",
+      "address": "0xb0a788d09e7da1582012721bea1d16d2aafb7777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "Pam Pam",
+      "type": "erc20",
+      "address": "0x44812436147d162ce0a6b573dbcc7492ef117777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "ANAGO",
+      "type": "erc20",
+      "address": "0x3Ec7310937281CA4Bf89D5bB11704bE9b7ff7777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "GROOL",
+      "type": "erc20",
+      "address": "0x29e8a68e6f5275c36767ae531b9f6b5953ba7777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    },
+    {
+      "label": "143",
+      "type": "erc20",
+      "address": "0x3842751a46d23b41a47e702473dff316e6237777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
+    }
   ],
-  "_todo": ["Chog Genesis", "Nad Name Service (.nad names)", "Blocknads", "Spiky Nads", "The 10k Squad", "Lilstarrs", "Sealuminati", "Monafuku Cafe", "Monadverse", "lil chogstars", "Purple Frens", "Mouch NFT"]
+  "_todo": [
+    "Chog NFTs (Genesis, Pass, Mystery Chest)",
+    "The Bobs NFT",
+    "The 10k Squad",
+    "MONCOCK token",
+    "Nad Name Service",
+    "Blocknads",
+    "Spiky Nads",
+    "Lilstarrs",
+    "Sealuminati",
+    "Monafuku Cafe",
+    "Monadverse",
+    "Purple Frens"
+  ]
 }
