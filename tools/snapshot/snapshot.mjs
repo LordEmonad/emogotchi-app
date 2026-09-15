@@ -73,9 +73,14 @@ async function contractsAmong(addresses, blockHex) {
   const found = new Set(); const BATCH = 20; // the public RPC counts each item of a batch: 20 every 600 ms stays under its 50/s
   for (let i = 0; i < addresses.length; i += BATCH) {
     const slice = addresses.slice(i, i + BATCH);
-    const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(slice.map((a, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_getCode', params: [a, blockHex] }))) });
-    const j = await r.json();
-    if (!Array.isArray(j)) throw new Error('batch eth_getCode failed: ' + JSON.stringify(j).slice(0, 200));
+    let j;
+    for (let attempt = 0; ; attempt++) { // the public RPC answers -32007 when it is over its 50/s: wait and retry the same batch
+      const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(slice.map((a, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_getCode', params: [a, blockHex] }))) });
+      j = await r.json();
+      if (Array.isArray(j)) break;
+      if (attempt >= 8) throw new Error('batch eth_getCode failed: ' + JSON.stringify(j).slice(0, 200));
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    }
     // EIP-7702 delegated accounts (code = 0xef0100 + delegate address, e.g. MetaMask smart accounts) are people's wallets, not contracts
     for (const x of j) if (x.result && x.result !== '0x' && !x.result.toLowerCase().startsWith('0xef0100')) found.add(slice[x.id]);
     if (i % (BATCH * 25) === 0 && i) log(`  code check ${i}/${addresses.length}`);
@@ -100,7 +105,12 @@ const main = async () => {
     const min = kind === 'erc721' ? BigInt(s.min ?? 1) : BigInt(Math.round(Number(s.min ?? 0) * 10 ** (s.decimals ?? 18)));
     let n = 0;
     for (const [a, b] of bal) if (b >= min && !exclude.has(a)) { n += 1; (wallets.get(a) ?? wallets.set(a, new Set()).get(a)).add(s.label); }
-    report.sources.push({ label: s.label, address: s.address, type: kind, transfers: ev.length, holders: bal.size, qualifying: n, min: s.min ?? (kind === 'erc721' ? 1 : 0) });
+    const src = { label: s.label, address: s.address, type: kind, transfers: ev.length, holders: bal.size, qualifying: n, min: s.min ?? (kind === 'erc721' ? 1 : 0) };
+    if (kind === 'erc20') { // how many holders sit above each round threshold, to pick a minimum with numbers in hand
+      const unit = 10n ** BigInt(s.decimals ?? 18); src.holdersAtLeast = {};
+      for (const t of [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]) src.holdersAtLeast[t] = [...bal.values()].filter((b) => b >= BigInt(t) * unit).length;
+    }
+    report.sources.push(src);
     log(`  ${bal.size} holders, ${n} qualify`);
   }
   let all = [...wallets.keys()];
