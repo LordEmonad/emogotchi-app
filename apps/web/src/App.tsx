@@ -60,7 +60,10 @@ function Home({ petId }: { petId: number | null }) {
   // ---- live mode: the contract's view of our cats ----
   const snap = useSyncExternalStore(useCallback((fn) => chainStore?.subscribe(fn) ?? (() => {}), []), () => chainStore?.get() ?? EMPTY_SNAP, () => EMPTY_SNAP);
   const connected = wallet.status === 'connected';
-  const live = CHAIN_MODE && !wallet.demo && (connected || petId !== null);
+  // A /pet/<id> link asks for one particular cat on chain, so it always shows the real thing, even if
+  // this browser still remembers a demo session. Otherwise the demo cat (crown on, meters simulated)
+  // would stand in for every cat anyone shared.
+  const live = CHAIN_MODE && (petId !== null || (!wallet.demo && connected));
   const wrongChain = live && connected && chainCfg !== null && wallet.chainId !== null && wallet.chainId !== chainCfg.chain.id;
   useEffect(() => { chainStore?.watch(petId); }, [petId]);
   useEffect(() => {
@@ -245,7 +248,9 @@ function Home({ petId }: { petId: number | null }) {
   // ---- which view ----
   const liveHasCat = live && (snap.cats.length > 0 || (petId !== null && snap.spectator !== null));
   // loading until the store has read the cats of the wallet that is connected now (not a previous one)
-  const liveLoading = live && (!snap.loaded || (connected && (snap.owner ?? '').toLowerCase() !== (wallet.address ?? '').toLowerCase()));
+  // wait for the store to catch up with the connected wallet; a demo wallet never becomes the signer,
+  // so on a shared /pet/<id> link we only wait for the first read to land
+  const liveLoading = live && (!snap.loaded || (connected && !wallet.demo && (snap.owner ?? '').toLowerCase() !== (wallet.address ?? '').toLowerCase()));
   const which: Exclude<ViewOverride, 'auto'> | 'loading' = view !== 'auto' ? view
     : live ? (petId === null && !connected ? 'landing' : liveLoading ? 'loading' : !liveHasCat ? 'nopet' : !g.alive ? 'dead' : 'pet')
       : !connected ? 'landing' : !hasPet ? 'nopet' : !g.alive ? 'dead' : 'pet';
