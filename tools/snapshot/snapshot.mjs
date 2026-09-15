@@ -38,7 +38,13 @@ async function transfers(contract, block, kind) {
   const out = []; let from = 0; let pages = 0;
   while (from <= block) {
     const body = { from_block: from, to_block: block + 1, logs: [{ address: [contract], topics: [[TRANSFER]] }], field_selection: { log: ['block_number', 'log_index', 'topic1', 'topic2', 'topic3', 'data'] } };
-    const r = await fetch(HS + '/query', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` }, body: JSON.stringify(body) });
+    let r;
+    for (let attempt = 0; ; attempt++) { // the free tier answers 429 when queries come too fast: wait and retry the same page
+      r = await fetch(HS + '/query', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` }, body: JSON.stringify(body) });
+      if (r.status !== 429) break;
+      if (attempt >= 10) throw new Error('HyperSync keeps answering 429');
+      await new Promise((res) => setTimeout(res, 5000 * (attempt + 1)));
+    }
     if (!r.ok) throw new Error(`HyperSync ${r.status}: ${(await r.text()).slice(0, 200)}`);
     const j = await r.json();
     for (const batch of j.data ?? []) for (const l of batch.logs ?? []) {
