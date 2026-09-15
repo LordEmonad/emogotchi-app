@@ -19,3 +19,6 @@ apps/web/.env.local
 
 # airdrop snapshot: raw transfer cache (regenerable); the CSV lists are kept
 snapshot/cache/
+
+# testnet rehearsal progress, not a launch input
+snapshot/*-testnet.progress.json

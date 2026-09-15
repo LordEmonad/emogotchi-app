@@ -1,8 +1,8 @@
-// Copies the Emogotchi ABI out of the Foundry build into src/abi.ts.
+// Copies the Emogotchi and EmogotchiDrop ABIs out of the Foundry build into src/abi.ts.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-const artifact = fileURLToPath(new URL('../../../contracts/out/Emogotchi.sol/Emogotchi.json', import.meta.url));
-const { abi } = JSON.parse(readFileSync(artifact, 'utf8'));
+const load = (name) => JSON.parse(readFileSync(fileURLToPath(new URL(`../../../contracts/out/${name}.sol/${name}.json`, import.meta.url)), 'utf8')).abi;
+const game = load('Emogotchi'); const drop = load('EmogotchiDrop');
 const out = fileURLToPath(new URL('../src/abi.ts', import.meta.url));
-writeFileSync(out, `// Generated from contracts/out by \`pnpm --filter @emo-pets/chain abi\`. Do not edit.\nexport const emogotchiAbi = ${JSON.stringify(abi, null, 2)} as const;\n`);
-console.log('wrote', out, abi.length, 'entries');
+writeFileSync(out, `// Generated from contracts/out by \`pnpm --filter @emo-pets/chain abi\`. Do not edit.\nexport const emogotchiAbi = ${JSON.stringify(game, null, 2)} as const;\nexport const emogotchiDropAbi = ${JSON.stringify(drop, null, 2)} as const;\n`);
+console.log('wrote', out, game.length, '+', drop.length, 'entries');
