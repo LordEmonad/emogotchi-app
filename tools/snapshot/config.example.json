@@ -1,0 +1,14 @@
+{
+  "name": "airdrop-1",
+  "block": "latest",
+  "perWallet": 1,
+  "perSource": false,
+  "maxPerWallet": 5,
+  "excludeContracts": true,
+  "exclude": [],
+  "sources": [
+    { "label": "Monad Cards", "type": "erc721", "address": "0x0000CA12D5c07085022eBC74867157449919Fd67" },
+    { "label": "Some NFT", "type": "erc721", "address": "0x…", "min": 1 },
+    { "label": "EMO", "type": "erc20", "address": "0x81A224F8A62f52BdE942dBF23A56df77A10b7777", "decimals": 18, "min": 1000 }
+  ]
+}
