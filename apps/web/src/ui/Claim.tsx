@@ -145,7 +145,7 @@ export function Claim() {
           <div className="hero-copy">
             <p className="eyebrow"><Icon name="heart" size={14} /> The claim</p>
             <h1>Is your wallet<br /><span className="grad">on the list?</span></h1>
-            <p className="lede">The airdrop went to wallets that claimed the MON airdrop, hold a Monad Card, or hold EMO. Everyone else on the list claims here.</p>
+            <p className="lede">Emogotchi was airdropped to everyone who claimed the initial Monad airdrop, to Monad Card holders, and to EMO holders. The claim is open to several Monad communities.</p>
             <div className="claim-card" data-status={status}>
               {status === 'off' && <><h2>Not open yet</h2></>}
               {status === 'loading' && <><h2>Checking…</h2></>}
@@ -165,7 +165,7 @@ export function Claim() {
                 <a className="btn btn-pink btn-lg" href="/">Go look after it →</a>
               </>}
               {status === 'gone' && <><h2>All claimed</h2></>}
-              {status === 'closed' && <><h2>Closed</h2><p>The rest are burned forever.</p></>}
+              {status === 'closed' && <><h2>Closed</h2><p>Every Emogotchi left over has been burned forever.</p></>}
               {status === 'sealed' && <><h2>Supply is final</h2></>}
               {(status === 'open' || status === 'sending') && <>
                 <h2>You are on the list</h2>
@@ -187,8 +187,7 @@ export function Claim() {
         </section>
         <section className="claim-rules" aria-label="The rules">
           <span><Icon name="heart" size={20} /> One per wallet</span>
-          <span><Icon name="moon" size={20} /> Seven days</span>
-          <span><Icon name="flame" size={20} /> Whatever is left is burned forever</span>
+          <span><Icon name="flame" size={20} /> Open for seven days, then every Emogotchi left over is burned forever</span>
         </section>
       </main>
       <footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right"><a href="/leaderboard">Leaderboard</a> · <a href="/cats">All cats</a></span></footer>
