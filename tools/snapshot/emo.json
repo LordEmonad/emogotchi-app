@@ -1,6 +1,6 @@
 {
   "name": "emo-only",
-  "block": "latest",
+  "block": 105070285,
   "perWallet": 1,
   "excludeContracts": true,
   "sources": [
