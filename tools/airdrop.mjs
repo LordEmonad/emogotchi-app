@@ -1,7 +1,7 @@
 /**
  * Push the airdrop through EmogotchiDrop, in batches, resumably.
  *
- *   node tools/airdrop.mjs --list snapshot/tier1.csv --drop 0x… [--rpc …] [--batch 250] [--send]
+ *   node tools/airdrop.mjs --list snapshot/extra.csv --drop 0x… --exclude snapshot/tier1.csv --send
  *
  * Without --send it is a dry run: it prints the batches, the gas each would take and the total cost,
  * and writes nothing. With --send it signs with a Foundry keystore — never a key on the command line,
@@ -39,13 +39,18 @@ const RPC = opt('--rpc', 'https://rpc.monad.xyz');
 const BATCH = Number(opt('--batch', 250)); // 250 cats ≈ 26.8M gas; Monad's transaction limit is 30M
 const SEND = has('--send');
 const KEYSTORE = opt('--keystore');
-if (!LIST || !DROP) { console.error('usage: --list <csv> --drop <0x…> [--rpc …] [--batch 250] [--keystore <name>] [--send]'); process.exit(1); }
+const EXCLUDE = args.flatMap((a, i) => (a === '--exclude' ? [args[i + 1]] : []));
+if (!LIST || !DROP) { console.error('usage: --list <csv> --drop <0x…> [--exclude <csv>] [--rpc …] [--batch 250] [--keystore <name>] [--send]'); process.exit(1); }
 
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 const progressPath = LIST.replace(/\.csv$/, '') + '.progress.json';
 
-// ---- the list: one entry per cat, in file order, deduped by address (a wallet appears once)
-const seen = new Set();
+// ---- the list: one entry per cat, in file order, deduped by address (a wallet appears once).
+// --exclude <csv> drops wallets that already had a cat from an earlier run, so adding a community
+// later cannot quietly give a second cat to anyone who was in the first airdrop.
+const readAddrs = (f) => readFileSync(f, 'utf8').split(/\r?\n/).map((l) => (l.split(',')[0] ?? '').trim().toLowerCase()).filter((a) => /^0x[0-9a-f]{40}$/.test(a));
+const already = new Set(EXCLUDE.flatMap(readAddrs));
+const seen = new Set(already);
 const rows = readFileSync(LIST, 'utf8').split(/\r?\n/).flatMap((line) => {
   const [a, n] = line.split(',');
   const addr = (a ?? '').trim();
@@ -55,6 +60,7 @@ const rows = readFileSync(LIST, 'utf8').split(/\r?\n/).flatMap((line) => {
   seen.add(key);
   return Array.from({ length: Math.max(1, Number(n) || 1) }, () => getAddress(addr));
 });
+if (already.size) log(`${already.size} wallets excluded (already have one)`);
 const batches = [];
 for (let i = 0; i < rows.length; i += BATCH) batches.push(rows.slice(i, i + BATCH));
 log(`${seen.size} wallets, ${rows.length} cats, ${batches.length} batches of up to ${BATCH}`);
