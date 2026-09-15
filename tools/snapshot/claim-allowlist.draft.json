@@ -174,13 +174,20 @@
       "decimals": 18,
       "min": 0,
       "verified": true
+    },
+    {
+      "label": "moncock",
+      "type": "erc20",
+      "address": "0x405b6330e213ded490240cbcdd64790806827777",
+      "decimals": 18,
+      "min": 0,
+      "verified": true
     }
   ],
   "_todo": [
     "Chog NFTs (Genesis, Pass, Mystery Chest)",
     "The Bobs NFT",
     "The 10k Squad",
-    "MONCOCK token",
     "Nad Name Service",
     "Blocknads",
     "Spiky Nads",
