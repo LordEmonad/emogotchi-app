@@ -15,7 +15,7 @@ import { resolve, dirname, basename } from 'node:path';
 
 const cfgPath = process.argv[2] ?? 'tools/snapshot/config.json';
 const cfg = process.argv[1]?.endsWith('snapshot.mjs') ? JSON.parse(readFileSync(cfgPath, 'utf8')) : {};
-const TOKEN = process.env.HYPERSYNC_TOKEN;
+const TOKEN = process.env.HYPERSYNC_TOKEN ?? (existsSync(process.env.HOME + '/.emogotchi-hypersync-token') ? readFileSync(process.env.HOME + '/.emogotchi-hypersync-token', 'utf8').trim() : undefined);
 const HS = cfg.hypersync ?? 'https://monad.hypersync.xyz';
 const RPC = cfg.rpc ?? 'https://rpc.monad.xyz';
 const TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
@@ -70,15 +70,16 @@ function holders(events, kind) {
 
 /** Which addresses have code (LP pools, routers, token contracts, vaults): batched eth_getCode, paced for the public RPC. */
 async function contractsAmong(addresses, blockHex) {
-  const found = new Set(); const BATCH = 40;
+  const found = new Set(); const BATCH = 20; // the public RPC counts each item of a batch: 20 every 600 ms stays under its 50/s
   for (let i = 0; i < addresses.length; i += BATCH) {
     const slice = addresses.slice(i, i + BATCH);
     const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(slice.map((a, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_getCode', params: [a, blockHex] }))) });
     const j = await r.json();
     if (!Array.isArray(j)) throw new Error('batch eth_getCode failed: ' + JSON.stringify(j).slice(0, 200));
-    for (const x of j) if (x.result && x.result !== '0x') found.add(slice[x.id]);
+    // EIP-7702 delegated accounts (code = 0xef0100 + delegate address, e.g. MetaMask smart accounts) are people's wallets, not contracts
+    for (const x of j) if (x.result && x.result !== '0x' && !x.result.toLowerCase().startsWith('0xef0100')) found.add(slice[x.id]);
     if (i % (BATCH * 25) === 0 && i) log(`  code check ${i}/${addresses.length}`);
-    await new Promise((r) => setTimeout(r, 80));
+    await new Promise((r) => setTimeout(r, 600));
   }
   return found;
 }

@@ -1,0 +1,9 @@
+{
+  "name": "cards-only",
+  "block": "latest",
+  "perWallet": 1,
+  "excludeContracts": true,
+  "sources": [
+    { "label": "Monad Cards", "type": "erc721", "address": "0x0000CA12D5c07085022eBC74867157449919Fd67" }
+  ]
+}
