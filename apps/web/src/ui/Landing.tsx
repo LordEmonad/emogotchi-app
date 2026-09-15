@@ -15,7 +15,7 @@ export function Landing({ stage, onConnect, connecting }: Props) {
             <button className="btn btn-pink btn-lg" onClick={onConnect} disabled={connecting}>{connecting ? 'Connecting…' : 'Connect wallet'}</button>
             <a className="btn btn-ghost btn-lg" href="#how">How it works</a>
           </div>
-          <p className="fine">Works in MetaMask, Rabby, Phantom and OKX, or inside your wallet's browser on a phone.</p>
+          <p className="fine">Works on a PC, or in your mobile wallet's browser on your phone.</p>
         </div>
         <div className="hero-stage">
           <div className="shell">{stage}</div>

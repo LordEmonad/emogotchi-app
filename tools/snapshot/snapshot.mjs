@@ -119,7 +119,7 @@ const main = async () => {
       for (const t of [0.01, 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]) src.holdersAtLeast[t] = [...bal.values()].filter((b) => b > 0n && b >= BigInt(Math.round(t * 1e6)) * unit / 1000000n).length;
     }
     report.sources.push(src);
-    log(`  ${bal.size} holders, ${n} qualify`);
+    log(`  ${held} holders (${bal.size} addresses ever touched), ${n} qualify`);
   }
   let all = [...wallets.keys()];
   if (cfg.excludeContracts !== false) {

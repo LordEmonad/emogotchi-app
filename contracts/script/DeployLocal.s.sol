@@ -34,9 +34,8 @@ contract DeployLocal is Script {
         EmogotchiArt art = artAddr == address(0) ? ArtDeploy.deploy(vm) : EmogotchiArt(artAddr);
 
         // the drop contract is the game's only minter, so its address is computed before the game is deployed
-        address dropAddr = vm.computeCreateAddress(broadcaster, vm.getNonce(broadcaster) + 1);
         Emogotchi.Params memory p;
-        p.minter = dropAddr;
+        p.minter = address(0); // set below, once the art is deployed and the nonce is known
         p.maxSupply = vm.envOr("MAX_SUPPLY", uint256(1000));
         p.welcome = vm.envOr("WELCOME", uint256(7 days));
         p.treasury = vm.envOr("TREASURY", broadcaster);
@@ -53,6 +52,8 @@ contract DeployLocal is Script {
         p.maxImpactBps = 50;
         p.art = address(art);
         p.siteURI = vm.envOr("SITE_URI", string("https://emogotchi.emonad.lol"));
+        address dropAddr = vm.computeCreateAddress(broadcaster, vm.getNonce(broadcaster) + 1);
+        p.minter = dropAddr; // EmogotchiDrop is the only minter: airdrop batches + the claim window, then sealed
         Emogotchi game = new Emogotchi(p);
         EmogotchiDrop drop = new EmogotchiDrop(address(game), vm.envOr("OPERATOR", broadcaster));
         require(address(drop) == dropAddr, "drop address mismatch");

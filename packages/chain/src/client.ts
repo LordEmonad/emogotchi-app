@@ -8,7 +8,7 @@ import {
   type EIP1193Provider,
   type PublicClient,
 } from 'viem';
-import { emogotchiAbi } from './abi';
+import { emogotchiAbi, emogotchiDropAbi } from './abi';
 import type { Address, ChainConfig } from './config';
 
 /** One cat, as the contract reports it (`state(id)`), with bigints and packed ints turned into numbers. */
@@ -54,6 +54,11 @@ export type CatView = {
 export const MOODS = ['content', 'happy', 'hungry', 'grubby', 'bored', 'sleepy', 'sleeping', 'sad', 'dead'] as const;
 export type Mood = (typeof MOODS)[number];
 
+export type DropView = {
+  root: `0x${string}`; start: number; end: number; cap: number; claimed: number; left: number; sealed: boolean; airdropped: number;
+  hasClaimed: boolean;
+};
+
 export type Totals = { emoBurned: bigint; monBurned: bigint; pendingBurnMon: bigint; totalSupply: number };
 export type CrownEntry = { id: number; score: number; streak: number; alive: boolean };
 export type CareAction = 'feed' | 'play' | 'wash' | 'sleep' | 'clean';
@@ -68,6 +73,7 @@ export const REVIVE_PRICE = 1000n * PRICE;
  * and sent with a 10% margin; these are the floors, from testnet measurements (first feed 174k, play
  * 143k, pet 48k, name 92k, crank 195k), in case an estimate comes back low.
  */
+const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11' as const;
 const GAS_FLOOR: Record<string, bigint> = {
   feed: 120_000n, play: 120_000n, wash: 120_000n, sleep: 120_000n, clean: 120_000n, care: 120_000n,
   wake: 60_000n, pet: 60_000n, setName: 100_000n, revive: 120_000n, crankBurn: 220_000n, sweep: 140_000n, poke: 80_000n,
@@ -112,7 +118,7 @@ export class ChainClient {
     if (ids.length === 0) return [];
     try {
       const res = await this.pub.multicall({
-        multicallAddress: '0xcA11bde05977b3631167028862bE2a173976CA11',
+        multicallAddress: MULTICALL3,
         allowFailure: false,
         contracts: ids.map((id) => ({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'state' as const, args: [BigInt(id)] as const })),
       });
@@ -179,6 +185,28 @@ export class ChainClient {
     return Number(b.timestamp);
   }
 
+  // ---------------------------------------------------------------- the drop (claim window)
+  /** The claim window as it is now, plus this wallet's status if one is given. */
+  async drop(wallet?: Address): Promise<DropView> {
+    const d = this.cfg.drop;
+    if (!d) throw new ChainError('No claim contract configured.', 'network');
+    const c = (fn: string, args: unknown[] = []) => ({ address: d, abi: emogotchiDropAbi, functionName: fn, args }) as never;
+    const calls = [c('root'), c('claimStart'), c('claimEnd'), c('claimCap'), c('claimed'), c('claimsLeft'), c('isSealed'), c('airdropped')];
+    if (wallet) calls.push(c('hasClaimed', [wallet]));
+    const r = await this.pub.multicall({ contracts: calls, allowFailure: false, multicallAddress: MULTICALL3 }) as unknown[];
+    return {
+      root: r[0] as `0x${string}`, start: Number(r[1]), end: Number(r[2]), cap: Number(r[3]), claimed: Number(r[4]), left: Number(r[5]), sealed: r[6] as boolean, airdropped: Number(r[7]),
+      hasClaimed: wallet ? (r[8] as boolean) : false,
+    };
+  }
+  /** Does the contract accept this proof for this wallet? Free, no signature. */
+  async eligible(wallet: Address, proof: `0x${string}`[]): Promise<boolean> {
+    const d = this.cfg.drop; if (!d) return false;
+    return this.pub.readContract({ address: d, abi: emogotchiDropAbi, functionName: 'eligible', args: [wallet, proof] });
+  }
+  /** Mint the caller's one cat. Returns the tx hash; the new id is the game's totalSupply after the receipt. */
+  claim(proof: `0x${string}`[]) { return this.writeTo(this.cfg.drop!, emogotchiDropAbi, 'claim', [proof]); }
+
   // ---------------------------------------------------------------- writes
   care(id: number, action: CareAction) { return this.write(action, [BigInt(id)], PRICE); }
   careMany(ids: number[], actions: CareAction[]) {
@@ -193,10 +221,11 @@ export class ChainClient {
   sweep() { return this.write('sweep', []); }
 
   /** Estimate, send with a 10% margin above the estimate, wait for the receipt. Returns the tx hash. */
-  private async write(fn: string, args: unknown[], value = 0n): Promise<`0x${string}`> {
+  private write(fn: string, args: unknown[], value = 0n): Promise<`0x${string}`> { return this.writeTo(this.cfg.contract, emogotchiAbi, fn, args, value); }
+  private async writeTo(address: Address, abi: unknown, fn: string, args: unknown[], value = 0n): Promise<`0x${string}`> {
     const s = this.signer;
     if (!s) throw new ChainError('Connect a wallet first.', 'wallet');
-    const req = { address: this.cfg.contract, abi: emogotchiAbi, functionName: fn, args, value, account: s.address } as never;
+    const req = { address, abi, functionName: fn, args, value, account: s.address } as never;
     let gas: bigint;
     try {
       gas = await this.pub.estimateContractGas(req);

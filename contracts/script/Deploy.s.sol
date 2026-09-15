@@ -23,8 +23,7 @@ contract Deploy is Script {
         require(block.chainid == 143, "not Monad mainnet");
         Emogotchi.Params memory p;
         address deployer = msg.sender;
-        address dropAddr = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
-        p.minter = dropAddr; // EmogotchiDrop is the only minter: airdrop batches + the claim window, then sealed
+        p.minter = address(0); // set below, once the art is deployed and the nonce is known
         p.maxSupply = vm.envOr("MAX_SUPPLY", uint256(100_000));
         p.welcome = vm.envOr("WELCOME", uint256(7 days));
         p.treasury = vm.envAddress("TREASURY");
@@ -44,6 +43,8 @@ contract Deploy is Script {
         vm.startBroadcast();
         EmogotchiArt art = ArtDeploy.deploy(vm);
         p.art = address(art);
+        address dropAddr = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
+        p.minter = dropAddr; // EmogotchiDrop is the only minter: airdrop batches + the claim window, then sealed
         Emogotchi game = new Emogotchi(p);
         EmogotchiDrop drop = new EmogotchiDrop(address(game), vm.envAddress("OPERATOR"));
         require(address(drop) == dropAddr, "drop address mismatch");

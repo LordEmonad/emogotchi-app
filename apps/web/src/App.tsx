@@ -14,6 +14,7 @@ import { NftPreview } from './ui/NftPreview';
 import { NftArt, NFT_STATES, type NftState } from './ui/NftArt';
 import { DevDrawer, type ViewOverride } from './ui/DevDrawer';
 import { Leaderboard } from './ui/Leaderboard';
+import { Claim } from './ui/Claim';
 import { Gallery } from './ui/Gallery';
 import { Icon } from './ui/Icon';
 
@@ -34,6 +35,7 @@ export function App() {
     if (card && (NFT_STATES as readonly string[]).includes(card)) return <div className="card-only"><NftArt state={card} still crown={params.has('crown')} onReady={() => { (window as unknown as { __card_ready?: boolean }).__card_ready = true; }} /></div>;
     return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><NftPreview /></div>;
   }
+  if (path === '/claim') return <Claim />;
   if (path === '/leaderboard') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Leaderboard /><footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right"><a href="/nft">NFT preview</a></span></footer></div>;
   if (path === '/cats' || path === '/collection') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Gallery /><footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right"><a href="/leaderboard">Leaderboard</a></span></footer></div>;
   const pet = /^\/pet\/(\d+)$/.exec(path);
