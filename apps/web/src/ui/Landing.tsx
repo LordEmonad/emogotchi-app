@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Icon } from './Icon';
+import { BurnBar } from './BurnBar';
 
 type Props = { stage: ReactNode; onConnect: () => void; connecting: boolean; claimHref?: string | null };
 
@@ -23,6 +24,8 @@ export function Landing({ stage, onConnect, connecting, claimHref = null }: Prop
           <p className="hero-cap">Tap the cat. It likes that.</p>
         </div>
       </section>
+
+      <BurnBar />
 
       <section className="features" aria-label="What it is">
         <div className="feature">
