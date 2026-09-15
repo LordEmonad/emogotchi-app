@@ -104,11 +104,13 @@ const main = async () => {
     const bal = holders(ev, kind);
     const min = kind === 'erc721' ? BigInt(s.min ?? 1) : BigInt(Math.round(Number(s.min ?? 0) * 10 ** (s.decimals ?? 18)));
     let n = 0;
-    for (const [a, b] of bal) if (b >= min && !exclude.has(a)) { n += 1; (wallets.get(a) ?? wallets.set(a, new Set()).get(a)).add(s.label); }
-    const src = { label: s.label, address: s.address, type: kind, transfers: ev.length, holders: bal.size, qualifying: n, min: s.min ?? (kind === 'erc721' ? 1 : 0) };
+    // a "holder" has a positive balance now; addresses that sold or sent everything stay in the map at zero
+    let held = 0;
+    for (const [a, b] of bal) { if (b <= 0n) continue; held += 1; if (b >= min && !exclude.has(a)) { n += 1; (wallets.get(a) ?? wallets.set(a, new Set()).get(a)).add(s.label); } }
+    const src = { label: s.label, address: s.address, type: kind, transfers: ev.length, holders: held, qualifying: n, min: s.min ?? (kind === 'erc721' ? 1 : 0) };
     if (kind === 'erc20') { // how many holders sit above each round threshold, to pick a minimum with numbers in hand
       const unit = 10n ** BigInt(s.decimals ?? 18); src.holdersAtLeast = {};
-      for (const t of [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]) src.holdersAtLeast[t] = [...bal.values()].filter((b) => b >= BigInt(t) * unit).length;
+      for (const t of [0.01, 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]) src.holdersAtLeast[t] = [...bal.values()].filter((b) => b > 0n && b >= BigInt(Math.round(t * 1e6)) * unit / 1000000n).length;
     }
     report.sources.push(src);
     log(`  ${bal.size} holders, ${n} qualify`);
