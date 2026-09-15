@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CHAIN_MODE, chainClient } from '../game/chain';
 import type { CatView } from '@emo-pets/chain';
 import { shortAddr } from '../wallet';
+import { BurnBar } from './BurnBar';
 
 type Row = { cat: CatView; svg: string | null };
 
@@ -56,6 +57,7 @@ export function Gallery() {
         <h1>Every Emogotchi</h1>
         <p>{total.toLocaleString()} cats so far. Each picture below is fetched from the contract as you look at it, exactly what a wallet shows: the cat's mood right now, the crown if it wears one. Nothing here is hosted; it lives on Monad.</p>
       </div>
+      <BurnBar />
       {error && <p className="lb-note">Could not read the contract: {error}</p>}
       {rows === null && !error && <p className="lb-note">Reading the cats from the contract…</p>}
       <div className="gallery-grid">

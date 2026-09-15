@@ -3,6 +3,7 @@ import { Icon } from './Icon';
 import { NftArt, type NftState } from './NftArt';
 import { CHAIN_MODE, chainClient } from '../game/chain';
 import { shortAddr } from '../wallet';
+import { BurnBar } from './BurnBar';
 
 /**
  * /leaderboard. Ranked by care score: the average of the four meters over the last 7 days,
@@ -69,6 +70,7 @@ export function Leaderboard({ me }: { me?: string | null }) {
         <h1>Best kept cats</h1>
         <p>Care score is your cat's average meters over the last 7 days, live. The 100 best kept cats wear the crown right now: pass the 100th and you take it. A cat needs a week of care history before it can rank. The longer streak breaks ties. Named cats show their name; the rest show their owner's wallet name.</p>
         <div className="lb-tabs" role="tablist"><button className="is-on" role="tab">This week</button><button role="tab">All time</button><button role="tab">Most burned</button></div>
+      <BurnBar />
       </div>
 
       <ol className="podium">

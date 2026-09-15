@@ -358,3 +358,11 @@
 
 .gallery-more { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 0 8px; }
 .gallery-count { font-size: 12.5px; color: rgba(248,248,255,.5); }
+
+/* ---- burn bar: what the game has destroyed, and what is waiting */
+.burnbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; padding: 12px 16px; margin: 0 0 16px;
+  border-radius: 16px; background: linear-gradient(180deg, rgba(80,40,88,.35), rgba(36,18,63,.35)); border: 1px solid rgba(184,148,216,.22); }
+.burnbar-main { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; }
+.burnbar-main b { color: #ff7aa6; font-size: 17px; }
+.burnbar-q { font-size: 13px; color: rgba(248,248,255,.6); }
+.burnbar-note { font-size: 12.5px; color: #EAC6EA; width: 100%; text-align: center; }
