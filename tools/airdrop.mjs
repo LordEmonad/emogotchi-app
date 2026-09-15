@@ -1,7 +1,7 @@
 /**
  * Push the airdrop through EmogotchiDrop, in batches, resumably.
  *
- *   node tools/airdrop.mjs --list snapshot/tier1.csv --drop 0x… [--rpc …] [--batch 300] [--send]
+ *   node tools/airdrop.mjs --list snapshot/tier1.csv --drop 0x… [--rpc …] [--batch 250] [--send]
  *
  * Without --send it is a dry run: it prints the batches, the gas each would take and the total cost,
  * and writes nothing. With --send it signs with the keystore at ~/.monskills/keystore (never a key on
@@ -31,9 +31,9 @@ const has = (k) => args.includes(k);
 const LIST = opt('--list');
 const DROP = opt('--drop');
 const RPC = opt('--rpc', 'https://rpc.monad.xyz');
-const BATCH = Number(opt('--batch', 300));
+const BATCH = Number(opt('--batch', 250)); // 250 cats ≈ 26.8M gas; Monad's transaction limit is 30M
 const SEND = has('--send');
-if (!LIST || !DROP) { console.error('usage: --list <csv> --drop <0x…> [--rpc …] [--batch 300] [--send]'); process.exit(1); }
+if (!LIST || !DROP) { console.error('usage: --list <csv> --drop <0x…> [--rpc …] [--batch 250] [--send]'); process.exit(1); }
 
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 const progressPath = LIST.replace(/\.csv$/, '') + '.progress.json';
@@ -94,6 +94,7 @@ for (let i = 0; i < batches.length; i++) {
     process.exit(1);
   }
   gas += gas / 10n;
+  if (gas > 30_000_000n) { console.error(`batch ${i}: ${gas} gas is over Monad's 30M transaction limit — use a smaller --batch`); process.exit(1); }
   totalGas += gas;
   acted += 1;
   if (!SEND) { log(`batch ${i}: ${to.length} cats, gas ${gas}`); continue; }
