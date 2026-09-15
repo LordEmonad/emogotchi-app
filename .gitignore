@@ -16,3 +16,6 @@ contracts/ultrafuzz.toml
 contracts/smithers.db
 apps/web/.env.local
 .card.rendered.html
+
+# airdrop snapshot: raw transfer cache (regenerable); the CSV lists are kept
+snapshot/cache/
