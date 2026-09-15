@@ -82,7 +82,7 @@ const pieces = [
   // copy at all — OpenSea drops the circular collection logo over the bottom-left and prints the
   // collection name beside it, so anything written there is covered or cropped. Their own guidance is to
   // centre the subject, so this is a centred row of cats and nothing else.
-  { name: 'opensea-banner', w: 2800, h: 700, dpr: 1, use: 'OpenSea / Poply banner · 2800×700 (4:1, no text: the logo covers the bottom-left)', opts: { cats: WIDE, floorAt: 0.82, catH: 0.78, span: [0.24, 0.84], catGap: 0.48, scale: 1.3 } },
+  { name: 'opensea-banner', w: 2800, h: 700, dpr: 1, use: 'OpenSea / Poply banner · 2800×700 (4:1, no text: the logo covers the bottom-left)', opts: { cats: WIDE, floorAt: 0.82, catH: 0.78, span: [0.13, 0.87], catGap: 0.48, scale: 1.3 } },
   // OpenSea featured 1200x800 (3:2): the crowned cat, big.
   { name: 'opensea-featured', w: 1200, h: 800, dpr: 1, use: 'OpenSea featured image · 1200×800 (3:2)', opts: { cats: [{ mood: 'happy', crown: true, size: 1 }], copy: BRAND + EYEBROW + H1 + SUB, copyLeft: 0.06, copyTop: 0.48, copyW: 0.46, floorAt: 0.87, catH: 1.0, span: [0.55, 0.985], scale: 1.05, foot: FOOT } },
   // 16:9 hero: Discord banner / invite splash, decks, video thumbnails.
