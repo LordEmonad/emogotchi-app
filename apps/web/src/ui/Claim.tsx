@@ -18,6 +18,7 @@ const EMPTY_D: DirectorState = { x: 330, dir: 1, busy: null, poop: false, sleepi
 type Proof = `0x${string}`[];
 type Status = 'off' | 'loading' | 'connect' | 'checking' | 'not-listed' | 'soon' | 'open' | 'claimed' | 'gone' | 'closed' | 'sealed' | 'sending' | 'done' | 'error';
 
+const SHOW_COUNTDOWN_UNDER = 60 * 86400; // only count down a window that actually ends soon
 const fmtLeft = (s: number) => {
   if (s <= 0) return '0m';
   const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
@@ -153,7 +154,7 @@ export function Claim() {
               {status === 'soon' && <><h2>Opens in {fmtLeft(until)}</h2></>}
               {status === 'connect' && <>
                 <h2>Claim here</h2>
-                <p className="tnum">{view?.left.toLocaleString()} left · closes in {fmtLeft(left)}</p>
+                <p className="tnum">{view?.left.toLocaleString()} left{left < SHOW_COUNTDOWN_UNDER ? ` · closes in ${fmtLeft(left)}` : ''}</p>
                 <button className="btn btn-pink btn-lg" onClick={() => setModal(true)} disabled={wallet.status === 'connecting'}>{wallet.status === 'connecting' ? 'Connecting…' : 'Check my wallet'}</button>
               </>}
               {status === 'checking' && <><h2>Checking your wallet…</h2></>}
@@ -170,7 +171,7 @@ export function Claim() {
               {status === 'sealed' && <><h2>Supply is final</h2></>}
               {(status === 'open' || status === 'sending') && <>
                 <h2>You are on the list</h2>
-                <p className="tnum">{view?.left.toLocaleString()} left · closes in {fmtLeft(left)}</p>
+                <p className="tnum">{view?.left.toLocaleString()} left{left < SHOW_COUNTDOWN_UNDER ? ` · closes in ${fmtLeft(left)}` : ''}</p>
                 {wrongChain && <p className="claim-warn">Switch your wallet to {chainCfg?.chain.name ?? 'Monad'} first.</p>}
                 <button className="btn btn-pink btn-lg" onClick={() => void claim()} disabled={status === 'sending'}>{status === 'sending' ? 'Claiming… confirm in your wallet' : 'Claim my cat'}</button>
               </>}
@@ -188,7 +189,7 @@ export function Claim() {
         </section>
         <section className="claim-rules" aria-label="The rules">
           <span><Icon name="heart" size={20} /> One per wallet</span>
-          <span><Icon name="flame" size={20} /> Open for seven days, then every Emogotchi left over is burned forever</span>
+          <span><Icon name="flame" size={20} /> Open until they run out. Every Emogotchi left over is burned forever</span>
         </section>
       </main>
       <footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right"><a href="/leaderboard">Leaderboard</a> · <a href="/cats">All cats</a></span></footer>
