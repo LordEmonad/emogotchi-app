@@ -355,3 +355,6 @@
 .claim-warn { color: #EAC6EA; } .claim-err { color: #ff7aa6; font-size: 13px; }
 .claim-rules { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 26px; padding: 4px 0 8px; }
 .claim-rules span { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: rgba(248,248,255,.62); }
+
+.gallery-more { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 0 8px; }
+.gallery-count { font-size: 12.5px; color: rgba(248,248,255,.5); }

@@ -74,6 +74,29 @@ export const REVIVE_PRICE = 1000n * PRICE;
  * 143k, pet 48k, name 92k, crank 195k), in case an estimate comes back low.
  */
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11' as const;
+
+/**
+ * Monad's public RPC allows 15 requests a second and answers the 16th with an error, which the page
+ * would otherwise show as "could not read the contract". Every read goes through here: at most five
+ * in flight, and at least 80 ms between starts, so a busy page (the gallery asking for a hundred cats
+ * and every portrait at once) stays inside the limit instead of tripping it.
+ */
+class Limiter {
+  private active = 0;
+  private last = 0;
+  private queue: (() => void)[] = [];
+  constructor(private readonly max = 5, private readonly gapMs = 80) {}
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    await new Promise<void>((resolve) => { this.queue.push(resolve); this.pump(); });
+    const wait = this.gapMs - (Date.now() - this.last);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    this.last = Date.now();
+    try { return await fn(); } finally { this.active -= 1; this.pump(); }
+  }
+  private pump(): void {
+    while (this.active < this.max && this.queue.length) { this.active += 1; this.queue.shift()!(); }
+  }
+}
 const GAS_FLOOR: Record<string, bigint> = {
   feed: 120_000n, play: 120_000n, wash: 120_000n, sleep: 120_000n, clean: 120_000n, care: 120_000n,
   wake: 60_000n, pet: 60_000n, setName: 100_000n, revive: 120_000n, crankBurn: 220_000n, sweep: 140_000n, poke: 80_000n,
@@ -99,6 +122,7 @@ const artAbi = [
 export class ChainClient {
   readonly pub: PublicClient;
   private signer: Signer | null = null;
+  private readonly limit = new Limiter();
 
   constructor(readonly cfg: ChainConfig) {
     this.pub = createPublicClient({ chain: cfg.chain, transport: http(cfg.rpcUrl, { batch: true }) });
@@ -109,32 +133,41 @@ export class ChainClient {
 
   // ---------------------------------------------------------------- reads
   async cat(id: number): Promise<CatView> {
-    const v = await this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'state', args: [BigInt(id)] });
+    const v = await this.limit.run(() => this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'state', args: [BigInt(id)] }));
     return toView(v);
   }
 
-  /** Many cats in one RPC request (multicall3), falling back to paced single reads: public RPCs allow ~15 requests a second. */
+  /**
+   * Many cats in as few requests as possible. One multicall carrying more than ~100 `state` calls is
+   * refused by the public RPC, so this goes in chunks of 50; the per-cat fallback is paced well under
+   * the node's 15 requests a second.
+   */
   async catsByIds(ids: number[]): Promise<CatView[]> {
     if (ids.length === 0) return [];
-    try {
-      const res = await this.pub.multicall({
-        multicallAddress: MULTICALL3,
-        allowFailure: false,
-        contracts: ids.map((id) => ({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'state' as const, args: [BigInt(id)] as const })),
-      });
-      return (res as RawView[]).map(toView);
-    } catch {
-      const out: CatView[] = [];
-      for (const id of ids) {
-        out.push(await this.cat(id));
-        await new Promise((r) => setTimeout(r, 80));
+    const CHUNK = 50;
+    const out: CatView[] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      try {
+        const res = await this.limit.run(() => this.pub.multicall({
+          multicallAddress: MULTICALL3,
+          allowFailure: false,
+          contracts: slice.map((id) => ({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'state' as const, args: [BigInt(id)] as const })),
+        }));
+        out.push(...(res as RawView[]).map(toView));
+      } catch {
+        for (const id of slice) {
+          out.push(await this.cat(id));
+          await new Promise((r) => setTimeout(r, 150));
+        }
       }
-      return out;
+      if (i + CHUNK < ids.length) await new Promise((r) => setTimeout(r, 120));
     }
+    return out;
   }
 
   async catsOf(owner: Address): Promise<CatView[]> {
-    const vs = await this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'catsOf', args: [owner] });
+    const vs = await this.limit.run(() => this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'catsOf', args: [owner] }));
     return vs.map(toView);
   }
 
@@ -167,8 +200,8 @@ export class ChainClient {
     let p = this.artCache.get(key);
     if (!p) {
       p = (async () => {
-        this.artAddr ??= await this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'ART' });
-        return this.pub.readContract({ address: this.artAddr, abi: artAbi, functionName: 'image', args: [MOODS.indexOf(mood), crowned] });
+        this.artAddr ??= await this.limit.run(() => this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'ART' }));
+        return this.limit.run(() => this.pub.readContract({ address: this.artAddr!, abi: artAbi, functionName: 'image', args: [MOODS.indexOf(mood), crowned] }));
       })();
       p.catch(() => this.artCache.delete(key));
       this.artCache.set(key, p);
@@ -193,7 +226,7 @@ export class ChainClient {
     const c = (fn: string, args: unknown[] = []) => ({ address: d, abi: emogotchiDropAbi, functionName: fn, args }) as never;
     const calls = [c('root'), c('claimStart'), c('claimEnd'), c('claimCap'), c('claimed'), c('claimsLeft'), c('isSealed'), c('airdropped')];
     if (wallet) calls.push(c('hasClaimed', [wallet]));
-    const r = await this.pub.multicall({ contracts: calls, allowFailure: false, multicallAddress: MULTICALL3 }) as unknown[];
+    const r = await this.limit.run(() => this.pub.multicall({ contracts: calls, allowFailure: false, multicallAddress: MULTICALL3 })) as unknown[];
     return {
       root: r[0] as `0x${string}`, start: Number(r[1]), end: Number(r[2]), cap: Number(r[3]), claimed: Number(r[4]), left: Number(r[5]), sealed: r[6] as boolean, airdropped: Number(r[7]),
       hasClaimed: wallet ? (r[8] as boolean) : false,
