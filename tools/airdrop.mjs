@@ -4,8 +4,13 @@
  *   node tools/airdrop.mjs --list snapshot/tier1.csv --drop 0x… [--rpc …] [--batch 250] [--send]
  *
  * Without --send it is a dry run: it prints the batches, the gas each would take and the total cost,
- * and writes nothing. With --send it signs with the keystore at ~/.monskills/keystore (never a key on
- * the command line or in the environment) and mints.
+ * and writes nothing. With --send it signs with a Foundry keystore — never a key on the command line,
+ * in the environment, or in a chat. Point it at yours with --keystore <name>:
+ *
+ *   cast wallet import emogotchi --interactive     # once: paste the key at the prompt, set a password
+ *   node tools/airdrop.mjs --list … --drop 0x… --keystore emogotchi --send
+ *
+ * With no --keystore it falls back to the agent keystore used on testnet (~/.monskills/keystore).
  *
  * Progress is written to <list>.progress.json after every confirmed batch: the batch index, the
  * transaction hash and the addresses it covered. Re-running skips anything already confirmed, so an
@@ -33,7 +38,8 @@ const DROP = opt('--drop');
 const RPC = opt('--rpc', 'https://rpc.monad.xyz');
 const BATCH = Number(opt('--batch', 250)); // 250 cats ≈ 26.8M gas; Monad's transaction limit is 30M
 const SEND = has('--send');
-if (!LIST || !DROP) { console.error('usage: --list <csv> --drop <0x…> [--rpc …] [--batch 250] [--send]'); process.exit(1); }
+const KEYSTORE = opt('--keystore');
+if (!LIST || !DROP) { console.error('usage: --list <csv> --drop <0x…> [--rpc …] [--batch 250] [--keystore <name>] [--send]'); process.exit(1); }
 
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 const progressPath = LIST.replace(/\.csv$/, '') + '.progress.json';
@@ -73,8 +79,10 @@ if (Number(supply) + rows.length - doneCount * BATCH > Number(max)) log(`WARNING
 
 let account = null;
 if (SEND) {
-  const ks = execSync('ls ~/.monskills/keystore | head -1').toString().trim();
-  const pk = execSync(`~/.foundry/bin/cast wallet decrypt-keystore --keystore-dir ~/.monskills/keystore ${ks} --unsafe-password "" | awk '{print $NF}'`).toString().trim();
+  // Foundry's default keystore dir (~/.foundry/keystores) when a name is given, else the agent's testnet one
+  const pk = KEYSTORE
+    ? execSync(`~/.foundry/bin/cast wallet decrypt-keystore ${KEYSTORE} | awk '{print $NF}'`, { stdio: ['inherit', 'pipe', 'inherit'] }).toString().trim()
+    : execSync(`~/.foundry/bin/cast wallet decrypt-keystore --keystore-dir ~/.monskills/keystore ${execSync('ls ~/.monskills/keystore | head -1').toString().trim()} --unsafe-password "" | awk '{print $NF}'`).toString().trim();
   account = privateKeyToAccount(pk);
   if (account.address.toLowerCase() !== operator.toLowerCase()) { console.error(`keystore is ${account.address}, but the drop's operator is ${operator}`); process.exit(1); }
   log(`signing as ${account.address}`);
