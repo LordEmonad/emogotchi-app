@@ -71,13 +71,18 @@ const EYEBROW = `<div class="eyebrow">A cat that lives in your wallet</div>`;
 const H1 = `<h1>Feed it. Wash it.<br><span class="grad">Burn EMO.</span></h1>`;
 const SUB = `<p class="sub">A cat you keep alive on Monad. Every meal, bath and ball of yarn is <b>1 MON</b>, and <b>80%</b> of every interaction buys <b>EMO</b> and burns it.</p>`;
 const FOOT = { html: `<b>$EMO</b> on Monad · emogotchi.emonad.lol` };
+// a wider line-up for the textless banner: more cats, the crowned one dead centre
+const WIDE = [{ mood: 'sleepy', size: 0.78 }, { mood: 'hungry', size: 0.86 }, { mood: 'grubby', size: 0.92 }, { mood: 'happy', crown: true, size: 1.08, z: 10 }, { mood: 'content', size: 0.92 }, { mood: 'bored', size: 0.86 }, { mood: 'sleeping', size: 0.78 }];
 const FAMILY = [{ mood: 'hungry', size: 0.8 }, { mood: 'content', size: 0.9 }, { mood: 'happy', crown: true, size: 1.08, z: 10 }, { mood: 'sleeping', size: 0.86 }, { mood: 'bored', size: 0.82 }];
 
 const pieces = [
   // X / Twitter header 1500x500 (3:1). The avatar covers the bottom-left corner on the profile page, so the copy sits high on the left.
   { name: 'x-header', w: 1500, h: 500, dpr: 2, use: 'X header · 1500×500 (3:1)', opts: { cats: FAMILY, copy: BRAND + EYEBROW + H1, copyLeft: 0.06, copyTop: 0.44, copyW: 0.36, floorAt: 0.9, catH: 0.8, span: [0.4, 0.985], catGap: 0.5, scale: 0.9 } },
-  // OpenSea banner 2800x700 (4:1, under 1 MB). OpenSea drops the logo over the bottom-left and crops the sides on phones: copy small, lineup centered.
-  { name: 'opensea-banner', w: 2800, h: 700, dpr: 1, use: 'OpenSea / Poply banner · 2800×700 (4:1)', opts: { cats: FAMILY, copy: BRAND + EYEBROW, copyLeft: 0.08, copyTop: 0.42, copyW: 0.3, floorAt: 0.9, catH: 1.05, span: [0.34, 0.985], catGap: 0.5, scale: 1.3, foot: { ...FOOT, side: 'right' } } },
+  // OpenSea banner: 4:1, under 1 MB, twice their 1400x350 minimum so it stays sharp. No wordmark and no
+  // copy at all — OpenSea drops the circular collection logo over the bottom-left and prints the
+  // collection name beside it, so anything written there is covered or cropped. Their own guidance is to
+  // centre the subject, so this is a centred row of cats and nothing else.
+  { name: 'opensea-banner', w: 2800, h: 700, dpr: 1, use: 'OpenSea / Poply banner · 2800×700 (4:1, no text: the logo covers the bottom-left)', opts: { cats: WIDE, floorAt: 0.82, catH: 0.78, span: [0.24, 0.84], catGap: 0.48, scale: 1.3 } },
   // OpenSea featured 1200x800 (3:2): the crowned cat, big.
   { name: 'opensea-featured', w: 1200, h: 800, dpr: 1, use: 'OpenSea featured image · 1200×800 (3:2)', opts: { cats: [{ mood: 'happy', crown: true, size: 1 }], copy: BRAND + EYEBROW + H1 + SUB, copyLeft: 0.06, copyTop: 0.48, copyW: 0.46, floorAt: 0.87, catH: 1.0, span: [0.55, 0.985], scale: 1.05, foot: FOOT } },
   // 16:9 hero: Discord banner / invite splash, decks, video thumbnails.
