@@ -107,7 +107,8 @@ export function Claim() {
     if (status === 'sending' || status === 'done') return;
     if (!view) return setStatus('loading');
     if (view.sealed) return setStatus('sealed');
-    if (view.root === '0x0000000000000000000000000000000000000000000000000000000000000000' || now < view.start) return setStatus('soon');
+    if (view.root === '0x0000000000000000000000000000000000000000000000000000000000000000') return setStatus('off'); // no window announced yet
+    if (now < view.start) return setStatus('soon');
     if (now >= view.end) return setStatus('closed');
     if (!connected) return setStatus('connect');
     if (view.hasClaimed) { setCelebrating(true); return setStatus('claimed'); }

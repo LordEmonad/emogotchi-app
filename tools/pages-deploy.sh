@@ -10,10 +10,12 @@ pnpm build
 cd "$PAGES"
 rm -rf assets nft index.html og.png favicon.svg brand claim
 cp -R "$HERE/apps/web/dist/." .
-cp index.html 404.html                     # SPA fallback for /leaderboard, /cats, /pet/<id>
-mkdir -p claim && cp index.html claim/index.html   # /claim is also a real directory (the proof shards),
-                                                   # so GitHub Pages redirects /claim → /claim/; without an
-                                                   # index there it would answer 404 instead of the page
+cp index.html 404.html                     # SPA fallback for /pet/<id>, which cannot be pre-generated
+# Every route people share gets a real page. Without this GitHub Pages answers 404 for them: the page
+# still renders through the fallback, but a 404 status breaks link previews and looks broken to crawlers.
+for route in claim cats collection leaderboard nft; do
+  mkdir -p "$route" && cp index.html "$route/index.html"
+done
 git add -A
 git -c user.name="Lord Emo" -c user.email="195384316+LordEmonad@users.noreply.github.com" commit -q -m "$MSG"
 git push -q origin main
