@@ -10,7 +10,7 @@
 //   snapshot/<name>.report.json  counts per source, overlaps, exclusions, the block and the timestamp
 // A wallet gets `perWallet` cats no matter how many lists it is on. Set "perSource": true to give one
 // per qualifying source instead (still capped by "maxPerWallet").
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname, basename } from 'node:path';
 
 const cfgPath = process.argv[2] ?? 'tools/snapshot/config.json';
@@ -30,6 +30,10 @@ const rpc = async (method, params) => {
 
 /** Every Transfer log of `contract` up to and including `block`, as {from, to, id|amount}. */
 async function transfers(contract, block, kind) {
+  // cached per contract and block, so a re-run (a new source, a changed minimum) costs no HyperSync credits
+  const cacheDir = resolve(dirname(cfgPath), '../../snapshot/cache'); mkdirSync(cacheDir, { recursive: true });
+  const cacheFile = `${cacheDir}/${contract}-${block}.json`;
+  if (existsSync(cacheFile)) { const c = JSON.parse(readFileSync(cacheFile, 'utf8'), (k, v) => (k === 'id' || k === 'amount') && typeof v === 'string' ? BigInt(v) : v); log(`  ${contract} ${c.length} transfers (cached)`); return c; }
   if (!TOKEN) throw new Error('HYPERSYNC_TOKEN is not set (create one at https://app.envio.dev/api-tokens)');
   const out = []; let from = 0; let pages = 0;
   while (from <= block) {
@@ -46,6 +50,7 @@ async function transfers(contract, block, kind) {
     if (j.archive_height != null && from > j.archive_height) break;
   }
   log(`  ${contract} ${out.length} transfers in ${pages} pages`);
+  writeFileSync(cacheFile, JSON.stringify(out, (k, v) => typeof v === 'bigint' ? v.toString() : v));
   return out;
 }
 
