@@ -22,7 +22,7 @@ const eligible = [...all].filter((a) => !ex.has(a));
 const t = buildTree(eligible);
 rmSync(out, { recursive: true, force: true }); mkdirSync(out + '/p', { recursive: true });
 const shards = {};
-for (const a of eligible) { const k = keyOf(a); (shards[k.slice(2, 4)] ??= {})[k] = t.proofOf(a); }
+for (const a of eligible) { const k = keyOf(a); (shards[k.slice(2, 5)] ??= {})[k] = t.proofOf(a); } // 3 hex chars = 4096 shards, so a visitor downloads ~16 KB, not ~190 KB
 for (const [k, v] of Object.entries(shards)) writeFileSync(`${out}/p/${k}.json`, JSON.stringify(v));
 writeFileSync(`${out}/root.json`, JSON.stringify({ root: t.root, count: eligible.length, generatedAt: new Date().toISOString(), lists, excluded: all.size - eligible.length }, null, 2));
 console.log(JSON.stringify({ root: t.root, eligible: eligible.length, inLists: all.size, removedAsTier1: all.size - eligible.length, shards: Object.keys(shards).length }));

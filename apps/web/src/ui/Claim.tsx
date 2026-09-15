@@ -94,7 +94,7 @@ export function Claim() {
     // the published files are keyed by a hash of the address, never the address, so the list cannot be scraped
     const key = keccak256(toBytes(wallet.address.toLowerCase()));
     setProof(undefined);
-    void fetch(`/claim/p/${key.slice(2, 4)}.json`, { cache: 'no-store' })
+    void fetch(`/claim/p/${key.slice(2, 5)}.json`, { cache: 'no-store' })
       .then(async (r) => (r.ok ? ((await r.json()) as Record<string, Proof>)[key] ?? null : null))
       .then((p) => { if (alive) setProof(p); })
       .catch(() => { if (alive) setProof(null); });

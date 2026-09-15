@@ -68,20 +68,19 @@ log('not listed:', JSON.stringify(await settle(off, 'not-listed')));
 await off.screenshot({ path: `${OUT}/claim-3-notlisted.png` });
 await off.close();
 
-// 3. the holding wallet: on the list, has not claimed → the hashed proof lookup must find its proof
+// 3. the holding wallet: on the 42,390-leaf list, proof depth 16, 4096 shards
 const other = await open('0x40aD8cF176672Efe12a0D7AC50fa5da2b0b64e74');
 log('on the list:', JSON.stringify(await settle(other, 'open')));
-await other.screenshot({ path: `${OUT}/claim-4-onlist.png` });
 await other.close();
 
-// 4. the deployer: already claimed on this drop, so it must say so and the cat must purr
+// 4. the deployer claims for real
 const me = await open(account.address);
-await me.setViewport({ width: 1280, height: 1100, deviceScaleFactor: 2 });
-log('claimed wallet:', JSON.stringify(await settle(me, 'claimed')));
-await new Promise((r) => setTimeout(r, 5000));
-await me.screenshot({ path: `${OUT}/claim-7-celebrate.png`, fullPage: true });
-const hearts = await me.evaluate(() => document.querySelectorAll('.prop-heart').length);
-log('hearts on stage:', hearts);
+log('before claim:', JSON.stringify(await settle(me, 'open')));
+await me.evaluate(() => [...document.querySelectorAll('.claim-card .btn')].find((b) => b.textContent.includes('Claim'))?.click());
+log('after claim:', JSON.stringify(await settle(me, 'done', 120000)));
+await me.screenshot({ path: `${OUT}/claim-full-done.png` });
+await me.reload({ waitUntil: 'networkidle2' });
+log('reloaded:', JSON.stringify(await settle(me, 'claimed')));
 await me.close();
 
 log('console errors:', errors.length ? '\n  ' + [...new Set(errors)].join('\n  ') : 'none');
