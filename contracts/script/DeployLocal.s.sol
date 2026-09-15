@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Script, console} from "forge-std/Script.sol";
 import {Emogotchi} from "../src/Emogotchi.sol";
+import {EmogotchiDrop} from "../src/EmogotchiDrop.sol";
 import {MockEMO, MockWMON, MockNad} from "../test/mocks/Mocks.sol";
 import {ArtDeploy} from "./ArtDeploy.sol";
 import {EmogotchiArt} from "../src/EmogotchiArt.sol";
@@ -32,8 +33,10 @@ contract DeployLocal is Script {
         address artAddr = vm.envOr("ART", address(0));
         EmogotchiArt art = artAddr == address(0) ? ArtDeploy.deploy(vm) : EmogotchiArt(artAddr);
 
+        // the drop contract is the game's only minter, so its address is computed before the game is deployed
+        address dropAddr = vm.computeCreateAddress(broadcaster, vm.getNonce(broadcaster) + 1);
         Emogotchi.Params memory p;
-        p.minter = vm.envOr("MINTER", broadcaster);
+        p.minter = dropAddr;
         p.maxSupply = vm.envOr("MAX_SUPPLY", uint256(1000));
         p.welcome = vm.envOr("WELCOME", uint256(7 days));
         p.treasury = vm.envOr("TREASURY", broadcaster);
@@ -51,17 +54,24 @@ contract DeployLocal is Script {
         p.art = address(art);
         p.siteURI = vm.envOr("SITE_URI", string("https://emogotchi.emonad.lol"));
         Emogotchi game = new Emogotchi(p);
+        EmogotchiDrop drop = new EmogotchiDrop(address(game), vm.envOr("OPERATOR", broadcaster));
+        require(address(drop) == dropAddr, "drop address mismatch");
 
         address mintTo = vm.envOr("MINT_TO", address(0));
         uint256 mintCount = vm.envOr("MINT_COUNT", uint256(0));
-        if (mintTo != address(0) && mintCount > 0) game.mintMany(mintTo, mintCount);
+        if (mintTo != address(0) && mintCount > 0) {
+            address[] memory to = new address[](mintCount);
+            for (uint256 i = 0; i < mintCount; i++) to[i] = mintTo;
+            drop.airdrop(to);
+        }
         vm.stopBroadcast();
 
         console.log("EMOGOTCHI", address(game));
         console.log("EMO", address(emo));
         console.log("NAD", address(nad));
         console.log("ART", address(art));
-        console.log("MINTER", p.minter);
+        console.log("DROP", address(drop));
+        console.log("OPERATOR", drop.OPERATOR());
         console.log("BLOCK", block.number);
     }
 }

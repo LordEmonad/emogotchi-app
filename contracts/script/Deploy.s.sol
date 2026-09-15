@@ -3,13 +3,14 @@ pragma solidity ^0.8.26;
 
 import {Script, console} from "forge-std/Script.sol";
 import {Emogotchi} from "../src/Emogotchi.sol";
+import {EmogotchiDrop} from "../src/EmogotchiDrop.sol";
 import {ArtDeploy} from "./ArtDeploy.sol";
 import {EmogotchiArt} from "../src/EmogotchiArt.sol";
 
 /// Mainnet (Monad, chain id 143). Every immutable comes from the environment; nothing is defaulted
 /// except the split and the nad.fun addresses checked on chain on 2026-09-10 (see README).
 ///
-///   MINTER=0x… TREASURY=0x… TEAM=0x… SITE_URI=https://emogotchi.emonad.lol \
+///   OPERATOR=0x… TREASURY=0x… TEAM=0x… SITE_URI=https://emogotchi.emonad.lol \
 ///   forge script script/Deploy.s.sol --rpc-url https://rpc.monad.xyz --broadcast --verify
 contract Deploy is Script {
     address constant EMO = 0x81A224F8A62f52BdE942dBF23A56df77A10b7777;
@@ -21,7 +22,9 @@ contract Deploy is Script {
     function run() external {
         require(block.chainid == 143, "not Monad mainnet");
         Emogotchi.Params memory p;
-        p.minter = vm.envAddress("MINTER");
+        address deployer = msg.sender;
+        address dropAddr = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
+        p.minter = dropAddr; // EmogotchiDrop is the only minter: airdrop batches + the claim window, then sealed
         p.maxSupply = vm.envOr("MAX_SUPPLY", uint256(100_000));
         p.welcome = vm.envOr("WELCOME", uint256(7 days));
         p.treasury = vm.envAddress("TREASURY");
@@ -42,10 +45,13 @@ contract Deploy is Script {
         EmogotchiArt art = ArtDeploy.deploy(vm);
         p.art = address(art);
         Emogotchi game = new Emogotchi(p);
+        EmogotchiDrop drop = new EmogotchiDrop(address(game), vm.envAddress("OPERATOR"));
+        require(address(drop) == dropAddr, "drop address mismatch");
         vm.stopBroadcast();
+        console.log("DROP", address(drop));
         console.log("EMOGOTCHI", address(game));
         console.log("ART", address(art));
-        console.log("MINTER", p.minter);
+        console.log("OPERATOR", drop.OPERATOR());
         console.log("TREASURY", p.treasury);
         console.log("TEAM", p.team);
         console.log("BLOCK", block.number);
