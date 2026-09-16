@@ -16,9 +16,23 @@ const TOPIC_NAMED = '0x9726e950b835e1f7f4fe747cca4223de678452a4f67c102d50408e22e
 const TOPIC_DIED = '0xfda7d6be9e47c82ebcc3553edd222287058538459229e3a58a56dd65448fbecd'; // Died(uint256,uint256)
 const CACHE_SECONDS = 30;
 
-/** Every token id that appears in `topic1` of the matching logs. */
-async function ids(env, topic) {
-  const out = new Set();
+/** The ABI-encoded string in a log's `data`: offset, length, then the utf-8 bytes. */
+function decodeString(data) {
+  if (!data || data.length < 130) return '';
+  const len = parseInt(data.slice(66, 130), 16);
+  if (!Number.isFinite(len) || len <= 0 || len > 128) return '';
+  const hex = data.slice(130, 130 + len * 2);
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return new TextDecoder().decode(bytes);
+}
+
+/**
+ * Walk the matching logs. Returns ids newest first, and for Named also the current name of each cat:
+ * a cat can be renamed, so the last event for an id wins.
+ */
+async function scan(env, topic, withName) {
+  const seen = new Map(); // id -> name (or '')
   let from = FROM_BLOCK;
   for (let page = 0; page < 40; page++) {
     const r = await fetch(HYPERSYNC, {
@@ -27,16 +41,17 @@ async function ids(env, topic) {
       body: JSON.stringify({
         from_block: from,
         logs: [{ address: [GAME], topics: [[topic]] }],
-        field_selection: { log: ['topic1'] },
+        field_selection: { log: withName ? ['topic1', 'data'] : ['topic1'] },
       }),
     });
     if (!r.ok) throw new Error(`hypersync ${r.status}`);
     const j = await r.json();
-    for (const b of j.data ?? []) for (const l of b.logs ?? []) out.add(Number(BigInt(l.topic1)));
+    for (const b of j.data ?? []) for (const l of b.logs ?? []) seen.set(Number(BigInt(l.topic1)), withName ? decodeString(l.data) : '');
     if (j.next_block == null || j.next_block <= from) break;
     from = j.next_block;
   }
-  return [...out].sort((a, b) => b - a);
+  const ids = [...seen.keys()].sort((a, b) => b - a);
+  return withName ? ids.map((id) => ({ id, name: seen.get(id) })) : ids;
 }
 
 export default {
@@ -53,7 +68,7 @@ export default {
     if (hit) return hit;
 
     try {
-      const [named, died] = await Promise.all([ids(env, TOPIC_NAMED), ids(env, TOPIC_DIED)]);
+      const [named, died] = await Promise.all([scan(env, TOPIC_NAMED, true), scan(env, TOPIC_DIED, false)]);
       const body = JSON.stringify({ generatedAt: new Date().toISOString(), live: true, named, died });
       const res = new Response(body, {
         headers: {

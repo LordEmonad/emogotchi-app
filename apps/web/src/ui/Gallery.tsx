@@ -16,7 +16,7 @@ import { Icon } from './Icon';
 import { BurnBar } from './BurnBar';
 
 type Row = { cat: CatView; svg: string | null };
-type Mode = { kind: 'browse' } | { kind: 'id'; id: number } | { kind: 'owner'; owner: Address; mine: boolean } | { kind: 'crown' };
+type Mode = { kind: 'browse' } | { kind: 'id'; id: number } | { kind: 'owner'; owner: Address; mine: boolean } | { kind: 'crown' } | { kind: 'name'; q: string };
 /**
  * Filters. "Crowned" has a real on-chain source (`crownList`), so it is complete. The rest have no
  * index behind them, so they sift the cats already on screen and the count says so. Filtering all
@@ -37,7 +37,11 @@ const matches = (c: CatView, f: Filter) =>
   : f === 'asleep' ? c.alive && !c.started
   : /* care */ c.alive && c.started && (c.poop || c.food < 35 || c.clean < 35 || c.fun < 35 || c.energy < 35);
 
-type CatIndex = { generatedAt: string; block?: number; live?: boolean; named: number[]; died: number[] };
+type NamedCat = { id: number; name: string };
+type CatIndex = { generatedAt: string; block?: number; live?: boolean; named: (number | NamedCat)[]; died: number[] };
+/** the index used to carry plain ids; accept either shape */
+const namedIds = (ix: CatIndex | null) => (ix?.named ?? []).map((n) => (typeof n === 'number' ? n : n.id));
+const namedPairs = (ix: CatIndex | null): NamedCat[] => (ix?.named ?? []).map((n) => (typeof n === 'number' ? { id: n, name: '' } : n));
 const PAGE = 60;
 
 const ago = (s: number) => {
@@ -57,7 +61,8 @@ const inFuture = (s: number) => {
 export function Gallery() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [total, setTotal] = useState(0);
-  const [shown, setShown] = useState(PAGE);
+  const [page, setPage] = useState(0);
+  const [pages, setPages] = useState(0);
   const [mode, setMode] = useState<Mode>({ kind: 'browse' });
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
@@ -106,24 +111,35 @@ export function Gallery() {
         if (dead) return;
         setTotal(t.totalSupply);
         let cats: CatView[];
-        const indexed = INDEXED.includes(filter) && mode.kind === 'browse' ? (filter === 'named' ? index?.named : index?.died) : undefined;
-        if (indexed) {
-          if (!indexed.length) { setRows([]); setError(filter === 'named' ? 'Nobody has named a cat yet.' : 'No cat has died yet.'); return; }
-          cats = await client.catsByIds(indexed.slice(0, shown));
+        // every route ends as "these ids, this page of them"
+        let ids: number[];
+        if (mode.kind === 'name') {
+          const q = mode.q.toLowerCase();
+          const hits = namedPairs(index).filter((n) => n.name.toLowerCase().includes(q));
+          if (!hits.length) { setRows([]); setPages(0); setError(`No cat is called "${mode.q}". Only cats someone has named can be found by name.`); return; }
+          ids = hits.map((n) => n.id);
+        } else if (INDEXED.includes(filter) && mode.kind === 'browse') {
+          ids = filter === 'named' ? namedIds(index) : (index?.died ?? []);
+          if (!ids.length) { setRows([]); setPages(0); setError(filter === 'named' ? 'Nobody has named a cat yet.' : 'No cat has died yet.'); return; }
         } else if (mode.kind === 'id') {
-          if (mode.id < 1 || mode.id > t.totalSupply) { setRows([]); setError(`No cat #${mode.id}. There are ${t.totalSupply.toLocaleString()}.`); return; }
-          cats = [await client.cat(mode.id)];
+          if (mode.id < 1 || mode.id > t.totalSupply) { setRows([]); setPages(0); setError(`No cat #${mode.id}. There are ${t.totalSupply.toLocaleString()}.`); return; }
+          ids = [mode.id];
         } else if (mode.kind === 'crown') {
           const crown = await client.crownList();
-          if (!crown.length) { setRows([]); setError('No cat wears the crown yet. A cat needs a week of care history before it can rank.'); return; }
-          cats = await client.catsByIds(crown.map((e) => e.id));
+          if (!crown.length) { setRows([]); setPages(0); setError('No cat wears the crown yet. A cat needs a week of care history before it can rank.'); return; }
+          ids = crown.map((e) => e.id);
         } else if (mode.kind === 'owner') {
-          cats = await client.catsOf(mode.owner);
-          if (!cats.length) { setRows([]); setError(mode.mine ? 'This wallet holds no Emogotchi.' : `${shortAddr(mode.owner)} holds no Emogotchi.`); return; }
-          cats = cats.slice(0, shown);
+          const held = await client.catsOf(mode.owner);
+          if (!held.length) { setRows([]); setPages(0); setError(mode.mine ? 'This wallet holds no Emogotchi.' : `${shortAddr(mode.owner)} holds no Emogotchi.`); return; }
+          ids = held.map((c) => c.id);
         } else {
-          cats = await client.catsByIds(Array.from({ length: Math.min(t.totalSupply, shown) }, (_, i) => t.totalSupply - i));
+          ids = Array.from({ length: t.totalSupply }, (_, i) => t.totalSupply - i); // newest first
         }
+        if (dead) return;
+        setPages(Math.max(1, Math.ceil(ids.length / PAGE)));
+        const slice = ids.slice(page * PAGE, page * PAGE + PAGE);
+        if (!slice.length) { setPage(0); return; }
+        cats = await client.catsByIds(slice);
         if (dead) return;
         setRows(cats.map((cat) => ({ cat, svg: null })));
         setError(null);
@@ -133,15 +149,16 @@ export function Gallery() {
     void load();
     const id = setInterval(() => void load(), 60000);
     return () => { dead = true; clearInterval(id); };
-  }, [shown, mode, filter, index, paint]);
+  }, [page, mode, filter, index, paint]);
 
   const search = () => {
     const q = query.trim();
-    setShown(PAGE);
+    setPage(0);
     if (!q) return setMode({ kind: 'browse' });
+    setFilter('all');
     if (/^#?\d+$/.test(q)) return setMode({ kind: 'id', id: Number(q.replace('#', '')) });
     if (/^0x[0-9a-fA-F]{40}$/.test(q)) return setMode({ kind: 'owner', owner: q as Address, mine: false });
-    setRows([]); setError('Search takes a cat number like 4021, or a wallet address. Names would need an indexer.');
+    setMode({ kind: 'name', q });
   };
   const mine = async () => {
     const p = getProvider();
@@ -149,7 +166,7 @@ export function Gallery() {
     try {
       const accounts = (await p.request({ method: 'eth_requestAccounts' })) as string[];
       if (!accounts[0]) return;
-      setWallet(accounts[0] as Address); setQuery(''); setShown(PAGE);
+      setWallet(accounts[0] as Address); setQuery(''); setPage(0);
       setMode({ kind: 'owner', owner: accounts[0] as Address, mine: true });
     } catch { /* they declined */ }
   };
@@ -157,6 +174,7 @@ export function Gallery() {
   const shownRows = useMemo(() => rows?.filter((r) => matches(r.cat, filter)) ?? null, [rows, filter]);
   const heading = useMemo(() => {
     if (mode.kind === 'crown') return 'The crown';
+    if (mode.kind === 'name') return `Cats called "${mode.q}"`;
     if (mode.kind === 'id') return `Cat #${mode.id}`;
     if (mode.kind === 'owner') return mode.mine ? 'Your Emogotchi' : `Held by ${shortAddr(mode.owner)}`;
     return 'Every Emogotchi';
@@ -172,18 +190,18 @@ export function Gallery() {
       <BurnBar />
       <div className="gal-tools">
         <div className="gal-search">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') search(); }} placeholder="Cat number or wallet address" aria-label="Search by cat number or wallet address" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') search(); }} placeholder="Name, cat number, or wallet address" aria-label="Search by name, cat number or wallet address" />
           <button className="btn btn-sm btn-pink" onClick={search}>Search</button>
         </div>
         <div className="gal-filters">
           {hasInjected() && <button className={`chip-btn ${mode.kind === 'owner' && mode.mine ? 'is-on' : ''}`} onClick={() => void mine()}>My cats</button>}
           <button className={`chip-btn ${mode.kind === 'crown' ? 'is-on' : ''}`} onClick={() => { setQuery(''); setFilter('all'); setMode(mode.kind === 'crown' ? { kind: 'browse' } : { kind: 'crown' }); }}>♛ Crowned</button>
-          {(mode.kind !== 'browse' || filter !== 'all') && <button className="chip-btn" onClick={() => { setQuery(''); setShown(PAGE); setFilter('all'); setMode({ kind: 'browse' }); }}>Reset</button>}
+          {(mode.kind !== 'browse' || filter !== 'all') && <button className="chip-btn" onClick={() => { setQuery(''); setPage(0); setFilter('all'); setMode({ kind: 'browse' }); }}>Reset</button>}
         </div>
       </div>
       <div className="gal-chips">
         {FILTERS.map((f) => (
-          <button key={f.key} className={`chip-btn ${filter === f.key ? 'is-on' : ''}`} onClick={() => { setFilter(f.key); setShown(PAGE); if (mode.kind !== 'browse') setMode({ kind: 'browse' }); }}>{f.label}{INDEXED.includes(f.key) && index ? ` · ${(f.key === 'named' ? index.named : index.died).length}` : ''}</button>
+          <button key={f.key} className={`chip-btn ${filter === f.key ? 'is-on' : ''}`} onClick={() => { setFilter(f.key); setPage(0); if (mode.kind !== 'browse') setMode({ kind: 'browse' }); }}>{f.label}{INDEXED.includes(f.key) && index ? ` · ${(f.key === 'named' ? index.named : index.died).length}` : ''}</button>
         ))}
       </div>
       {error && <p className="lb-note">{error}</p>}
@@ -201,14 +219,29 @@ export function Gallery() {
       <div className="gallery-grid">
         {shownRows?.map(({ cat, svg }) => <Card key={cat.id} cat={cat} svg={svg} />)}
       </div>
-      {mode.kind === 'browse' && rows !== null && !INDEXED.includes(filter) && total > rows.length && (
-        <div className="gallery-more">
-          <button className="btn btn-ghost" onClick={() => setShown((n) => n + PAGE)} disabled={busy}>{busy ? 'Reading…' : `Show ${Math.min(PAGE, total - rows.length)} more`}</button>
-          <span className="gallery-count tnum">{rows.length} of {total.toLocaleString()}</span>
-        </div>
-      )}
+      {pages > 1 && <Pager page={page} pages={pages} busy={busy} go={(n) => { setPage(n); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />}
       {wallet && mode.kind === 'owner' && mode.mine && rows?.length ? <p className="gallery-count tnum" style={{ textAlign: 'center' }}>{rows.length} cat{rows.length === 1 ? '' : 's'} in {shortAddr(wallet)}</p> : null}
     </main>
+  );
+}
+
+function Pager({ page, pages, busy, go }: { page: number; pages: number; busy: boolean; go: (n: number) => void }) {
+  // a window of numbers around where you are, with the ends always reachable
+  const span = 2;
+  const nums: (number | 'gap')[] = [];
+  for (let i = 0; i < pages; i++) {
+    if (i === 0 || i === pages - 1 || Math.abs(i - page) <= span) nums.push(i);
+    else if (nums[nums.length - 1] !== 'gap') nums.push('gap');
+  }
+  return (
+    <nav className="pager" aria-label="Pages">
+      <button className="pager-btn" onClick={() => go(page - 1)} disabled={busy || page === 0} aria-label="Previous page">←</button>
+      {nums.map((n, i) => (n === 'gap'
+        ? <span key={`g${i}`} className="pager-gap">…</span>
+        : <button key={n} className={`pager-btn ${n === page ? 'is-on' : ''}`} onClick={() => go(n)} disabled={busy} aria-current={n === page ? 'page' : undefined}>{n + 1}</button>))}
+      <button className="pager-btn" onClick={() => go(page + 1)} disabled={busy || page >= pages - 1} aria-label="Next page">→</button>
+      <span className="pager-of tnum">page {page + 1} of {pages.toLocaleString()}</span>
+    </nav>
   );
 }
 

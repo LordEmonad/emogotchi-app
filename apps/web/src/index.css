@@ -408,3 +408,13 @@
   border: 1px solid rgba(184,148,216,.25); box-shadow: 0 12px 40px rgba(0,0,0,.45); }
 .share-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .share-actions .btn { flex: 1 1 auto; }
+
+/* ---- pager */
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 26px 0 8px; }
+.pager-btn { min-width: 38px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(184,148,216,.24);
+  background: rgba(255,255,255,.05); color: var(--ink, #f4f0ff); font: inherit; font-size: 13.5px; cursor: pointer; }
+.pager-btn:not(:disabled):hover { border-color: rgba(232,77,127,.5); }
+.pager-btn:disabled { opacity: .35; cursor: default; }
+.pager-btn.is-on { background: var(--pink, #E84D7F); border-color: transparent; color: #1a0620; font-weight: 700; }
+.pager-gap { color: rgba(248,248,255,.35); padding: 0 2px; }
+.pager-of { width: 100%; text-align: center; font-size: 12.5px; color: rgba(248,248,255,.45); margin-top: 6px; }
