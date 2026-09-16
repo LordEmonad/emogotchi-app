@@ -377,5 +377,146 @@ def shelf():
     svg("shelf", 200, 34, g, amp=0.5)
 
 
-for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat, locker, lockeropen, pricetag, bag, shelf):
+# ---------------------------------------------------------------- the shop's stock
+# Everything an item shop for this cat could plausibly sell, drawn so each one is a candidate item
+# later and so the shop scenes look stocked now. Same palette, same ink, same wobble.
+
+def partyhat():
+    g = []
+    g.append(ellipse(40, 95, 26, 4, PUPIL, "none", 0, 'opacity="0.3"'))
+    g.append(path("M12,90 L40,10 L68,90 Z", PINK, INK, LW))
+    g.append('<clipPath id="phclip"><path d="M12,90 L40,10 L68,90 Z"/></clipPath>')
+    for y0 in (34, 58, 82):                                                      # lavender chevrons
+        g.append(path(f"M0,{y0} L40,{y0-16} L80,{y0} L80,{y0+9} L40,{y0-7} L0,{y0+9} Z", LAV, "none", 0, 'clip-path="url(#phclip)"'))
+    g.append(path("M12,90 L40,10 L68,90 Z", "none", INK, LW))
+    g.append(path("M20,84 L60,84", "none", INK, 1.6, 'opacity="0.35"'))
+    g.append(ellipse(40, 10, 7.5, 7.5, LAV, INK, 2.0))                          # pompom
+    g.append(_glint(37.5, 7.5, 1.6))
+    g.append(path("M22,70 Q30,50 36,30", "none", "#FFFFFF", 2.0, 'opacity="0.3"'))
+    svg("partyhat", 80, 100, g)
+
+def bow():
+    g = []
+    for cx, rot in ((25, -12), (65, 12)):                                       # loops
+        g.append(f'<g transform="rotate({rot} {cx} 24)">' + ellipse(cx, 24, 22, 14, PINK, INK, LW) + '</g>')
+        g.append(f'<g transform="rotate({rot} {cx} 24)">' + ellipse(cx, 24, 13, 7, RUBY, "none", 0, 'opacity="0.35"') + '</g>')
+    g.append(path("M45,36 L34,58 L44,54 L45,44 L46,54 L56,58 Z", PINK, INK, 2.0))    # tails
+    g.append(ellipse(45, 24, 8, 9, PINK, INK, LW))                              # knot
+    g.append(path("M41,19 Q45,16 49,19", "none", "#FFFFFF", 1.6, 'opacity="0.7"'))
+    svg("bow", 90, 62, g)
+
+def shades():
+    g = []
+    g.append(path("M4,14 L96,14", "none", INK, 3.4))                            # the top bar / arms
+    for cx in (28, 72):
+        g.append(path(smooth_closed([(cx-20, 14), (cx+20, 14), (cx+18, 30), (cx, 36), (cx-18, 30)], 0.45), PUPIL, INK, LW))
+        g.append(path(f"M{cx-12},18 L{cx-2},18", "none", LAV, 2.4, 'opacity="0.6"'))
+        g.append(path(f"M{cx-14},23 L{cx-8},23", "none", LAV, 1.6, 'opacity="0.4"'))
+    g.append(path("M46,18 Q50,22 54,18", "none", INK, 2.6))                     # bridge
+    svg("shades", 100, 40, g)
+
+def bell():
+    g = []
+    g.append(ellipse(25, 53, 16, 3, PUPIL, "none", 0, 'opacity="0.3"'))
+    g.append(path("M25,6 Q19,6 19,11 Q25,11 31,11 Q31,6 25,6 Z", "none", INK, 2.4))   # loop
+    g.append(path(smooth_closed([(12, 42), (13, 26), (18, 14), (25, 11), (32, 14), (37, 26), (38, 42), (25, 44)], 0.5), GOLD, INK, LW))
+    g.append(path(smooth_closed([(9, 42), (41, 42), (40, 48), (10, 48)], 0.2), GOLD2, INK, 2.0))
+    g.append(ellipse(25, 50, 4, 3.5, INK, INK, 1))                              # clapper
+    g.append(path("M17,20 Q19,14 23,13", "none", "#FFFFFF", 2.0, 'opacity="0.8"'))
+    svg("bell", 50, 58, g)
+
+def fish():
+    g = []
+    g.append(ellipse(45, 46, 34, 4, PUPIL, "none", 0, 'opacity="0.3"'))
+    g.append(path(smooth_closed([(64, 24), (78, 10), (86, 24), (78, 38)], 0.4), TEAL, INK, LW))   # tail
+    g.append(path(smooth_closed([(8, 24), (18, 10), (40, 6), (60, 12), (68, 24), (60, 36), (40, 42), (18, 38)], 0.5), TEAL, INK, LW))
+    g.append(path("M22,30 Q40,36 58,30", "none", LAV2, 3.0, 'opacity="0.55"'))  # belly
+    g.append(path("M30,14 Q40,10 50,14", "none", "#FFFFFF", 2.0, 'opacity="0.45"'))
+    g.append(ellipse(20, 22, 4.2, 4.2, "#FFFFFF", INK, 1.5))                    # eye
+    g.append(ellipse(20.8, 22.6, 2.0, 2.0, INK, "none", 0))
+    g.append(path("M9,27 Q13,29 16,27", "none", INK, 1.6))                      # mouth
+    svg("fish", 90, 50, g)
+
+def potion():
+    g = []
+    g.append(ellipse(30, 76, 20, 3.5, PUPIL, "none", 0, 'opacity="0.3"'))
+    g.append(path("M23,4 L37,4 L37,14 L23,14 Z", STRAND, INK, 2.0))             # cork
+    g.append(path("M24,14 L36,14 L36,30 Q52,36 52,52 Q52,72 30,72 Q8,72 8,52 Q8,36 24,30 Z", LAV, INK, LW))   # glass
+    g.append('<clipPath id="poclip"><path d="M24,14 L36,14 L36,30 Q52,36 52,52 Q52,72 30,72 Q8,72 8,52 Q8,36 24,30 Z"/></clipPath>')
+    g.append(path("M4,46 Q18,40 30,46 Q42,52 56,46 L56,76 L4,76 Z", PINK, "none", 0, 'clip-path="url(#poclip)"'))
+    for bx, by, br in ((22, 60, 2.4), (36, 54, 1.8), (30, 65, 1.4)):
+        g.append(ellipse(bx, by, br, br, "#FFFFFF", "none", 0, 'opacity="0.7"'))
+    g.append(path("M24,14 L36,14 L36,30 Q52,36 52,52 Q52,72 30,72 Q8,72 8,52 Q8,36 24,30 Z", "none", INK, LW))
+    g.append(path("M14,44 Q13,54 18,64", "none", "#FFFFFF", 2.2, 'opacity="0.55"'))
+    svg("potion", 60, 80, g)
+
+def wand():
+    g = []
+    g.append(path("M12,104 L40,40", "none", INK, 5.4))                          # stick, ink under
+    g.append(path("M12,104 L40,40", "none", STRAND, 2.8))
+    g.append(path("M40,40 Q42,34 40,28", "none", INK, 1.8))                     # string
+    g.append(path(smooth_closed([(40, 30), (30, 22), (26, 10), (34, 2), (46, 2), (54, 12), (50, 24)], 0.5), PINK, INK, 2.0))   # feather
+    g.append(path("M40,30 L38,6", "none", RUBY, 1.6, 'opacity="0.7"'))              # spine
+    for t in (0.25, 0.45, 0.65):
+        y = 30 - 24 * t
+        g.append(path(f"M38,{y:.1f} L{30 + 4*t:.1f},{y - 6:.1f}", "none", RUBY, 1.1, 'opacity="0.45"'))
+        g.append(path(f"M38,{y:.1f} L{47 - 3*t:.1f},{y - 6:.1f}", "none", RUBY, 1.1, 'opacity="0.45"'))
+    g.append(path("M33,10 Q35,8 38,6", "none", "#FFFFFF", 1.4, 'opacity="0.5"'))
+    svg("wand", 60, 110, g)
+
+def cushion():
+    g = []
+    g.append(ellipse(60, 54, 52, 5, PUPIL, "none", 0, 'opacity="0.3"'))
+    g.append(path(smooth_closed([(6, 36), (14, 16), (60, 8), (106, 16), (114, 36), (100, 52), (60, 56), (20, 52)], 0.5), PURPLE, INK, LW))
+    g.append(ellipse(60, 32, 36, 12, LAV, INK, 1.8))                            # the dip
+    g.append(ellipse(60, 32, 28, 7, PURPLE, "none", 0, 'opacity="0.35"'))
+    for sx in (24, 60, 96):                                                     # stitches
+        g.append(path(f"M{sx-3},48 L{sx+3},48", "none", INK, 1.4, 'opacity="0.35"'))
+    svg("cushion", 120, 62, g)
+
+def crate():
+    g = []
+    g.append(ellipse(55, 78, 46, 4, PUPIL, "none", 0, 'opacity="0.35"'))
+    g.append(path(smooth_closed([(8, 24), (102, 24), (100, 76), (10, 76)], 0.06), PUPIL, INK, LW))
+    for y0, y1 in ((27, 40), (44, 57), (61, 73)):                                # planks, gaps between
+        g.append(path(smooth_closed([(11, y0), (99, y0), (99, y1), (11, y1)], 0.1), STRAND, INK, 1.6))
+        g.append(path(f"M14,{y0+3} L96,{y0+3}", "none", LAV, 1.4, 'opacity="0.22"'))
+    g.append(path(smooth_closed([(8, 24), (102, 24), (96, 12), (14, 12)], 0.06), PUPIL, INK, 2.0))   # the open top
+    g.append(path(smooth_closed([(6, 22), (104, 22), (104, 28), (6, 28)], 0.3), HAIR, INK, 1.8))     # top rail
+    g.append(path("M14,28 L14,72", "none", LAV, 1.8, 'opacity="0.2"'))
+    svg("crate", 110, 82, g)
+
+def beanie():
+    g = []
+    g.append(ellipse(40, 76, 30, 4, PUPIL, "none", 0, 'opacity="0.3"'))
+    g.append(path(smooth_closed([(10, 62), (10, 40), (18, 22), (40, 14), (62, 22), (70, 40), (70, 62)], 0.5), PURPLE, INK, LW))
+    for kx in (26, 40, 54):                                                     # knit ribs
+        g.append(path(f"M{kx},20 Q{kx-2},40 {kx},58", "none", INK, 1.4, 'opacity="0.25"'))
+    g.append(path(smooth_closed([(6, 60), (74, 60), (74, 76), (6, 76)], 0.3), LAV, INK, LW))   # folded band
+    g.append(path("M10,68 L70,68", "none", INK, 1.2, 'opacity="0.3"'))
+    g.append(ellipse(40, 12, 9, 9, PINK, INK, 2.0))                             # pompom
+    g.append(_glint(37, 9, 1.8))
+    svg("beanie", 80, 80, g)
+
+def hook():
+    g = []
+    g.append(path(smooth_closed([(10, 4), (20, 4), (20, 11), (10, 11)], 0.3), STRAND, INK, 1.8))   # wall plate
+    g.append(path("M15,11 L15,24 Q15,34 23,34 Q30,34 30,27", "none", INK, 5.2))
+    g.append(path("M15,11 L15,24 Q15,34 23,34 Q30,34 30,27", "none", GOLD2, 2.8))
+    svg("hook", 34, 40, g, amp=0.6)
+
+def milk():
+    g = []
+    g.append(ellipse(30, 86, 22, 3.5, PUPIL, "none", 0, 'opacity="0.3"'))
+    g.append(path("M10,30 L50,30 L50,84 L10,84 Z", FUR, INK, LW))
+    g.append(path("M10,30 L30,6 L50,30 Z", FUR, INK, LW))                       # gable top
+    g.append(path("M30,6 L30,30", "none", INK, 1.6, 'opacity="0.4"'))
+    g.append(path("M14,44 L46,44 L46,70 L14,70 Z", LAV, INK, 1.6))              # label
+    g.append(_heart(30, 58, 16, PINK, 1.6))
+    g.append(path("M13,34 L13,80", "none", LAV, 2.0, 'opacity="0.35"'))
+    svg("milk", 60, 90, g)
+
+
+for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat, locker, lockeropen, pricetag, bag, shelf,
+           partyhat, bow, shades, bell, fish, potion, wand, cushion, crate, beanie, hook, milk):
     fn()

@@ -80,8 +80,9 @@ const page = ({ w, h, items, extra = [], floorAt = 0.84, unit = 0.5, gap = 1.0, 
   }).join('');
   // extras: x/y are the top-left as fractions of the frame, w the width as a fraction of the frame width
   const extras = extra.map((e) => {
-    const ew = w * e.w, eh = ew / (AR[e.name] ?? 1);
-    return `<img class="it" style="left:${w * e.x}px; top:${h * e.y}px; width:${ew}px; height:${eh}px; z-index:${e.z ?? 1}; transform:rotate(${e.rot ?? 0}deg)" src="${prop(e.name)}">`;
+    const ew = w * e.w, eh = e.cat ? ew : ew / (AR[e.name] ?? 1);
+    const src = e.cat ? cat(e.cat, !!e.crown) : prop(e.name);
+    return `<img class="it" style="left:${w * e.x}px; top:${h * e.y}px; width:${ew}px; height:${eh}px; z-index:${e.z ?? 1}; transform:rotate(${e.rot ?? 0}deg)" src="${src}">`;
   }).join('');
   const safeW = h * (16 / 9);
   return `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -90,7 +91,7 @@ html,body { margin:0; width:${w}px; height:${h}px; overflow:hidden; background:$
   background: ${transparent ? 'transparent' : 'radial-gradient(120% 90% at 50% 20%, #3a1f5c 0%, #24123f 55%, #170b2a 100%)'}; }
 .dots { position:absolute; inset:0; background-image: radial-gradient(rgba(234,198,234,0.13) ${h * 0.0029}px, transparent ${h * 0.0031}px);
   background-size:${h * 0.049}px ${h * 0.049}px; -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.9), rgba(0,0,0,.25) 70%, transparent); }
-.floor { position:absolute; left:-5%; right:-5%; top:${floorY}px; height:${h}px; border-radius:50% 50% 0 0 / ${h * 0.067}px ${h * 0.067}px 0 0;
+.floor { position:absolute; left:-5%; right:-5%; top:${floorY - h * 0.075}px; height:${h}px; border-radius:50% 50% 0 0 / ${h * 0.067}px ${h * 0.067}px 0 0;
   background: linear-gradient(180deg,#2c1a44,#1d1030 60%,#150a24); box-shadow: inset 0 ${h * 0.0044}px 0 rgba(184,148,216,.16); }
 .glow { position:absolute; left:${w / 2 - total / 2 - U * 0.5}px; width:${total + U}px; top:${floorY - U * 0.14}px; height:${U * 0.34}px;
   border-radius:50%; background: radial-gradient(closest-side, rgba(184,148,216,.24), rgba(184,148,216,.08) 55%, transparent 72%); }
@@ -113,7 +114,9 @@ const shot = (name, { w, h, dpr = 1, use = '', ...opts }) => {
 
 // the witch hat is wider than it is tall; the props keep their own aspect
 const AR = { witchhat: 120 / 130, yarn: 72 / 74, bowl: 120 / 74, sponge: 64 / 40, coin: 1, moon: 1, sparkle: 1,
-  locker: 100 / 202, lockeropen: 126 / 202, pricetag: 44 / 60, bag: 80 / 92, shelf: 200 / 34 };
+  locker: 100 / 202, lockeropen: 126 / 202, pricetag: 44 / 60, bag: 80 / 92, shelf: 200 / 34,
+  partyhat: 80 / 100, bow: 90 / 62, shades: 100 / 40, bell: 50 / 58, fish: 90 / 50, potion: 60 / 80, wand: 60 / 110,
+  cushion: 120 / 62, crate: 110 / 82, beanie: 80 / 80, hook: 34 / 40, milk: 60 / 90 };
 const it = (name, o = {}) => ({ name, ar: AR[name] ?? 1, ...o });
 
 /**
@@ -132,120 +135,97 @@ const hatOnShelf = ({ w, h, floorAt, lockerH, lockerLeft }) => {
 
 console.log('Emogotchi Items brand:');
 
-// Tuned on a strip (--tune): any higher and the hat hovers instead of being worn; any lower and the
-// brim swallows the eyes.
-const HAT = { x: 0.247, y: -0.07, w: 0.44, rot: -6 };
-if (process.argv.includes('--tune')) {
-  for (const [i, y] of [-0.04, -0.07, -0.10, -0.13].entries()) {
-    shot(`tune-${i}`, { w: 700, h: 700, floorAt: 0.93, unit: 0.95,
-      items: [{ cat: 'content', hat: { ...HAT, y }, ar: 1, size: 1, sink: 0.115, hero: true }] });
-  }
-}
+/**
+ * The shop, laid out once in cat units so it fits every frame.
+ *
+ * U is the cat's height. dx is an element's centre, in U, from the cat's centre; dy is its bottom, in U,
+ * above the floor line (0 = standing on the floor). w is its width in U. Shelves go up the wall, hooks
+ * above them with hats hanging, the crate and cushion and bag on the floor. Everything sits within
+ * about ±1.3U of the cat, which is what the middle 16:9 of an 8:3 header can hold at this scale.
+ */
+const SHOP = [
+  // floor
+  { name: 'lockeropen', dx: -0.95, dy: 0, w: 0.63, z: 3 },
+  { name: 'cushion', dx: -0.55, dy: 0, w: 0.34, z: 6 },
+  { cat: 'content', dx: 0, dy: -0.115, w: 1.0, z: 9 },                 // feet at 0.885 of the box
+  { name: 'crate', dx: 0.72, dy: 0, w: 0.44, z: 5 },
+  { name: 'wand', dx: 0.82, dy: 0.22, w: 0.19, z: 4, rot: 8 },          // standing in the crate
+  { name: 'bag', dx: 1.14, dy: 0, w: 0.28, z: 6 },
+  // shelf 1, right, low. Tags hang off the ends: the tag's string is at the top of its box, so the box
+  // top sits on the shelf's top edge and the body hangs in front of the shelf.
+  { name: 'shelf', dx: 0.85, dy: 0.70, w: 0.72, z: 2 },
+  { name: 'potion', dx: 0.58, dy: 0.74, w: 0.17, z: 3 },
+  { name: 'bell', dx: 0.77, dy: 0.74, w: 0.13, z: 3 },
+  { name: 'fish', dx: 1.00, dy: 0.74, w: 0.25, z: 3 },
+  { name: 'pricetag', dx: 1.20, dy: 0.70, w: 0.06, z: 4, rot: 10 },
+  // shelf 2, right, high
+  { name: 'shelf', dx: 0.95, dy: 1.10, w: 0.64, z: 2 },
+  { name: 'milk', dx: 0.72, dy: 1.14, w: 0.15, z: 3 },
+  { name: 'bowl', dx: 0.95, dy: 1.14, w: 0.29, z: 3 },
+  { name: 'yarn', dx: 1.17, dy: 1.14, w: 0.17, z: 3 },
+  // shelf 3, left, high, over the cushion
+  { name: 'shelf', dx: -0.50, dy: 1.14, w: 0.46, z: 2 },
+  { name: 'shades', dx: -0.60, dy: 1.18, w: 0.25, z: 3 },
+  { name: 'bow', dx: -0.37, dy: 1.18, w: 0.21, z: 3 },
+  { name: 'pricetag', dx: -0.285, dy: 1.14, w: 0.055, z: 4, rot: -10 },
+  // hooks with hats hanging: the hat's top overlaps the hook's J, so it hangs rather than floats
+  { name: 'hook', dx: 0.42, dy: 1.20, w: 0.07, z: 4 },
+  { name: 'partyhat', dx: 0.42, dy: 1.035, w: 0.17, z: 3 },
+  { name: 'hook', dx: -0.95, dy: 1.26, w: 0.07, z: 4 },
+  { name: 'beanie', dx: -0.95, dy: 1.10, w: 0.21, z: 3 },
+];
 
-// Logo: the locker. The shop is where the cat keeps its things, and a locker says that in one shape at
-// any size. Closed, with the heart padlock and the stickers, so it reads as this cat's locker and not
-// a gym's.
+/** Convert the shop to frame fractions for a given frame, cat scale and cat position. */
+const scene = ({ w, h, floorAt, unit, at = 0.5 }) => {
+  const U = h * unit, cx = w * at, floorY = h * floorAt;
+  const out = SHOP.map((e) => {
+    const ew = U * e.w, eh = e.cat ? ew : ew / (AR[e.name] ?? 1);
+    const left = cx + U * e.dx - ew / 2, top = floorY - U * e.dy - eh;
+    return { ...e, x: left / w, y: top / h, w: ew / w };
+  });
+  // the witch hat on the locker's inside shelf, from the locker's own geometry
+  const L = SHOP.find((e) => e.name === 'lockeropen');
+  const lw = U * L.w, lh = lw / AR.lockeropen, lleft = cx + U * L.dx - lw / 2;
+  const ix = lleft + lw * (42 / 126), iw = lw * (68 / 126), shelfY = floorY - lh + lh * (112 / 202);
+  const hw = iw * 0.8, hh = hw / AR.witchhat;
+  out.push({ name: 'witchhat', x: (ix + iw / 2 - hw / 2) / w, y: (shelfY - hh + 4) / h, w: hw / w, z: 5 });
+  return out;
+};
+
+// Logo: the locker, closed, with the heart padlock and the stickers. One shape that reads at 100px.
 shot('items-logo', { use: 'Collection logo · PNG, 1:1. OpenSea asks for 240×240 minimum; this is 1024 so it stays sharp.',
   w: 1024, h: 1024, floorAt: 0.905, unit: 0.86, items: [it('locker', { size: 1, hero: true })] });
+shot('items-logo-transparent', { use: 'Logo on transparent · 1024×1024. For overlays and avatars.',
+  w: 1024, h: 1024, floorAt: 0.94, unit: 0.9, transparent: true, items: [it('locker', { size: 1, hero: true })] });
 
-// Header: the shop. Locker open with the hat on its shelf, the cat trying one on, things on the wall
-// shelf with a price tag, and a bag on the floor. Everything inside the middle 16:9.
-// Row: locker 0.92 (392px wide) + gap + cat 684 + gap + bag, centred on the cat. Left edge lands at
-// x=411 and the right at 1787, inside the 400..2000 band a phone keeps. The locker's left edge is what
-// hatOnShelf needs, so it is computed the same way here rather than eyeballed.
-const B = { w: 2400, h: 900, floorAt: 0.88, unit: 0.76, gap: 0.08 };
-const bU = B.h * B.unit, bCat = bU, bLock = bU * 0.92, bGap = bU * B.gap;
-const bLockLeft = (B.w / 2 - bCat / 2 - bGap - bLock * AR.lockeropen) / B.w;
-shot('items-banner', {
-  use: 'Page header · 8:3 on desktop, cropped to the middle 16:9 on a phone. Same file, two crops.',
-  ...B, showSafe: true,
-  items: [
-    it('lockeropen', { size: 0.92, z: 3 }),
-    { cat: 'content', hat: HAT, ar: 1, size: 1.0, z: 9, sink: 0.115, hero: true },
-    it('bag', { size: 0.32, z: 4 }),
-  ],
-  extra: [
-    hatOnShelf({ w: B.w, h: B.h, floorAt: B.floorAt, lockerH: B.unit * 0.92, lockerLeft: bLockLeft }),
-    { name: 'shelf', x: 0.655, y: 0.36, w: 0.14, z: 2 },
-    { name: 'yarn', x: 0.668, y: 0.29, w: 0.045, z: 3 },
-    { name: 'bowl', x: 0.722, y: 0.305, w: 0.06, z: 3 },
-    { name: 'pricetag', x: 0.785, y: 0.385, w: 0.022, z: 4, rot: 12 },
-  ],
-});
+// Header, 8:3. The shop; every subject inside the middle 16:9.
+shot('items-banner', { use: 'Page header · 8:3 on desktop, cropped to the middle 16:9 on a phone. Same file, two crops.',
+  w: 2400, h: 900, floorAt: 0.87, unit: 0.62, showSafe: true, items: [],
+  extra: scene({ w: 2400, h: 900, floorAt: 0.87, unit: 0.62 }) });
 
-// Featured / card, 3:2: the cat in the hat by the open locker.
-const F = { w: 1200, h: 800, floorAt: 0.92, unit: 0.62, gap: 0.06 };
-const fU = F.h * F.unit, fLock = fU * 0.95, fGap = fU * F.gap;
-const fLockLeft = (F.w / 2 - fU / 2 - fGap - fLock * AR.lockeropen) / F.w;
-shot('items-featured', {
-  use: 'Featured / card · 3:2.', ...F,
-  items: [
-    it('lockeropen', { size: 0.95, z: 3 }),
-    { cat: 'content', hat: HAT, ar: 1, size: 1.0, z: 9, sink: 0.115, hero: true },
-    it('bag', { size: 0.3, z: 4 }),
-  ],
-  extra: [hatOnShelf({ w: F.w, h: F.h, floorAt: F.floorAt, lockerH: F.unit * 0.95, lockerLeft: fLockLeft })],
-});
+// Featured, 3:2.
+shot('items-featured', { use: 'Featured / card · 3:2.',
+  w: 1200, h: 800, floorAt: 0.9, unit: 0.46, items: [],
+  extra: scene({ w: 1200, h: 800, floorAt: 0.9, unit: 0.46 }) });
 
-// Item card, 1:1: how a single item is presented as its own NFT image. The item on a shelf with a
-// price tag, in the room. Every item gets this frame; the witch hat is the first.
-shot('item-witchhat', {
-  use: 'Item card · 1:1. The template every item token image uses; this one is the witch hat.',
+// X header, 3:1. The avatar covers the bottom-left, so the shop sits right of centre.
+shot('items-x-header', { use: 'X header · 1500×500 (3:1). Avatar covers the bottom-left, so the shop sits right of centre.',
+  w: 1500, h: 500, dpr: 2, floorAt: 0.9, unit: 0.62, items: [],
+  extra: scene({ w: 1500, h: 500, floorAt: 0.9, unit: 0.62, at: 0.56 }) });
+
+// Link preview, 1.91:1.
+shot('items-og', { use: 'Link preview (Open Graph / X card) · 2400×1260 (1.91:1).',
+  w: 2400, h: 1260, floorAt: 0.9, unit: 0.5, items: [],
+  extra: scene({ w: 2400, h: 1260, floorAt: 0.9, unit: 0.5 }) });
+
+// Item card, 1:1: the template every item token image uses. The witch hat is the first.
+shot('item-witchhat', { use: 'Item card · 1:1. The template every item token image uses; this one is the witch hat.',
   w: 1024, h: 1024, floorAt: 0.99, unit: 0.05, items: [],
   extra: [
     { name: 'shelf', x: 0.14, y: 0.70, w: 0.72, z: 2 },
     { name: 'witchhat', x: 0.235, y: 0.135, w: 0.53, z: 5 },
     { name: 'pricetag', x: 0.71, y: 0.69, w: 0.075, z: 6, rot: 14 },
-  ],
-});
-
-
-// The locker alone on nothing, for putting on top of anything: posts, the site, a Telegram avatar.
-shot('items-logo-transparent', { use: 'Logo on transparent · 1024×1024. For overlays and avatars.',
-  w: 1024, h: 1024, floorAt: 0.94, unit: 0.9, transparent: true, items: [it('locker', { size: 1, hero: true })] });
-
-// X header, 3:1. The profile avatar covers the bottom-left corner on X, so the scene is pushed to the
-// right of that, and X trims the top and bottom on a phone, so nothing important touches either edge.
-const X = { w: 1500, h: 500, floorAt: 0.9, unit: 0.74, gap: 0.08 };
-const xU = X.h * X.unit, xLock = xU * 0.92, xGap = xU * X.gap;
-const xLockLeft = (X.w * 0.55 - xU / 2 - xGap - xLock * AR.lockeropen) / X.w;
-shot('items-x-header', {
-  use: 'X header · 1500×500 (3:1). Avatar covers the bottom-left, so the shop sits right of centre.',
-  ...X, dpr: 2,
-  items: [
-    it('lockeropen', { size: 0.92, z: 3 }),
-    { cat: 'content', hat: HAT, ar: 1, size: 1.0, z: 9, sink: 0.115, hero: true, at: 0.55 },
-    it('bag', { size: 0.3, z: 4 }),
-  ],
-  extra: [
-    hatOnShelf({ w: X.w, h: X.h, floorAt: X.floorAt, lockerH: X.unit * 0.92, lockerLeft: xLockLeft }),
-    { name: 'shelf', x: 0.735, y: 0.3, w: 0.15, z: 2 },
-    { name: 'yarn', x: 0.748, y: 0.19, w: 0.05, z: 3 },
-    { name: 'bowl', x: 0.808, y: 0.21, w: 0.065, z: 3 },
-    { name: 'pricetag', x: 0.876, y: 0.325, w: 0.024, z: 4, rot: 12 },
-  ],
-});
-
-// Link preview, 1.91:1, for a /shop or /items page one day.
-const O = { w: 2400, h: 1260, floorAt: 0.9, unit: 0.62, gap: 0.08 };
-const oU = O.h * O.unit, oLock = oU * 0.92, oGap = oU * O.gap;
-const oLockLeft = (O.w / 2 - oU / 2 - oGap - oLock * AR.lockeropen) / O.w;
-shot('items-og', {
-  use: 'Link preview (Open Graph / X card) · 2400×1260 (1.91:1).',
-  ...O,
-  items: [
-    it('lockeropen', { size: 0.92, z: 3 }),
-    { cat: 'content', hat: HAT, ar: 1, size: 1.0, z: 9, sink: 0.115, hero: true },
-    it('bag', { size: 0.3, z: 4 }),
-  ],
-  extra: [
-    hatOnShelf({ w: O.w, h: O.h, floorAt: O.floorAt, lockerH: O.unit * 0.92, lockerLeft: oLockLeft }),
-    { name: 'shelf', x: 0.66, y: 0.36, w: 0.16, z: 2 },
-    { name: 'yarn', x: 0.675, y: 0.275, w: 0.05, z: 3 },
-    { name: 'bowl', x: 0.735, y: 0.29, w: 0.07, z: 3 },
-    { name: 'pricetag', x: 0.812, y: 0.385, w: 0.025, z: 4, rot: 12 },
-  ],
-});
+  ] });
 
 // A page with everything on it, at /brand/items/. The header previews use object-fit: cover inside a
 // fixed aspect box, which is exactly how a marketplace crops it, so what is on this page is what they
