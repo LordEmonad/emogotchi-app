@@ -265,30 +265,117 @@ def moon():
     g = [path("M30,4 C16,6 6,18 6,32 C6,48 18,60 34,60 C44,60 52,55 57,48 C54,49 51,50 47,50 C31,50 19,38 19,22 C19,15 21,9 25,4 Z", GOLD, INK, LW)]
     svg("moon", 64, 64, g)
 
+def _glint(cx, cy, r):
+    return f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#FFFFFF" stroke="none"/>'
+
+def _heart(cx, cy, w, fill=PINK, lw=1.8):
+    """The Emonad heart, the same shape the site's wordmark uses, sized by width."""
+    k = w / 28.0
+    d = (f"M{cx},{cy+11*k} C{cx-12*k},{cy+2*k} {cx-14*k},{cy-6*k} {cx-8*k},{cy-10*k} "
+         f"C{cx-4*k},{cy-13*k} {cx},{cy-10*k} {cx},{cy-7*k} C{cx},{cy-10*k} {cx+4*k},{cy-13*k} {cx+8*k},{cy-10*k} "
+         f"C{cx+14*k},{cy-6*k} {cx+12*k},{cy+2*k} {cx},{cy+11*k} Z")
+    return path(d, fill, INK, lw)
+
 def witchhat():
-    """The first Emogotchi Items costume. A tall dark-plum cone with a drooping tip, a purple band and
-    a gold buckle, so it reads against both the cat's plum hair and its white fur. Generated here
-    rather than hand-drawn so it carries the same baked ink wobble as every other prop."""
+    """The first Emogotchi Items costume, and the yardstick for every costume after it: it has to
+    look like it was made for this cat. So the band is the cat's collar (black, lavender studs), the
+    buckle carries a ruby like the crown, and the tip curls over the way the fringe does. Generated
+    here rather than hand-drawn so it carries the same baked ink wobble as everything else."""
     g = []
-    g.append(ellipse(56, 108, 40, 6, PUPIL, "none", 0, 'opacity="0.30"'))          # contact shadow
-    # the cone: tall, tapering to a drooping point that falls to the right
-    cone = [(34, 100), (37, 78), (44, 54), (55, 32), (68, 16), (80, 7), (86, 12),
-            (77, 24), (69, 44), (65, 68), (68, 100)]
+    g.append(ellipse(60, 122, 44, 6, PUPIL, "none", 0, 'opacity="0.30"'))          # contact shadow
+    # the cone: tall, leaning right, with the tip curling over on itself
+    cone = [(34, 106), (36, 82), (42, 58), (52, 36), (65, 18), (77, 7), (88, 4), (96, 9), (96, 16),
+            (89, 16), (80, 21), (72, 40), (67, 66), (69, 106)]
     g.append(path(smooth_closed(cone, 0.5), PUPIL, INK, LW))
-    g.append(path("M45,58 Q52,40 63,26", "none", LAV, 2.0, 'opacity="0.22"'))      # soft edge light
-    # band, following the cone's taper
-    g.append(path(smooth_closed([(30, 97), (32, 81), (71, 78), (75, 94)], 0.45), PURPLE, INK, 2.0))
-    # buckle as a ring: ink under, gold over, the same trick the yarn tails use, so the wobble
-    # cannot close the hole up into a blob
-    g.append(path("M46,83.2 L60,81.4 L60.9,91.8 L46.9,93.6 Z", "none", INK, 5.4))
-    g.append(path("M46,83.2 L60,81.4 L60.9,91.8 L46.9,93.6 Z", "none", GOLD, 3.0))
-    # brim last, so it sits in front of the cone
-    g.append(path(smooth_closed([(8, 102), (24, 94), (52, 91), (80, 93), (102, 100),
-                                 (88, 111), (54, 114), (24, 110)], 0.5), HAIR, INK, LW))
-    g.append(path("M24,101 Q54,96 94,103", "none", STRAND, 2.0, 'opacity="0.65"'))
-    g.append(ellipse(32, 103, 6, 2.2, "#FFFFFF", "none", 0, 'opacity="0.18"'))
-    svg("witchhat", 112, 122, g)
+    g.append(path("M73,38 Q80,30 88,24", "none", INK, 1.6, 'opacity="0.35"'))       # crease under the curl
+    g.append(path("M44,62 Q51,44 62,30", "none", LAV, 2.2, 'opacity="0.22"'))       # soft edge light
+    # the band is the collar: black, with the same lavender studs
+    g.append(path(smooth_closed([(30, 103), (32, 85), (73, 81), (77, 99)], 0.45), INK, INK, 2.0))
+    for sx, sy in ((38, 95), (45, 93), (63, 90), (70, 89)):
+        g.append(f'<circle cx="{sx}" cy="{sy}" r="2.4" fill="{LAV}" stroke="none"/>')
+    # the buckle is the crown: gold ring, ink under so the wobble cannot close it, and a ruby
+    g.append(path("M47,85 L61,83.4 L61.8,96 L47.8,97.6 Z", "none", INK, 5.6))
+    g.append(path("M47,85 L61,83.4 L61.8,96 L47.8,97.6 Z", "none", GOLD, 3.2))
+    g.append(ellipse(54.4, 90.4, 3.4, 3.0, RUBY, INK, 1.4))
+    g.append(_glint(53.4, 89.4, 0.9))
+    # brim last so it sits in front, with a slightly ragged edge
+    g.append(path(smooth_closed([(6, 108), (18, 100), (34, 96), (54, 94), (74, 95), (92, 99), (110, 106),
+                                 (102, 114), (86, 120), (62, 123), (38, 121), (18, 116)], 0.5), HAIR, INK, LW))
+    g.append(path("M22,107 Q54,101 96,108", "none", STRAND, 2.0, 'opacity="0.7"'))
+    g.append(ellipse(54, 108, 22, 4, PUPIL, "none", 0, 'opacity="0.28"'))           # cone shading the brim
+    g.append(ellipse(30, 110, 6, 2.2, "#FFFFFF", "none", 0, 'opacity="0.18"'))
+    svg("witchhat", 120, 130, g)
+
+def _locker_body(g, open_door=False):
+    g.append(ellipse(50, 197, 40, 5, PUPIL, "none", 0, 'opacity="0.35"'))
+    g.append(path(smooth_closed([(10, 8), (90, 8), (90, 192), (10, 192)], 0.08), HAIR, INK, LW))
+    for fx in (22, 68):                                                             # feet
+        g.append(path(f"M{fx},192 L{fx+10},192 L{fx+10},198 L{fx},198 Z", INK, INK, 1))
+    if open_door:
+        # inside: dark, a shelf, a hook. The costume that hangs here is placed by the composer.
+        g.append(path(smooth_closed([(16, 14), (84, 14), (84, 186), (16, 186)], 0.05), PUPIL, INK, 1.6))
+        g.append(path("M18,112 L82,112", "none", STRAND, 3.2))
+        g.append(path("M18,113 L82,113", "none", INK, 1.2, 'opacity="0.5"'))
+        g.append(path("M50,18 L50,30 Q50,36 56,36", "none", INK, 2.6))                 # hook
+        # the door, swung toward us: a narrower panel on the hinge side
+        g.append(path(smooth_closed([(-22, 6), (16, 14), (16, 186), (-22, 194)], 0.05), STRAND, INK, LW))
+        g.append(path("M-14,32 L6,36", "none", INK, 2.4, 'opacity="0.8"'))
+        g.append(path("M-14,40 L6,44", "none", INK, 2.4, 'opacity="0.8"'))
+        g.append(path("M-14,48 L6,52", "none", INK, 2.4, 'opacity="0.8"'))
+        g.append(path("M-4,100 L-4,118", "none", GOLD2, 4.5))
+        g.append(path("M-4,100 L-4,118", "none", INK, 1.2, 'opacity="0.5"'))
+    else:
+        g.append(path(smooth_closed([(16, 14), (84, 14), (84, 186), (16, 186)], 0.05), STRAND, INK, 2.0))
+        for vy in (30, 38, 46):                                                     # vents
+            g.append(path(f"M30,{vy} L70,{vy}", "none", INK, 2.6, 'opacity="0.8"'))
+        g.append(path("M20,20 L20,180", "none", LAV, 2.0, 'opacity="0.18"'))         # edge light
+        g.append(path("M74,98 L74,118", "none", GOLD2, 5))                             # handle
+        g.append(path("M74,98 L74,118", "none", INK, 1.4, 'opacity="0.55"'))
+        # heart padlock hanging off the latch
+        g.append(path("M66,122 Q66,114 72,114 Q78,114 78,122", "none", INK, 2.6))
+        g.append(_heart(72, 131, 20, PINK, 2.0))
+        g.append(_glint(68, 126, 1.3))
+        # stickers, because it is a locker
+        g.append(path("M36,150 L39.5,158.5 L48.5,159 L41.5,164.5 L44,173.5 L36,168.5 L28,173.5 L30.5,164.5 L23.5,159 L32.5,158.5 Z", GOLD, INK, 1.6))
+        g.append(ellipse(58, 170, 9, 9, PURPLE, INK, 1.8))
+        g.append(ellipse(58, 170, 7, 7, "none", STRAND, 1.0))
+        g.append(path("M52.5,166 Q54,162.5 57.5,162", "none", "#FFFFFF", 1.4, 'opacity="0.85"'))
+        g.append(_heart(58, 171, 8, PINK, 1.2))
+
+def locker():
+    g = []; _locker_body(g); svg("locker", 100, 202, g)
+
+def lockeropen():
+    g = ['<g transform="translate(26 0)">']; _locker_body(g, open_door=True); g.append('</g>'); svg("lockeropen", 126, 202, g, amp=0.8)
+
+def pricetag():
+    g = []
+    g.append(path("M14,15 Q10,4 20,2 Q28,4 26,14", "none", INK, 1.8))                  # string
+    g.append(path(smooth_closed([(4, 18), (18, 4), (40, 4), (40, 56), (4, 56)], 0.1), LAV, INK, LW))
+    g.append(ellipse(15, 16, 3.0, 3.0, FUR, INK, 1.6))
+    g.append(_heart(24, 38, 18, PINK, 1.8))
+    svg("pricetag", 44, 60, g, amp=0.7)
+
+def bag():
+    g = []
+    g.append(ellipse(40, 88, 32, 4, PUPIL, "none", 0, 'opacity="0.3"'))
+    for hx in (24, 44):                                                              # handles
+        g.append(path(f"M{hx},32 C{hx},8 {hx+12},8 {hx+12},32", "none", INK, 5.2))
+        g.append(path(f"M{hx},32 C{hx},8 {hx+12},8 {hx+12},32", "none", PURPLE, 2.6))
+    g.append(path(smooth_closed([(8, 30), (72, 30), (76, 86), (4, 86)], 0.08), PURPLE, INK, LW))
+    g.append(path("M12,34 L68,34", "none", STRAND, 2.2, 'opacity="0.7"'))
+    g.append(_heart(40, 60, 26, PINK, 2.0))
+    g.append(path("M14,42 L14,78", "none", LAV, 2.0, 'opacity="0.22"'))
+    svg("bag", 80, 92, g)
+
+def shelf():
+    g = []
+    g.append(path(smooth_closed([(0, 8), (200, 8), (200, 20), (0, 20)], 0.04), STRAND, INK, LW))
+    g.append(path("M4,11 L196,11", "none", LAV, 1.8, 'opacity="0.25"'))
+    for bx in (26, 174):                                                             # brackets
+        g.append(path(f"M{bx-8},20 L{bx+8},20 L{bx},32 Z", HAIR, INK, 1.8))
+    svg("shelf", 200, 34, g, amp=0.5)
 
 
-for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat):
+for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat, locker, lockeropen, pricetag, bag, shelf):
     fn()
