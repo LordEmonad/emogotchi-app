@@ -9,6 +9,7 @@ import { keccak256, toBytes } from 'viem';
 import { Header } from './Header';
 import { ConnectModal } from './ConnectModal';
 import { Icon } from './Icon';
+import { marketplace } from '../links';
 import { Stage } from '../scene/Stage';
 import type { Director, DirectorState } from '../scene/director';
 import { chainCfg, chainClient } from '../game/chain';
@@ -192,7 +193,7 @@ export function Claim() {
           <span><Icon name="flame" size={20} /> Open until they run out. Every Emogotchi left over is burned forever</span>
         </section>
       </main>
-      <footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right"><a href="/leaderboard">Leaderboard</a> · <a href="/cats">All cats</a></span></footer>
+      <footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/leaderboard">Leaderboard</a> · <a href="/cats">All cats</a></span></footer>
       <ConnectModal open={modal} onClose={() => setModal(false)} onInjected={() => void doInjected()} onDemo={() => { location.href = '/'; }} error={wallet.error} busy={wallet.status === 'connecting'} />
     </div>
   );

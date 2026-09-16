@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Icon } from './Icon';
 import { BurnBar } from './BurnBar';
+import { marketplace } from '../links';
+import { chainCfg } from '../game/chain';
 
 type Props = { stage: ReactNode; onConnect: () => void; connecting: boolean; claimHref?: string | null };
 
@@ -81,7 +83,7 @@ export function Landing({ stage, onConnect, connecting, claimHref = null }: Prop
 
       <footer className="foot">
         <span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span>
-        <span className="foot-right"><a href="/leaderboard">Leaderboard</a> · <a href="/nft">NFT preview</a> · Contract: soon</span>
+        <span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/cats">All cats</a> · <a href="/leaderboard">Leaderboard</a> · {chainCfg?.contract && chainCfg.explorer ? <a href={`${chainCfg.explorer}/address/${chainCfg.contract}`} target="_blank" rel="noreferrer">Contract</a> : 'Contract: soon'}</span>
       </footer>
     </main>
   );
