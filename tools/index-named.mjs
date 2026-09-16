@@ -27,26 +27,38 @@ const topic = async (sig) => {
   return keccak256(toBytes(sig));
 };
 
-const query = async (topics) => {
+/** the ABI-encoded string in a log's `data`: offset, length, then the utf-8 bytes */
+const decodeString = (data) => {
+  if (!data || data.length < 130) return '';
+  const len = parseInt(data.slice(66, 130), 16);
+  if (!Number.isFinite(len) || len <= 0 || len > 128) return '';
+  const hex = data.slice(130, 130 + len * 2);
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return new TextDecoder().decode(bytes);
+};
+
+const query = async (topics, withName = false) => {
   if (!TOKEN) throw new Error('no HyperSync token; set HYPERSYNC_TOKEN or ~/.emogotchi-hypersync-token');
-  const ids = new Set();
+  const seen = new Map();
   let from = FROM, to = null;
   for (;;) {
     const r = await fetch('https://monad.hypersync.xyz/query', {
       method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify({ from_block: from, logs: [{ address: [GAME], topics: [topics] }], field_selection: { log: ['topic1', 'block_number'] } }),
+      body: JSON.stringify({ from_block: from, logs: [{ address: [GAME], topics: [topics] }], field_selection: { log: withName ? ['topic1', 'data'] : ['topic1'] } }),
     });
     if (!r.ok) throw new Error(`HyperSync ${r.status}: ${(await r.text()).slice(0, 160)}`);
     const j = await r.json();
-    for (const b of j.data ?? []) for (const l of b.logs ?? []) ids.add(Number(BigInt(l.topic1)));
+    for (const b of j.data ?? []) for (const l of b.logs ?? []) seen.set(Number(BigInt(l.topic1)), withName ? decodeString(l.data) : '');
     to = j.next_block ?? j.archive_height ?? from;
     if (j.next_block == null || j.next_block <= from) break;
     from = j.next_block;
   }
-  return { ids: [...ids].sort((a, b) => b - a), to };
+  const ids = [...seen.keys()].sort((a, b) => b - a);
+  return { ids: withName ? ids.map((id) => ({ id, name: seen.get(id) })) : ids, to };
 };
 
-const named = await query([await topic('Named(uint256,string)')]);
+const named = await query([await topic('Named(uint256,string)')], true);
 const died = await query([await topic('Died(uint256,uint256)')]);
 mkdirSync('apps/web/public/index', { recursive: true });
 const out = { generatedAt: new Date().toISOString(), block: named.to, named: named.ids, died: died.ids };
