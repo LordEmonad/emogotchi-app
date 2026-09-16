@@ -36,7 +36,7 @@ const CLIPS = [
   { key: 'sleep', label: 'Sleeping', run: 'await d.sleep(); await new Promise(r=>setTimeout(r,1200)); await d.wake()' },
   { key: 'pet', label: 'Being petted', run: 'await d.pet(1); await d.pet(-1)' },
   { key: 'poop', label: 'Cleaning up', run: 'await d.poop(); await d.clean()' },
-  { key: 'walk', label: 'Wandering', run: 'await d.walkTo(180); await d.walkTo(470)' },
+  { key: 'walk', label: 'Wandering', run: 'await d.walk(180); await d.walk(470)' },
   { key: 'die', label: 'Dying', run: 'await d.die()' },
 ];
 // The rig wears the crown for the top 100 cats, and the crown rides the head through every frame, so
@@ -96,13 +96,29 @@ async function capture(clip, variant) {
   await page.goto(`${BASE}/?dev=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.waitForFunction(() => window.__pet?.director, { timeout: 120000, polling: 200 });
 
-  // strip the page back to the stage alone, filling the viewport
+  // Strip the page back to the stage alone, filling the viewport.
+  //
+  // The room is 600x460 and the share card's frame is square, so the room is scaled to the square's
+  // width and dropped to the bottom, then the wall is grown upward to cover what is left. Simply
+  // squaring the stage left a fifth of every clip as bare backdrop under the floor. Growing the wall
+  // rather than cropping the sides keeps the whole room in shot, which matters because the cat walks
+  // the full width of it.
   await page.evaluate((size) => {
     const stage = document.querySelector('.stage');
     document.body.innerHTML = '';
     document.body.style.cssText = `margin:0;width:${size}px;height:${size}px;overflow:hidden`;
     stage.style.cssText = `width:${size}px;height:${size}px;border-radius:0;box-shadow:none`;
     document.body.appendChild(stage);
+
+    const world = stage.querySelector('.world');
+    const k = size / 600;
+    const gap = size - 460 * k;              // empty strip under the floor, in css px
+    world.style.top = `${gap}px`;
+    const grow = gap / k;                    // the same strip in world units
+    for (const sel of ['.wall', '.dots', '.stars']) {
+      const el = stage.querySelector(sel);
+      if (el) el.style.top = `-${grow}px`;
+    }
   }, SIZE);
 
   // A neutral cat: the card's own copy says whether it is sad or dirty, and the demo wallet's cat
@@ -112,6 +128,9 @@ async function capture(clip, variant) {
     d.setCrown(crown); d.setDirty(false); d.setSad(false);
   }, variant.crown);
   await new Promise((r) => setTimeout(r, 900));
+  // The cat wanders on its own when idle. Every clip must be driven through the director's queue and
+  // must start from rest, or the wander fights the action and the cat barely moves.
+  await page.waitForFunction(() => window.__pet.director.isBusy === false, { timeout: 30000, polling: 100 });
 
   await page.evaluate(SLOW, RATE);
   // Start the action WITHOUT awaiting it. page.evaluate() on a string resolves the last expression,
@@ -123,8 +142,14 @@ async function capture(clip, variant) {
   for (;;) {
     await page.screenshot({ path: `${RAW}/${key}/f-${pad(times.length)}.png` });
     times.push(Math.round((Date.now() - t0) * RATE));
-    const done = await page.evaluate(() => window.__recDone === true);
-    if ((done && times.length > 8) || times[times.length - 1] > MAX_S * 1000) break;
+    // A dev-server error overlay paints over the stage and would be recorded as if it were the cat.
+    // One clip shipped that way; never again.
+    const state = await page.evaluate(() => ({
+      done: window.__recDone === true,
+      broken: !!document.querySelector('vite-error-overlay') || !window.__pet?.director,
+    }));
+    if (state.broken) { await page.close(); throw new Error('the page broke mid-capture (dev server error overlay?)'); }
+    if ((state.done && times.length > 8) || times[times.length - 1] > MAX_S * 1000) break;
   }
   await page.close();
   const secs = times[times.length - 1] / 1000;

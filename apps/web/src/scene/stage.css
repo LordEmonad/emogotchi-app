@@ -18,7 +18,8 @@
 .stage .prop { position: absolute; will-change: transform; }
 .stage .prop-inner { width: 100%; height: 100%; }
 .stage .prop-inner svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.stage .cathost { position: absolute; cursor: pointer; will-change: transform; }
+.stage .cathost { position: absolute; will-change: transform; pointer-events: none; }
+.stage .catbody { position: absolute; cursor: pointer; pointer-events: auto; }
 .stage .thought { position: absolute; left: 68%; top: -22%; width: 96px; height: 74px; pointer-events: none; transform-origin: 10% 100%; animation: thought-in 360ms cubic-bezier(.2,.9,.3,1.3) both; }
 .stage .thought[data-side="left"] { left: auto; right: 68%; transform-origin: 90% 100%; }
 .stage .thought[data-side="left"] .thought-cloud { transform: scaleX(-1); }

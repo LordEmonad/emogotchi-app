@@ -7,7 +7,7 @@
  */
 import type { PetRig, Dir } from '../pet/rig';
 import { ASPECT, PROPS, type PropName } from './props';
-import { CAT, CAT_TOP, WALK_MAX, WALK_MIN, WORLD } from './world';
+import { CAT, CAT_PAD, CAT_TOP, HOST_TOP, WALK_MAX, WALK_MIN, WORLD } from './world';
 
 export type Layers = { back: HTMLElement; front: HTMLElement; cat: HTMLElement };
 export type DirectorState = {
@@ -64,7 +64,7 @@ export class Director {
 
   constructor(private rig: PetRig, private L: Layers) {
     this.setX(this.st.x);
-    L.cat.style.top = `${CAT_TOP}px`;
+    L.cat.style.top = `${HOST_TOP}px`;
     this.scheduleWander(3000);
   }
   yawn() { if (this.isBusy || this.st.sleeping) return Promise.resolve(); return this.run('wander', () => this.rig.yawn()); }
@@ -112,7 +112,7 @@ export class Director {
   }
 
   // ---- the cat's place on the floor ----
-  private setX(x: number) { this.st = { ...this.st, x }; this.L.cat.style.left = `${x - CAT.w / 2}px`; for (const s of this.subs) s(); }
+  private setX(x: number) { this.st = { ...this.st, x }; this.L.cat.style.left = `${x - CAT.w / 2 - CAT_PAD.side}px`; for (const s of this.subs) s(); }
   private headPos() { return { x: this.st.x, y: CAT_TOP + (this.st.inTub ? SINK : 0) + 96 * S }; }
   /** Move the body across the floor: set the resting position now, animate the offset to zero. */
   private moveHost(toX: number, kf: (dx: number) => Keyframe[], opts: KeyframeAnimationOptions) {
@@ -140,7 +140,7 @@ export class Director {
     if (Math.abs(x - this.st.x) > 4) this.set({ dir });
     const ms = Math.round(560 + Math.min(220, Math.abs(x - this.st.x)) * 0.6);
     // dy is the old top minus the new top: the host is re-anchored now and the offset animates to zero
-    if (dy !== 0) this.L.cat.style.top = `${CAT_TOP + (this.st.inTub ? SINK : 0)}px`;
+    if (dy !== 0) this.L.cat.style.top = `${HOST_TOP + (this.st.inTub ? SINK : 0)}px`;
     const p = this.moveHost(x, (dx) => [
       { transform: `translate(${dx}px, ${dy}px)`, offset: 0 }, { transform: `translate(${dx}px, ${dy}px)`, offset: 0.14, easing: 'linear' },
       { transform: 'translate(0, 0)', offset: 1 },
@@ -375,7 +375,7 @@ export class Director {
       this.rig.release('look', 200);
       // up it goes; while it hangs, the tub slides under it; it comes down into the water
       this.set({ inTub: true });
-      this.L.cat.style.top = `${CAT_TOP + SINK}px`;
+      this.L.cat.style.top = `${HOST_TOP + SINK}px`;
       const sink = this.L.cat.animate([
         { transform: `translateY(${-SINK}px)`, offset: 0 }, { transform: `translateY(${-SINK}px)`, offset: 0.64, easing: 'cubic-bezier(.5,0,.9,.5)' },
         { transform: 'translateY(0)', offset: 0.86 }, { transform: 'translateY(0)', offset: 1 },
@@ -431,7 +431,7 @@ export class Director {
       // and out: straight up, the tub slides away underneath, land on the floor
       this.rig.release('soak', 400);
       this.set({ inTub: false });
-      this.L.cat.style.top = `${CAT_TOP}px`;
+      this.L.cat.style.top = `${HOST_TOP}px`;
       const rise = this.L.cat.animate([
         { transform: `translateY(${SINK}px)`, offset: 0 }, { transform: `translateY(${SINK}px)`, offset: 0.12, easing: 'cubic-bezier(.2,.8,.4,1)' },
         { transform: 'translateY(0)', offset: 0.4 }, { transform: 'translateY(0)', offset: 1 },

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { Pet, type PetRig } from '../pet/Pet';
 import { Director } from './director';
 import { PROPS, type PropName } from './props';
-import { CAT, CAT_TOP, WORLD } from './world';
+import { CAT, CAT_PAD, HOST_H, HOST_TOP, HOST_W, WORLD } from './world';
 import './stage.css';
 
 type Props = {
@@ -62,9 +62,11 @@ export function Stage({ onDirector, night, thought, thoughtSide = 1, onPet: onPe
         <div className="rug" style={{ top: WORLD.floor - 4 }} />
         <div className="moon" dangerouslySetInnerHTML={{ __html: PROPS.moon }} />
         <div ref={back} className="layer" />
-        <div ref={catHost} className="cathost" style={{ width: CAT.w, height: CAT.h, top: CAT_TOP, left: WORLD.w / 2 - CAT.w / 2 }} onPointerDown={onPet}>
-          <Pet onRig={setRig} style={{ width: '100%', height: '100%' }} />
-          <Thought icon={thought} side={thoughtSide} />
+        <div ref={catHost} className="cathost" style={{ width: HOST_W, height: HOST_H, top: HOST_TOP, left: WORLD.w / 2 - CAT.w / 2 - CAT_PAD.side }}>
+          <div className="catbody" style={{ width: CAT.w, height: CAT.h, top: CAT_PAD.top, left: CAT_PAD.side }} onPointerDown={onPet}>
+            <Pet onRig={setRig} style={{ width: '100%', height: '100%' }} />
+            <Thought icon={thought} side={thoughtSide} />
+          </div>
         </div>
         <div ref={front} className="layer" />
         {children}
