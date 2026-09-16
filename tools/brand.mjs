@@ -73,16 +73,20 @@ const SUB = `<p class="sub">A cat you keep alive on Monad. Every meal, bath and 
 const FOOT = { html: `<b>$EMO</b> on Monad · emogotchi.emonad.lol` };
 // a wider line-up for the textless banner: more cats, the crowned one dead centre
 const WIDE = [{ mood: 'sleepy', size: 0.78 }, { mood: 'hungry', size: 0.86 }, { mood: 'grubby', size: 0.92 }, { mood: 'happy', crown: true, size: 1.08, z: 10 }, { mood: 'content', size: 0.92 }, { mood: 'bored', size: 0.86 }, { mood: 'sleeping', size: 0.78 }];
+// Five for the header rather than seven: holding the row inside the middle 16:9 shrinks every cat,
+// and five large ones fill an 8:3 frame where seven small ones leave the top half empty.
+const WIDE5 = [{ mood: 'hungry', size: 0.86 }, { mood: 'grubby', size: 0.94 }, { mood: 'happy', crown: true, size: 1.12, z: 10 }, { mood: 'content', size: 0.94 }, { mood: 'sleeping', size: 0.86 }];
 const FAMILY = [{ mood: 'hungry', size: 0.8 }, { mood: 'content', size: 0.9 }, { mood: 'happy', crown: true, size: 1.08, z: 10 }, { mood: 'sleeping', size: 0.86 }, { mood: 'bored', size: 0.82 }];
 
 const pieces = [
   // X / Twitter header 1500x500 (3:1). The avatar covers the bottom-left corner on the profile page, so the copy sits high on the left.
   { name: 'x-header', w: 1500, h: 500, dpr: 2, use: 'X header · 1500×500 (3:1)', opts: { cats: FAMILY, copy: BRAND + EYEBROW + H1, copyLeft: 0.06, copyTop: 0.44, copyW: 0.36, floorAt: 0.9, catH: 0.8, span: [0.4, 0.985], catGap: 0.5, scale: 0.9 } },
-  // OpenSea banner: 4:1, under 1 MB, twice their 1400x350 minimum so it stays sharp. No wordmark and no
-  // copy at all — OpenSea drops the circular collection logo over the bottom-left and prints the
-  // collection name beside it, so anything written there is covered or cropped. Their own guidance is to
-  // centre the subject, so this is a centred row of cats and nothing else.
-  { name: 'opensea-banner', w: 2800, h: 700, dpr: 1, use: 'OpenSea / Poply banner · 2800×700 (4:1, no text: the logo covers the bottom-left)', opts: { cats: WIDE, floorAt: 0.82, catH: 0.78, span: [0.13, 0.87], catGap: 0.48, scale: 1.3 } },
+  // OpenSea page header. Their guidance is 8:3 on desktop and 16:9 on a phone, and it is the SAME file
+  // cropped both ways: a 16:9 slice of an 8:3 image is the middle 66.7% of its width. This used to be
+  // 4:1, so only 66.7% of it survived on desktop and 44.4% on a phone, which is why the end cats were
+  // missing. Authored at 8:3 with the line-up held inside the middle 16:9. No text: OpenSea drops the
+  // round collection logo over the bottom-left and prints the name beside it.
+  { name: 'opensea-banner', w: 2400, h: 900, dpr: 1, use: 'OpenSea / Poply header · 2400×900 (8:3; the middle 16:9 is what a phone keeps)', opts: { cats: WIDE5, floorAt: 0.9, catH: 0.86, span: [0.19, 0.81], catGap: 0.5, scale: 1.3 } },
   // OpenSea featured 1200x800 (3:2): the crowned cat, big.
   { name: 'opensea-featured', w: 1200, h: 800, dpr: 1, use: 'OpenSea featured image · 1200×800 (3:2)', opts: { cats: [{ mood: 'happy', crown: true, size: 1 }], copy: BRAND + EYEBROW + H1 + SUB, copyLeft: 0.06, copyTop: 0.48, copyW: 0.46, floorAt: 0.87, catH: 1.0, span: [0.55, 0.985], scale: 1.05, foot: FOOT } },
   // 16:9 hero: Discord banner / invite splash, decks, video thumbnails.

@@ -265,5 +265,30 @@ def moon():
     g = [path("M30,4 C16,6 6,18 6,32 C6,48 18,60 34,60 C44,60 52,55 57,48 C54,49 51,50 47,50 C31,50 19,38 19,22 C19,15 21,9 25,4 Z", GOLD, INK, LW)]
     svg("moon", 64, 64, g)
 
-for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave):
+def witchhat():
+    """The first Emogotchi Items costume. A tall dark-plum cone with a drooping tip, a purple band and
+    a gold buckle, so it reads against both the cat's plum hair and its white fur. Generated here
+    rather than hand-drawn so it carries the same baked ink wobble as every other prop."""
+    g = []
+    g.append(ellipse(56, 108, 40, 6, PUPIL, "none", 0, 'opacity="0.30"'))          # contact shadow
+    # the cone: tall, tapering to a drooping point that falls to the right
+    cone = [(34, 100), (37, 78), (44, 54), (55, 32), (68, 16), (80, 7), (86, 12),
+            (77, 24), (69, 44), (65, 68), (68, 100)]
+    g.append(path(smooth_closed(cone, 0.5), PUPIL, INK, LW))
+    g.append(path("M45,58 Q52,40 63,26", "none", LAV, 2.0, 'opacity="0.22"'))      # soft edge light
+    # band, following the cone's taper
+    g.append(path(smooth_closed([(30, 97), (32, 81), (71, 78), (75, 94)], 0.45), PURPLE, INK, 2.0))
+    # buckle as a ring: ink under, gold over, the same trick the yarn tails use, so the wobble
+    # cannot close the hole up into a blob
+    g.append(path("M46,83.2 L60,81.4 L60.9,91.8 L46.9,93.6 Z", "none", INK, 5.4))
+    g.append(path("M46,83.2 L60,81.4 L60.9,91.8 L46.9,93.6 Z", "none", GOLD, 3.0))
+    # brim last, so it sits in front of the cone
+    g.append(path(smooth_closed([(8, 102), (24, 94), (52, 91), (80, 93), (102, 100),
+                                 (88, 111), (54, 114), (24, 110)], 0.5), HAIR, INK, LW))
+    g.append(path("M24,101 Q54,96 94,103", "none", STRAND, 2.0, 'opacity="0.65"'))
+    g.append(ellipse(32, 103, 6, 2.2, "#FFFFFF", "none", 0, 'opacity="0.18"'))
+    svg("witchhat", 112, 122, g)
+
+
+for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat):
     fn()
