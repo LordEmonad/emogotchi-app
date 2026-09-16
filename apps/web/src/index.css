@@ -447,7 +447,7 @@ canvas.share-preview { background: #170b2a; }
 /* ---- costume lab */
 .costume-lab h1 { margin: 6px 0 2px; }
 .costume-lab .lead { color: var(--lav, #B894D8); margin: 0 0 14px; }
-.costume-lab .shell { max-width: 600px; margin: 0 auto; }
+.costume-lab .shell { max-width: 600px; width: 100%; margin: 0 auto; }   /* without the width the shell collapses and the stage scales to a dot */
 .lab-controls { display: flex; gap: 8px; margin-bottom: 12px; }
 .lab-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 34px; }
 .lab-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
