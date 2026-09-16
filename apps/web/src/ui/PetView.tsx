@@ -22,6 +22,9 @@ type Props = {
   onAll?: () => void;
   /** live mode: a line under the stage while a transaction is in flight, or why actions are locked */
   pending?: string | null;
+  /** live mode: make a shareable picture of this cat */
+  onShare?: () => void;
+  shareNote?: string | null;
   /** live mode: no actions (not our cat, wrong chain, transaction in flight) */
   locked?: boolean;
   live?: boolean;
@@ -30,7 +33,7 @@ type Props = {
 const BUSY_MOOD: Record<string, string> = { feed: 'eating', wash: 'bathing', play: 'playing', poop: 'busy…', clean: 'relieved', pet: 'purring', wake: 'waking up', walk: 'wandering', wander: 'wandering', rumble: 'hungry', sleep: 'dozing off', tour: 'showing off', die: 'fading…', revive: 'coming back' };
 const NEED_MOOD: Record<NonNullable<ReturnType<typeof need>>, string> = { food: 'hungry', clean: 'grubby', fun: 'bored', energy: 'sleepy', poop: 'grossed out' };
 
-export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, all, onAll, pending = null, locked = false, live = false }: Props) {
+export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, all, onAll, onShare, shareNote = null, pending = null, locked = false, live = false }: Props) {
   const busy = d.busy !== null || locked;
   const every = all?.on ? all.counts : null;
   const dead = !g.alive;
@@ -131,6 +134,11 @@ export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = 
               </button>
             </div>
           </>)}
+          {onShare && (
+            <div className="share-row">
+              <button className="btn btn-sm btn-ghost" onClick={onShare}>{shareNote ?? 'Share this cat'}</button>
+            </div>
+          )}
           <section className="record" aria-label="Lifetime record">
             <span className="record-title">On chain forever</span>
             <Stat n={g.record.feeds} l="feeds" /><Stat n={g.record.washes} l="washes" /><Stat n={g.record.plays} l="plays" /><Stat n={g.record.naps} l="naps" />

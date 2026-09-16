@@ -30,12 +30,14 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'asleep', label: 'Still asleep' },
   { key: 'dead', label: 'Dead' },
 ];
+/** "named" and "dead" are answered by the published index, so they cover the whole collection. */
+const INDEXED: Filter[] = ['named', 'dead'];
 const matches = (c: CatView, f: Filter) =>
-  f === 'all' ? true
-  : f === 'named' ? c.names > 0
-  : f === 'dead' ? !c.alive
+  f === 'all' || INDEXED.includes(f) ? true
   : f === 'asleep' ? c.alive && !c.started
   : /* care */ c.alive && c.started && (c.poop || c.food < 35 || c.clean < 35 || c.fun < 35 || c.energy < 35);
+
+type CatIndex = { generatedAt: string; block: number; named: number[]; died: number[] };
 const PAGE = 60;
 
 const ago = (s: number) => {
@@ -62,6 +64,12 @@ export function Gallery() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wallet, setWallet] = useState<Address | null>(null);
+  const [index, setIndex] = useState<CatIndex | null>(null);
+
+  // the published index of named and dead cats: ids only, their state is still read from the contract
+  useEffect(() => {
+    void fetch('/index/cats.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).then(setIndex).catch(() => setIndex(null));
+  }, []);
 
   /** one distinct portrait per mood+crown, fetched once, all at the same time */
   const paint = useCallback(async (cats: CatView[], alive: () => boolean) => {
@@ -87,7 +95,11 @@ export function Gallery() {
         if (dead) return;
         setTotal(t.totalSupply);
         let cats: CatView[];
-        if (mode.kind === 'id') {
+        const indexed = INDEXED.includes(filter) && mode.kind === 'browse' ? (filter === 'named' ? index?.named : index?.died) : undefined;
+        if (indexed) {
+          if (!indexed.length) { setRows([]); setError(filter === 'named' ? 'Nobody has named a cat yet.' : 'No cat has died yet.'); return; }
+          cats = await client.catsByIds(indexed.slice(0, shown));
+        } else if (mode.kind === 'id') {
           if (mode.id < 1 || mode.id > t.totalSupply) { setRows([]); setError(`No cat #${mode.id}. There are ${t.totalSupply.toLocaleString()}.`); return; }
           cats = [await client.cat(mode.id)];
         } else if (mode.kind === 'crown') {
@@ -110,7 +122,7 @@ export function Gallery() {
     void load();
     const id = setInterval(() => void load(), 60000);
     return () => { dead = true; clearInterval(id); };
-  }, [shown, mode, paint]);
+  }, [shown, mode, filter, index, paint]);
 
   const search = () => {
     const q = query.trim();
@@ -160,20 +172,25 @@ export function Gallery() {
       </div>
       <div className="gal-chips">
         {FILTERS.map((f) => (
-          <button key={f.key} className={`chip-btn ${filter === f.key ? 'is-on' : ''}`} onClick={() => setFilter(f.key)}>{f.label}</button>
+          <button key={f.key} className={`chip-btn ${filter === f.key ? 'is-on' : ''}`} onClick={() => { setFilter(f.key); setShown(PAGE); if (mode.kind !== 'browse') setMode({ kind: 'browse' }); }}>{f.label}{INDEXED.includes(f.key) && index ? ` · ${(f.key === 'named' ? index.named : index.died).length}` : ''}</button>
         ))}
       </div>
       {error && <p className="lb-note">{error}</p>}
       {rows === null && !error && <p className="lb-note">Reading the cats from the contract…</p>}
-      {shownRows && rows && filter !== 'all' && (
+      {shownRows && rows && filter !== 'all' && !INDEXED.includes(filter) && (
         <p className="gallery-count tnum gal-filter-note">
-          {shownRows.length} of the {rows.length} cats on this page{mode.kind === 'browse' ? ` (of ${total.toLocaleString()})` : ''}. There is no index behind the collection, so a filter sifts what is loaded. Load more to widen it.
+          {shownRows.length} of the {rows.length} cats loaded{mode.kind === 'browse' ? ` (of ${total.toLocaleString()})` : ''}. This one sifts the cats on the page rather than the whole collection. Load more to widen it.
         </p>
       )}
+      {INDEXED.includes(filter) && index && rows?.length ? (
+        <p className="gallery-count tnum gal-filter-note">
+          Every {filter === 'named' ? 'named' : 'dead'} cat in the collection, as of block {index.block.toLocaleString()}. Their numbers below are live.
+        </p>
+      ) : null}
       <div className="gallery-grid">
         {shownRows?.map(({ cat, svg }) => <Card key={cat.id} cat={cat} svg={svg} />)}
       </div>
-      {mode.kind === 'browse' && rows !== null && total > rows.length && (
+      {mode.kind === 'browse' && rows !== null && !INDEXED.includes(filter) && total > rows.length && (
         <div className="gallery-more">
           <button className="btn btn-ghost" onClick={() => setShown((n) => n + PAGE)} disabled={busy}>{busy ? 'Reading…' : `Show ${Math.min(PAGE, total - rows.length)} more`}</button>
           <span className="gallery-count tnum">{rows.length} of {total.toLocaleString()}</span>

@@ -6,6 +6,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 PAGES="${PAGES:?set PAGES to the emogotchi Pages clone}"
 MSG="${1:-Site update}"
 cd "$HERE"
+node tools/index-named.mjs || echo "(index not refreshed: no HyperSync token; the site keeps the last one)"
 pnpm build
 cd "$PAGES"
 rm -rf assets nft index.html og.png favicon.svg brand claim

@@ -3,7 +3,7 @@ import { Stage } from './scene/Stage';
 import type { Director, DirectorState } from './scene/director';
 import type { PropName } from './scene/props';
 import { initial, isDirty, isSad, need, reduce, type Game, type PaidAction } from './game/state';
-import { CHAIN_MODE, chainCfg, chainStore, toGame, type ChainSnapshot } from './game/chain';
+import { CHAIN_MODE, chainCfg, chainClient, chainStore, toGame, type ChainSnapshot } from './game/chain';
 import { EMPTY_WALLET, connectDemo, connectInjected, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState } from './wallet';
 import { Header } from './ui/Header';
 import { ConnectModal } from './ui/ConnectModal';
@@ -15,6 +15,7 @@ import { NftArt, NFT_STATES, type NftState } from './ui/NftArt';
 import { DevDrawer, type ViewOverride } from './ui/DevDrawer';
 import { Leaderboard } from './ui/Leaderboard';
 import { BurnBar } from './ui/BurnBar';
+import { downloadShareCard, shareText } from './ui/shareCard';
 import { marketplace } from './links';
 import { Claim } from './ui/Claim';
 import { Gallery } from './ui/Gallery';
@@ -238,6 +239,22 @@ function Home({ petId }: { petId: number | null }) {
   };
   const onPet = () => { if (live) chainStore?.pet(); else dispatch({ type: 'petted' }); };
 
+  // ---- share card: drawn in the browser from the cat's own on-chain picture and numbers ----
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const onShare = async () => {
+    if (!activeCat || !chainClient) return;
+    setShareNote('Drawing…');
+    try {
+      const svg = await chainClient.artImage(activeCat.alive ? activeCat.mood : 'dead', activeCat.crowned);
+      const how = await downloadShareCard(activeCat, svg);
+      setShareNote(how === 'copied' ? 'Copied and saved · opening X' : 'Saved · opening X');
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText(activeCat))}`, '_blank', 'noopener');
+    } catch (e) {
+      setShareNote((e as Error).message.slice(0, 60));
+    }
+    setTimeout(() => setShareNote(null), 5000);
+  };
+
   // ---- thought bubble ----
   const lastNeed = useRef<ReturnType<typeof need>>(null);
   const n0 = need(g);
@@ -278,7 +295,7 @@ function Home({ petId }: { petId: number | null }) {
       {which === 'landing' && <Landing stage={stage} onConnect={() => setModal(true)} connecting={wallet.status === 'connecting'} claimHref={chainCfg?.drop ? '/claim' : null} />}
       {which === 'loading' && <main className="nopet"><div className="shell"><div className="empty-room"><div className="empty-dots" /><div className="empty-floor" /><div className="empty-card"><h2>Looking in your wallet…</h2>{snap.error && <p className="tnum">{snap.error}</p>}</div></div></div></main>}
       {which === 'nopet' && <NoPet address={wallet.address ?? '0x0000…0000'} onDemo={() => { if (live) doDemo(); else setHasPet(true); }} />}
-      {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onTab={(id) => { setAllMode(false); chainStore?.setActive(id); }} all={allCounts ? { on: allOn, counts: allCounts } : undefined} onAll={() => setAllMode(true)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} />}
+      {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onShare={live && activeCat ? () => void onShare() : undefined} shareNote={shareNote} onTab={(id) => { setAllMode(false); chainStore?.setActive(id); }} all={allCounts ? { on: allOn, counts: allCounts } : undefined} onAll={() => setAllMode(true)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} />}
       {which !== 'landing' && which !== 'nopet' && which !== 'loading' && (
         <><BurnBar /><footer className="foot"><span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span><span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/cats">All cats</a> · <a href="/leaderboard">Leaderboard</a> · {catOnChain && <><a href={catOnChain} target="_blank" rel="noreferrer">This cat on chain</a> · </>}{explorer ? <a href={explorer} target="_blank" rel="noreferrer">Contract</a> : 'Contract: soon'}</span></footer></>
       )}

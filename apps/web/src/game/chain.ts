@@ -43,6 +43,7 @@ export class ChainStore {
   private petCount = 0;
   private petTimer: ReturnType<typeof setTimeout> | null = null;
   private busy = false;
+  private again = false;
 
   constructor(private readonly client: ChainClient) {}
 
@@ -84,14 +85,19 @@ export class ChainStore {
   }
 
   async refresh(): Promise<void> {
-    if (this.busy) return;
+    // A read already running was started for whoever was connected *then*. If someone connects while
+    // it is in flight, its answer is about the wrong wallet: dropping it here and running again once
+    // it lands is what stops "no Emogotchi in this wallet" flashing up before the cats arrive.
+    if (this.busy) { this.again = true; return; }
     this.busy = true;
+    const forOwner = this.snap.owner;
     try {
       const [cats, totals, spectator] = await Promise.all([
-        this.snap.owner ? this.client.catsOf(this.snap.owner) : Promise.resolve([] as CatView[]),
+        forOwner ? this.client.catsOf(forOwner) : Promise.resolve([] as CatView[]),
         this.client.totals(),
         this.watchId !== null ? this.client.cat(this.watchId).catch(() => null) : Promise.resolve(null),
       ]);
+      if (this.snap.owner !== forOwner) return; // the wallet changed underneath us; the next run covers it
       const activeId = this.snap.activeId ?? this.watchId ?? cats[0]?.id ?? null;
       this.set({ cats, totals, spectator, activeId, loaded: true, error: null });
     } catch (e) {
@@ -100,7 +106,7 @@ export class ChainStore {
       this.set({ error: e instanceof ChainError ? e.message : 'Monad is not answering right now · retrying' });
     } finally {
       this.busy = false;
-      this.schedule(POLL_MS);
+      if (this.again) { this.again = false; this.schedule(0); } else this.schedule(POLL_MS);
     }
   }
 
