@@ -3,9 +3,9 @@
  *
  * The cat is an SVG rig driven by the browser's animation engine, and nothing can rasterise that
  * frame by frame at video speed inside a visitor's browser. The rig looks the same for every cat
- * though, so the animations were recorded once (tools/record-anims.mjs) into one sprite sheet per
- * action, crowned and not. Playback draws those frames into the very same card the still picture
- * uses, so the two are identical apart from the cat moving.
+ * though, so the animations were recorded once at 60fps (tools/record-anims.mjs), crowned and not.
+ * Playback draws those clips into the very same card the still picture uses, so the two are identical
+ * apart from the cat moving.
  *
  * Recorded straight to MP4 where the browser can, because that is what X accepts for upload.
  */
@@ -27,82 +27,94 @@ export const LOOPS: Loop[] = [
   { key: 'all', label: 'Everything', blurb: 'every animation, back to back' },
 ];
 
-/** What `tools/pack-anims.py` writes next to the sheets. */
-type Sheet = { key: string; label: string; cell: number; cols: number; rows: number; count: number; times: number[]; duration: number };
+/** What `tools/record-anims.mjs` writes next to the clips. */
+type Clip = { key: string; label: string; crown: boolean; file: string; duration: number; frames: number };
 
-const FPS = 30;
+const FPS = 60;
 const MIN_MS = 6000;      // a very short action loops until the clip is worth posting
 const ALL_RATE = 2;       // "Everything" back to back is a minute at life speed; twice as fast reads better
-const base = `${import.meta.env.BASE_URL ?? '/'}anim`.replace(/\/+anim$/, '/anim');
+const base = `${import.meta.env.BASE_URL || '/'}anim`.replace('//anim', '/anim');
 
-let index: Promise<Sheet[]> | null = null;
-const sheets = new Map<string, Promise<HTMLImageElement>>();
-
+let index: Promise<Clip[]> | null = null;
 const manifest = () => (index ??= fetch(`${base}/anim.json`).then((r) => {
   if (!r.ok) throw new Error('the animations are not on this server');
-  return r.json() as Promise<Sheet[]>;
+  return r.json() as Promise<Clip[]>;
 }));
 
-const sheetImage = (key: string) => {
-  let p = sheets.get(key);
-  if (!p) {
-    p = new Promise<HTMLImageElement>((ok, no) => {
-      const i = new Image();
-      i.onload = () => ok(i);
-      i.onerror = () => no(new Error('could not load the animation'));
-      i.src = `${base}/${key}.png`;
-    });
-    sheets.set(key, p);
+/**
+ * Off-screen videos. A detached <video> will not reliably play, so they live in a corner of the page
+ * that nothing can see. They are never shown: every frame is drawn onto the card's own canvas.
+ */
+const stage = () => {
+  let el = document.getElementById('emo-anim-stage');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'emo-anim-stage';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;pointer-events:none';
+    document.body.appendChild(el);
   }
-  return p;
+  return el;
 };
+
+const loadVideo = (file: string) => new Promise<HTMLVideoElement>((ok, no) => {
+  const v = document.createElement('video');
+  v.src = `${base}/${file}`;
+  v.muted = true; v.defaultMuted = true; v.playsInline = true; v.preload = 'auto';
+  v.crossOrigin = 'anonymous';
+  // canplaythrough means the whole clip is buffered, so recording never stalls half way
+  v.oncanplaythrough = () => ok(v);
+  v.onerror = () => no(new Error('could not load the animation'));
+  stage().appendChild(v);
+  v.load();
+});
 
 /** Which recorded clips a chosen loop plays, in order. */
-const plan = (loop: Loop, crowned: boolean) => {
-  const keys = loop.key === 'all' ? LOOPS.filter((l) => l.key !== 'all').map((l) => l.key) : [loop.key];
-  return keys.map((k) => (crowned ? `${k}-crown` : k));
+const plan = (loop: Loop, crowned: boolean) =>
+  (loop.key === 'all' ? LOOPS.filter((l) => l.key !== 'all').map((l) => l.key) : [loop.key])
+    .map((k) => (crowned ? `${k}-crown` : k));
+
+const pick = (all: Clip[], key: string) => {
+  const c = all.find((x) => x.key === key) ?? all.find((x) => x.key === key.replace('-crown', ''));
+  if (!c) throw new Error('that animation is missing');
+  return c;
 };
 
-/** The frame showing at `ms` into a clip: the recorder's timestamps are uneven, so this walks them. */
-const frameAt = (sheet: Sheet, ms: number) => {
-  const t = sheet.times;
-  let lo = 0, hi = t.length - 1;
-  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (t[mid]! <= ms) lo = mid; else hi = mid - 1; }
-  return lo;
-};
+type Sequence = { draw: (x: CanvasRenderingContext2D) => void; total: number; restart: () => void; stop: () => void };
 
-/** Everything needed to draw the loop at any moment: one paint call and how long a cycle runs. */
-type Player = { paint: (ms: number) => void; total: number };
-
-async function buildPlayer(cat: CatView, loop: Loop, x: CanvasRenderingContext2D): Promise<Player> {
+/** Load the clips a loop needs and start them playing, one after another. */
+async function startSequence(cat: CatView, loop: Loop): Promise<Sequence> {
   const all = await manifest();
-  const clips = plan(loop, cat.crowned).map((k) => {
-    const s = all.find((c) => c.key === k) ?? all.find((c) => c.key === k.replace('-crown', ''));
-    if (!s) throw new Error('that animation is missing');
-    return s;
-  });
-  const images = await Promise.all(clips.map((c) => sheetImage(c.key)));
-
-  // how long each clip plays for, and the whole thing
+  const clips = plan(loop, cat.crowned).map((k) => pick(all, k));
+  const videos = await Promise.all(clips.map((c) => loadVideo(c.file)));
   const rate = loop.key === 'all' ? ALL_RATE : 1;
-  const spans = clips.map((c) => {
-    const one = c.duration / rate;
-    const reps = clips.length === 1 ? Math.max(1, Math.ceil(MIN_MS / one)) : 1;
-    return { play: one * reps, one };
-  });
-  const total = spans.reduce((a, s) => a + s.play, 0);
+  const single = videos.length === 1;
 
-  const paint = (ms: number) => {
-    // find which clip is on screen, and where inside it
-    let i = 0, into = Math.min(Math.max(0, ms), total - 1);
-    while (i < spans.length - 1 && into >= spans[i]!.play) { into -= spans[i]!.play; i += 1; }
-    const clip = clips[i]!, img = images[i]!;
-    const f = frameAt(clip, (into % spans[i]!.one) * rate);
-    const sx = (f % clip.cols) * clip.cell;
-    const sy = Math.floor(f / clip.cols) * clip.cell;
-    paintCard(x, cat, (c) => c.drawImage(img, sx, sy, clip.cell, clip.cell, PORTRAIT.x, PORTRAIT.y, PORTRAIT.size, PORTRAIT.size));
+  let at = 0;
+  const play = (v: HTMLVideoElement) => { v.play().catch(() => { /* a pause() during start-up rejects; harmless */ }); };
+  const step = () => { videos[at]!.pause(); at = (at + 1) % videos.length; const v = videos[at]!; v.currentTime = 0; play(v); };
+  for (const v of videos) {
+    v.playbackRate = rate;
+    v.loop = single;                       // one clip repeats itself; a sequence hands over on ended
+    if (!single) v.addEventListener('ended', step);
+  }
+
+  const one = clips.reduce((a, c) => a + c.duration / rate, 0);
+  // a two-second action is not worth posting on its own, so a single clip repeats up to a decent length
+  const total = single ? one * Math.max(1, Math.ceil(MIN_MS / one)) : one;
+
+  const restart = () => {
+    for (const v of videos) { v.pause(); v.currentTime = 0; }
+    at = 0;
+    play(videos[0]!);
   };
-  return { paint, total };
+
+  return {
+    draw: (x) => paintCard(x, cat, (c) => c.drawImage(videos[at]!, PORTRAIT.x, PORTRAIT.y, PORTRAIT.size, PORTRAIT.size)),
+    total,
+    restart,
+    stop: () => { for (const v of videos) { v.pause(); v.removeEventListener('ended', step); v.remove(); } },
+  };
 }
 
 /**
@@ -113,12 +125,12 @@ export async function playShareLoop(canvas: HTMLCanvasElement, cat: CatView, loo
   await (document as Document & { fonts?: FontFaceSet }).fonts?.ready;
   canvas.width = W; canvas.height = H;
   const x = canvas.getContext('2d')!;
-  const player = await buildPlayer(cat, loop, x);
+  const seq = await startSequence(cat, loop);
+  seq.restart();
   let raf = 0;
-  const t0 = performance.now();
-  const tick = () => { player.paint((performance.now() - t0) % player.total); raf = requestAnimationFrame(tick); };
+  const tick = () => { seq.draw(x); raf = requestAnimationFrame(tick); };
   tick();
-  return () => cancelAnimationFrame(raf);
+  return () => { cancelAnimationFrame(raf); seq.stop(); };
 }
 
 /**
@@ -134,46 +146,46 @@ export async function recordShareVideo(
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const x = cv.getContext('2d')!;
-  const { paint, total } = await buildPlayer(cat, loop, x);
 
-  const mime = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm']
+  const mime = ['video/mp4;codecs=avc1.4D401F', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm']
     .find((t) => MediaRecorder.isTypeSupported(t));
   if (!mime) throw new Error('This browser cannot record video. Use the still card instead.');
 
-  paint(0);
-  const stream = cv.captureStream(FPS);
-  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
-  const chunks: BlobPart[] = [];
-  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-  rec.start();
+  const seq = await startSequence(cat, loop);
+  try {
+    seq.restart();
+    seq.draw(x);
+    const rec = new MediaRecorder(cv.captureStream(FPS), { mimeType: mime, videoBitsPerSecond: 5_000_000 });
+    const chunks: BlobPart[] = [];
+    rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    rec.start();
 
-  await new Promise<void>((done) => {
-    const t0 = performance.now();
-    const tick = () => {
-      const ms = performance.now() - t0;
-      if (ms >= total) { paint(total - 1); done(); return; }
-      paint(ms);
-      onProgress?.(Math.min(1, ms / total));
+    await new Promise<void>((done) => {
+      const t0 = performance.now();
+      const tick = () => {
+        const ms = performance.now() - t0;
+        seq.draw(x);
+        if (ms >= seq.total) { done(); return; }
+        onProgress?.(Math.min(1, ms / seq.total));
+        requestAnimationFrame(tick);
+      };
       requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  });
-  await new Promise((r) => setTimeout(r, 120));
-  const blob = await new Promise<Blob>((ok) => { rec.onstop = () => ok(new Blob(chunks, { type: mime })); rec.stop(); });
-  onProgress?.(1);
-  return { blob, type: mime.startsWith('video/mp4') ? 'mp4' : 'webm' };
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    const blob = await new Promise<Blob>((ok) => { rec.onstop = () => ok(new Blob(chunks, { type: mime })); rec.stop(); });
+    onProgress?.(1);
+    return { blob, type: mime.startsWith('video/mp4') ? 'mp4' : 'webm' };
+  } finally {
+    seq.stop();
+  }
 }
 
 /** Roughly how long a chosen loop will take to record, for the waiting message. */
 export async function loopSeconds(loop: Loop, crowned: boolean): Promise<number> {
   const all = await manifest();
   const rate = loop.key === 'all' ? ALL_RATE : 1;
-  const clips = plan(loop, crowned)
-    .map((k) => all.find((c) => c.key === k) ?? all.find((c) => c.key === k.replace('-crown', '')))
-    .filter(Boolean) as Sheet[];
-  const ms = clips.reduce((a, c) => {
-    const one = c.duration / rate;
-    return a + (clips.length === 1 ? one * Math.max(1, Math.ceil(MIN_MS / one)) : one);
-  }, 0);
+  const clips = plan(loop, crowned).map((k) => pick(all, k));
+  const one = clips.reduce((a, c) => a + c.duration / rate, 0);
+  const ms = clips.length === 1 ? one * Math.max(1, Math.ceil(MIN_MS / one)) : one;
   return Math.round(ms / 1000);
 }

@@ -21,6 +21,7 @@ export function ShareModal({ cat, blob, onClose }: Props) {
   const [progress, setProgress] = useState(0);
   const [recording, setRecording] = useState(false);
   const [secs, setSecs] = useState(0);
+  const [loadingClip, setLoadingClip] = useState(false);
   const [stillUrl, setStillUrl] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const canvas = useRef<HTMLCanvasElement | null>(null);
@@ -32,9 +33,11 @@ export function ShareModal({ cat, blob, onClose }: Props) {
     if (!moving || !canvas.current) return;
     let stop: (() => void) | null = null;
     let gone = false;
+    setLoadingClip(true);
     playShareLoop(canvas.current, cat, loop)
       .then((s) => { if (gone) s(); else stop = s; })
-      .catch((e) => { setNote((e as Error).message.slice(0, 90)); setMoving(false); });
+      .catch((e) => { setNote((e as Error).message.slice(0, 90)); setMoving(false); })
+      .finally(() => { if (!gone) setLoadingClip(false); });
     void loopSeconds(loop, cat.crowned).then(setSecs).catch(() => setSecs(0));
     return () => { gone = true; stop?.(); };
   }, [moving, loop, cat]);
@@ -87,6 +90,14 @@ export function ShareModal({ cat, blob, onClose }: Props) {
   };
 
   const title = cat.name || `Emogotchi #${cat.id}`;
+  const about = secs ? ` — about ${secs}s` : '';
+  const hint = loadingClip && !recording
+    ? `Loading ${loop.label.toLowerCase()}…`
+    : recording
+      ? `Recording ${loop.label.toLowerCase()}… a video can only be made at the speed it plays${about}.`
+      : moving
+        ? `${loop.blurb}. Post on X records the clip, saves it, and opens the composer${about}. Attach the file from your downloads.`
+        : 'Post on X copies the picture and opens the composer with the words ready. Press paste to attach it.';
   return (
     <div className="modal-back" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title">
@@ -105,19 +116,15 @@ export function ShareModal({ cat, blob, onClose }: Props) {
             ))}
           </div>
         )}
-        {recording && <div className="share-rec"><span style={{ width: `${Math.round(progress * 100)}%` }} /></div>}
+        {(recording || loadingClip) && <div className={`share-rec ${loadingClip && !recording ? 'is-waiting' : ''}`}><span style={{ width: `${loadingClip && !recording ? 100 : Math.round(progress * 100)}%` }} /></div>}
         <canvas ref={canvas} className="share-preview" hidden={!moving} aria-label={`${title} animated card`} />
         {!moving && stillUrl && <img className="share-preview" src={stillUrl} alt={`${title} share card`} />}
         <div className="share-actions">
-          <button className="btn btn-pink" onClick={() => void post()} disabled={recording}>Post on X</button>
+          <button className="btn btn-pink" onClick={() => void post()} disabled={recording || loadingClip}>Post on X</button>
           <button className="btn btn-ghost" onClick={() => void copy()} disabled={recording}>Copy image</button>
-          <button className="btn btn-ghost" onClick={() => void save()} disabled={recording}>Download</button>
+          <button className="btn btn-ghost" onClick={() => void save()} disabled={recording || loadingClip}>Download</button>
         </div>
-        <p className="modal-fine">{note ?? (recording
-          ? `Recording ${loop.label.toLowerCase()}… a video can only be made at the speed it plays${secs ? `, about ${secs}s` : ''}.`
-          : moving
-            ? `${loop.blurb}. Post on X records the clip, saves it, and opens the composer${secs ? ` — about ${secs}s` : ''}. Attach the file from your downloads.`
-            : 'Post on X copies the picture and opens the composer with the words ready. Press paste to attach it.')}</p>
+        <p className="modal-fine">{note ?? hint}</p>
       </div>
     </div>
   );
