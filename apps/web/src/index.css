@@ -424,4 +424,5 @@
 .share-loops .chip-btn { font-size: 12.5px; padding: 6px 12px; }
 .share-rec { height: 5px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; margin: 0 0 10px; }
 .share-rec > span { display: block; height: 100%; background: linear-gradient(90deg,#B894D8,#E84D7F); transition: width .12s linear; }
-video.share-preview { background: #170b2a; }
+canvas.share-preview { background: #170b2a; }
+.share-preview[hidden] { display: none; } /* .share-preview sets display:block, which would beat the attribute */

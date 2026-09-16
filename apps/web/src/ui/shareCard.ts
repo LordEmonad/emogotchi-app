@@ -1,14 +1,19 @@
 /**
- * The share card: a 1200x630 PNG of one cat, drawn in the browser.
+ * The share card: a 1200x630 picture of one cat, drawn in the browser.
  *
  * There is no server, so this paints on a canvas: the room, the cat's own picture fetched from the
  * contract, and its real numbers. Canvas text uses fonts already loaded by the page, so the card
  * comes out in the site's typeface without embedding anything.
+ *
+ * The animated card is the same drawing with a moving portrait, so everything except the picture in
+ * the frame lives in `paintCard` and both callers share it. Change the card once, change it for both.
  */
 import type { CatView } from '@emo-pets/chain';
 
-const W = 1200;
-const H = 630;
+export const W = 1200;
+export const H = 630;
+/** The frame the cat sits in, the one thing that differs between the still card and the video. */
+export const PORTRAIT = { x: 50, y: (H - 500) / 2, size: 500, r: 28 };
 const FONT = '"Space Grotesk Variable", "Space Grotesk", system-ui, sans-serif';
 
 const rounded = (x: CanvasRenderingContext2D, l: number, t: number, w: number, h: number, r: number) => {
@@ -18,19 +23,18 @@ const rounded = (x: CanvasRenderingContext2D, l: number, t: number, w: number, h
 };
 
 /** The cat's SVG as an <img>, ready to draw. */
-const loadSvg = (svg: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+export const loadSvg = (svg: string) => new Promise<HTMLImageElement>((resolve, reject) => {
   const img = new Image();
   img.onload = () => resolve(img);
   img.onerror = () => reject(new Error('could not draw the cat'));
   img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
 });
 
-export async function renderShareCard(cat: CatView, svg: string): Promise<Blob> {
-  await (document as Document & { fonts?: FontFaceSet }).fonts?.ready;
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const x = cv.getContext('2d')!;
-
+/**
+ * The whole card except the picture itself. `portrait` is called with the context already clipped to
+ * the rounded frame, so it can draw a still picture or one frame of an animation into the same box.
+ */
+export function paintCard(x: CanvasRenderingContext2D, cat: CatView, portrait: (x: CanvasRenderingContext2D) => void) {
   // room
   const bg = x.createRadialGradient(W * 0.5, H * 0.2, 0, W * 0.5, H * 0.2, W * 0.75);
   bg.addColorStop(0, '#3a1f5c'); bg.addColorStop(0.55, '#24123f'); bg.addColorStop(1, '#170b2a');
@@ -44,19 +48,16 @@ export async function renderShareCard(cat: CatView, svg: string): Promise<Blob> 
 
   // The cat, left. Its picture carries its own room, so rather than trying to hide the seam against
   // ours it is framed like a portrait: rounded, with a soft edge and a shadow under it.
-  try {
-    const img = await loadSvg(svg);
-    const size = 500, px = 50, py = (H - size) / 2;
-    x.save();
-    x.shadowColor = 'rgba(0,0,0,0.55)'; x.shadowBlur = 40; x.shadowOffsetY = 10;
-    x.fillStyle = '#24123f'; rounded(x, px, py, size, size, 28); x.fill();
-    x.restore();
-    x.save(); rounded(x, px, py, size, size, 28); x.clip();
-    x.drawImage(img, px, py, size, size);
-    x.restore();
-    x.strokeStyle = 'rgba(184,148,216,0.35)'; x.lineWidth = 2;
-    rounded(x, px + 1, py + 1, size - 2, size - 2, 27); x.stroke();
-  } catch { /* text-only card rather than no card */ }
+  const { x: px, y: py, size, r } = PORTRAIT;
+  x.save();
+  x.shadowColor = 'rgba(0,0,0,0.55)'; x.shadowBlur = 40; x.shadowOffsetY = 10;
+  x.fillStyle = '#24123f'; rounded(x, px, py, size, size, r); x.fill();
+  x.restore();
+  x.save(); rounded(x, px, py, size, size, r); x.clip();
+  portrait(x);
+  x.restore();
+  x.strokeStyle = 'rgba(184,148,216,0.35)'; x.lineWidth = 2;
+  rounded(x, px + 1, py + 1, size - 2, size - 2, r - 1); x.stroke();
 
   // copy, right
   const L = 580;
@@ -114,7 +115,16 @@ export async function renderShareCard(cat: CatView, svg: string): Promise<Blob> 
   x.fillStyle = 'rgba(248,248,255,0.4)';
   x.font = `400 16px ${FONT}`;
   x.fillText('fully on chain · Monad', L + 232, H - 46);
+}
 
+export async function renderShareCard(cat: CatView, svg: string): Promise<Blob> {
+  await (document as Document & { fonts?: FontFaceSet }).fonts?.ready;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const x = cv.getContext('2d')!;
+  let img: HTMLImageElement | null = null;
+  try { img = await loadSvg(svg); } catch { /* text-only card rather than no card */ }
+  paintCard(x, cat, (c) => { if (img) c.drawImage(img, PORTRAIT.x, PORTRAIT.y, PORTRAIT.size, PORTRAIT.size); });
   return new Promise<Blob>((resolve, reject) => cv.toBlob((b) => (b ? resolve(b) : reject(new Error('could not make the image'))), 'image/png'));
 }
 

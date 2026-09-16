@@ -9,7 +9,7 @@ cd "$HERE"
 node tools/index-named.mjs || echo "(index not refreshed: no HyperSync token; the site keeps the last one)"
 pnpm build
 cd "$PAGES"
-rm -rf assets nft index.html og.png favicon.svg brand claim
+rm -rf assets nft index.html og.png favicon.svg brand claim anim
 cp -R "$HERE/apps/web/dist/." .
 cp index.html 404.html                     # SPA fallback for /pet/<id>, which cannot be pre-generated
 # Every route people share gets a real page. Without this GitHub Pages answers 404 for them: the page

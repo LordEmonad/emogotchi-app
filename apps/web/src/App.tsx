@@ -301,7 +301,7 @@ function Home({ petId }: { petId: number | null }) {
       {which !== 'landing' && which !== 'nopet' && which !== 'loading' && (
         <><BurnBar /><footer className="foot"><span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span><span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/cats">All cats</a> · <a href="/leaderboard">Leaderboard</a> · {catOnChain && <><a href={catOnChain} target="_blank" rel="noreferrer">This cat on chain</a> · </>}{explorer ? <a href={explorer} target="_blank" rel="noreferrer">Contract</a> : 'Contract: soon'}</span></footer></>
       )}
-      {shareCard && <ShareModal cat={shareCard.cat} blob={shareCard.blob} art={(m, c) => chainClient!.artImage(m, c)} onClose={() => setShareCard(null)} />}
+      {shareCard && <ShareModal cat={shareCard.cat} blob={shareCard.blob} onClose={() => setShareCard(null)} />}
       <ConnectModal open={modal} onClose={() => setModal(false)} onInjected={() => void doInjected()} onDemo={doDemo} error={wallet.error} busy={wallet.status === 'connecting'} />
       {DEV && <DevDrawer director={director} dispatch={dispatch} view={view} setView={setView} crown={crown} setCrown={setCrownOverride} speed={g.speed} onConnectDemo={doDemo} onDisconnect={doDisconnect} live={live} onCrank={() => void chainStore?.crank()} />}
     </div>

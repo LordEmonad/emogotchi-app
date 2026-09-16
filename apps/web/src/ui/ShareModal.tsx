@@ -4,99 +4,119 @@
  * X has no way to accept an image from a link, so a post cannot carry the picture by itself. The
  * next best thing is one keystroke: the image goes to the clipboard, the composer opens with the
  * words already written, and the poster presses paste.
+ *
+ * The animated card plays straight away on a canvas. Encoding it to a file can only happen in real
+ * time, so that waits until someone actually asks to save or post it.
  */
-import { useEffect, useState } from 'react';
-import type { CatView, Mood } from '@emo-pets/chain';
+import { useEffect, useRef, useState } from 'react';
+import type { CatView } from '@emo-pets/chain';
 import { shareText } from './shareCard';
-import { LOOPS, recordShareVideo, type Loop } from './shareVideo';
+import { LOOPS, loopSeconds, playShareLoop, recordShareVideo, type Loop } from './shareVideo';
 
-type Props = { cat: CatView; blob: Blob; art: (mood: Mood, crowned: boolean) => Promise<string>; onClose: () => void };
+type Props = { cat: CatView; blob: Blob; onClose: () => void };
 
-export function ShareModal({ cat, blob, art, onClose }: Props) {
+export function ShareModal({ cat, blob, onClose }: Props) {
   const [moving, setMoving] = useState(false);
   const [loop, setLoop] = useState<Loop>(LOOPS[0]!);
-  const [video, setVideo] = useState<{ blob: Blob; type: 'mp4' | 'webm' } | null>(null);
   const [progress, setProgress] = useState(0);
   const [recording, setRecording] = useState(false);
-  const [url, setUrl] = useState<string | null>(null);
+  const [secs, setSecs] = useState(0);
+  const [stillUrl, setStillUrl] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const canvas = useRef<HTMLCanvasElement | null>(null);
 
-  const current = moving && video ? video.blob : blob;
-  useEffect(() => { const u = URL.createObjectURL(current); setUrl(u); return () => URL.revokeObjectURL(u); }, [current]);
+  useEffect(() => { const u = URL.createObjectURL(blob); setStillUrl(u); return () => URL.revokeObjectURL(u); }, [blob]);
 
-  // recording takes about as long as the clip, so it only happens when asked for
-  const make = async (l: Loop) => {
-    setRecording(true); setProgress(0); setNote(null);
-    try {
-      setVideo(await recordShareVideo(cat, l, art, setProgress));
-    } catch (e) {
-      setNote((e as Error).message.slice(0, 90)); setMoving(false);
-    } finally { setRecording(false); }
-  };
-  const pick = (l: Loop) => { setLoop(l); setVideo(null); void make(l); };
-  const toggle = (on: boolean) => { setMoving(on); if (on && !video && !recording) void make(loop); };
+  // the preview: drawn on the page, so switching animations is instant
+  useEffect(() => {
+    if (!moving || !canvas.current) return;
+    let stop: (() => void) | null = null;
+    let gone = false;
+    playShareLoop(canvas.current, cat, loop)
+      .then((s) => { if (gone) s(); else stop = s; })
+      .catch((e) => { setNote((e as Error).message.slice(0, 90)); setMoving(false); });
+    void loopSeconds(loop, cat.crowned).then(setSecs).catch(() => setSecs(0));
+    return () => { gone = true; stop?.(); };
+  }, [moving, loop, cat]);
+
   useEffect(() => {
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [onClose]);
 
-  const copy = async () => {
-    try {
-      if (!navigator.clipboard || !('ClipboardItem' in window)) throw new Error('no clipboard');
-      if (moving) throw new Error('video');
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      setNote('Copied. Paste it into your post.');
-    } catch {
-      setNote(moving ? 'A video cannot be copied. Download it, then attach it to your post.' : 'This browser will not copy images. Use Download, then attach it.');
-    }
-    setTimeout(() => setNote(null), 4000);
-  };
-  const save = () => {
-    if (!url) return;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `emogotchi-${cat.name ? cat.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : cat.id}.${moving && video ? video.type : 'png'}`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setNote('Saved to your downloads.');
-    setTimeout(() => setNote(null), 4000);
-  };
-  const post = async () => {
-    if (moving) { save(); } else { await copy(); }
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText(cat))}`, '_blank', 'noopener');
+  const say = (m: string) => { setNote(m); setTimeout(() => setNote(null), 5000); };
+
+  /** Encode the clip, then hand it over. Recording is the slow part, so it only happens on demand. */
+  const withVideo = async (use: (v: { blob: Blob; type: 'mp4' | 'webm' }) => void) => {
+    setRecording(true); setProgress(0); setNote(null);
+    try { use(await recordShareVideo(cat, loop, setProgress)); }
+    catch (e) { say((e as Error).message.slice(0, 90)); }
+    finally { setRecording(false); }
   };
 
+  const download = (b: Blob, ext: string) => {
+    const url = URL.createObjectURL(b);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `emogotchi-${cat.name ? cat.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : cat.id}.${ext}`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  };
+
+  const copy = async () => {
+    if (moving) { say('A video cannot be copied. Download it, then attach it to your post.'); return; }
+    try {
+      if (!navigator.clipboard || !('ClipboardItem' in window)) throw new Error('no clipboard');
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      say('Copied. Paste it into your post.');
+    } catch {
+      say('This browser will not copy images. Use Download, then attach it.');
+    }
+  };
+
+  const save = async () => {
+    if (!moving) { download(blob, 'png'); say('Saved to your downloads.'); return; }
+    await withVideo((v) => { download(v.blob, v.type); say('Saved to your downloads.'); });
+  };
+
+  const post = async () => {
+    const composer = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText(cat))}`, '_blank', 'noopener');
+    if (moving) { await withVideo((v) => { download(v.blob, v.type); composer(); }); }
+    else { await copy(); composer(); }
+  };
+
+  const title = cat.name || `Emogotchi #${cat.id}`;
   return (
     <div className="modal-back" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title">
         <div className="modal-head">
-          <h2 id="share-title">{cat.name || `Emogotchi #${cat.id}`}</h2>
+          <h2 id="share-title">{title}</h2>
           <button className="modal-x" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="share-toggle">
-          <button className={`chip-btn ${!moving ? 'is-on' : ''}`} onClick={() => setMoving(false)}>Still</button>
-          <button className={`chip-btn ${moving ? 'is-on' : ''}`} onClick={() => toggle(true)} disabled={recording}>Animated</button>
+          <button className={`chip-btn ${!moving ? 'is-on' : ''}`} onClick={() => setMoving(false)} disabled={recording}>Still</button>
+          <button className={`chip-btn ${moving ? 'is-on' : ''}`} onClick={() => setMoving(true)} disabled={recording}>Animated</button>
         </div>
         {moving && (
           <div className="share-loops">
             {LOOPS.map((l) => (
-              <button key={l.key} className={`chip-btn ${loop.key === l.key ? 'is-on' : ''}`} onClick={() => pick(l)} disabled={recording} title={l.blurb}>{l.label}</button>
+              <button key={l.key} className={`chip-btn ${loop.key === l.key ? 'is-on' : ''}`} onClick={() => setLoop(l)} disabled={recording} title={l.blurb}>{l.label}</button>
             ))}
           </div>
         )}
         {recording && <div className="share-rec"><span style={{ width: `${Math.round(progress * 100)}%` }} /></div>}
-        {url && (moving && video
-          ? <video className="share-preview" src={url} autoPlay loop muted playsInline />
-          : <img className="share-preview" src={url} alt={`${cat.name || `Emogotchi #${cat.id}`} share card`} />)}
+        <canvas ref={canvas} className="share-preview" hidden={!moving} aria-label={`${title} animated card`} />
+        {!moving && stillUrl && <img className="share-preview" src={stillUrl} alt={`${title} share card`} />}
         <div className="share-actions">
-          <button className="btn btn-pink" onClick={() => void post()}>Post on X</button>
-          <button className="btn btn-ghost" onClick={() => void copy()}>Copy image</button>
-          <button className="btn btn-ghost" onClick={save}>Download</button>
+          <button className="btn btn-pink" onClick={() => void post()} disabled={recording}>Post on X</button>
+          <button className="btn btn-ghost" onClick={() => void copy()} disabled={recording}>Copy image</button>
+          <button className="btn btn-ghost" onClick={() => void save()} disabled={recording}>Download</button>
         </div>
         <p className="modal-fine">{note ?? (recording
-          ? `Recording ${loop.label.toLowerCase()}… this takes about as long as the clip.`
+          ? `Recording ${loop.label.toLowerCase()}… a video can only be made at the speed it plays${secs ? `, about ${secs}s` : ''}.`
           : moving
-            ? 'Post on X saves the video and opens the composer. Attach the file from your downloads.'
+            ? `${loop.blurb}. Post on X records the clip, saves it, and opens the composer${secs ? ` — about ${secs}s` : ''}. Attach the file from your downloads.`
             : 'Post on X copies the picture and opens the composer with the words ready. Press paste to attach it.')}</p>
       </div>
     </div>
