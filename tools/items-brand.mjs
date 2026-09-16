@@ -80,6 +80,10 @@ const page = ({ w, h, items, extra = [], floorAt = 0.84, unit = 0.5, gap = 1.0, 
   }).join('');
   // extras: x/y are the top-left as fractions of the frame, w the width as a fraction of the frame width
   const extras = extra.map((e) => {
+    if (e.shadow) {
+      const ew = w * e.w, eh = ew * 0.16;
+      return `<div class="it" style="left:${w * e.x}px; top:${h * e.y - eh / 2}px; width:${ew}px; height:${eh}px; z-index:${e.z ?? 1}; border-radius:50%; background:radial-gradient(closest-side, rgba(10,4,18,.55), rgba(10,4,18,.25) 55%, transparent 100%)"></div>`;
+    }
     const ew = w * e.w, eh = e.cat ? ew : ew / (AR[e.name] ?? 1);
     const src = e.cat ? cat(e.cat, !!e.crown) : prop(e.name);
     return `<img class="it" style="left:${w * e.x}px; top:${h * e.y}px; width:${ew}px; height:${eh}px; z-index:${e.z ?? 1}; transform:rotate(${e.rot ?? 0}deg)" src="${src}">`;
@@ -91,9 +95,9 @@ html,body { margin:0; width:${w}px; height:${h}px; overflow:hidden; background:$
   background: ${transparent ? 'transparent' : 'radial-gradient(120% 90% at 50% 20%, #3a1f5c 0%, #24123f 55%, #170b2a 100%)'}; }
 .dots { position:absolute; inset:0; background-image: radial-gradient(rgba(234,198,234,0.13) ${h * 0.0029}px, transparent ${h * 0.0031}px);
   background-size:${h * 0.049}px ${h * 0.049}px; -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.9), rgba(0,0,0,.25) 70%, transparent); }
-.floor { position:absolute; left:-5%; right:-5%; top:${floorY - h * 0.075}px; height:${h}px; border-radius:50% 50% 0 0 / ${h * 0.067}px ${h * 0.067}px 0 0;
+.floor { position:absolute; left:-5%; right:-5%; top:${floorY - U * 0.14}px; height:${h}px; border-radius:50% 50% 0 0 / ${h * 0.067}px ${h * 0.067}px 0 0;
   background: linear-gradient(180deg,#2c1a44,#1d1030 60%,#150a24); box-shadow: inset 0 ${h * 0.0044}px 0 rgba(184,148,216,.16); }
-.glow { position:absolute; left:${w / 2 - total / 2 - U * 0.5}px; width:${total + U}px; top:${floorY - U * 0.14}px; height:${U * 0.34}px;
+.glow { position:absolute; left:${w / 2 - total / 2 - U * 0.5}px; width:${total + U}px; top:${floorY - U * 0.17}px; height:${U * 0.34}px;
   border-radius:50%; background: radial-gradient(closest-side, rgba(184,148,216,.24), rgba(184,148,216,.08) 55%, transparent 72%); }
 .it { position:absolute; display:block; }
 .safe { position:absolute; top:0; height:${h}px; left:${(w - safeW) / 2}px; width:${safeW}px; outline:3px dashed rgba(255,120,160,.9); }
@@ -147,39 +151,43 @@ const SHOP = [
   // floor
   { name: 'lockeropen', dx: -0.95, dy: 0, w: 0.63, z: 3 },
   { name: 'cushion', dx: -0.55, dy: 0, w: 0.34, z: 6 },
+  { shadow: true, dx: 0.02, dy: 0.01, w: 0.78, z: 8 },                  // the cat's contact shadow
   { cat: 'content', dx: 0, dy: -0.115, w: 1.0, z: 9 },                 // feet at 0.885 of the box
-  { name: 'crate', dx: 0.72, dy: 0, w: 0.44, z: 5 },
-  { name: 'wand', dx: 0.82, dy: 0.22, w: 0.19, z: 4, rot: 8 },          // standing in the crate
-  { name: 'bag', dx: 1.14, dy: 0, w: 0.28, z: 6 },
-  // shelf 1, right, low. Tags hang off the ends: the tag's string is at the top of its box, so the box
-  // top sits on the shelf's top edge and the body hangs in front of the shelf.
-  { name: 'shelf', dx: 0.85, dy: 0.70, w: 0.72, z: 2 },
-  { name: 'potion', dx: 0.58, dy: 0.74, w: 0.17, z: 3 },
-  { name: 'bell', dx: 0.77, dy: 0.74, w: 0.13, z: 3 },
+  { name: 'crate', dx: 0.74, dy: 0, w: 0.44, z: 5 },
+  { name: 'wand', dx: 0.84, dy: 0.22, w: 0.19, z: 4, rot: 8 },          // standing in the crate
+  { name: 'milk', dx: 1.12, dy: 0, w: 0.17, z: 6 },                     // a carton on the floor by the crate
+  // shelf 1, right, low. A tag's string is at the top of its box, so the box top sits on the shelf's
+  // top edge and the body hangs in front of the shelf.
+  { name: 'shelf', dx: 0.88, dy: 0.70, w: 0.72, z: 2 },
+  { name: 'potion', dx: 0.66, dy: 0.74, w: 0.17, z: 3 },
   { name: 'fish', dx: 1.00, dy: 0.74, w: 0.25, z: 3 },
-  { name: 'pricetag', dx: 1.20, dy: 0.70, w: 0.06, z: 4, rot: 10 },
+  { name: 'pricetag', dx: 1.23, dy: 0.70, w: 0.06, z: 4, rot: 10 },
   // shelf 2, right, high
-  { name: 'shelf', dx: 0.95, dy: 1.10, w: 0.64, z: 2 },
-  { name: 'milk', dx: 0.72, dy: 1.14, w: 0.15, z: 3 },
-  { name: 'bowl', dx: 0.95, dy: 1.14, w: 0.29, z: 3 },
-  { name: 'yarn', dx: 1.17, dy: 1.14, w: 0.17, z: 3 },
-  // shelf 3, left, high, over the cushion
-  { name: 'shelf', dx: -0.50, dy: 1.14, w: 0.46, z: 2 },
-  { name: 'shades', dx: -0.60, dy: 1.18, w: 0.25, z: 3 },
-  { name: 'bow', dx: -0.37, dy: 1.18, w: 0.21, z: 3 },
-  { name: 'pricetag', dx: -0.285, dy: 1.14, w: 0.055, z: 4, rot: -10 },
-  // hooks with hats hanging: the hat's top overlaps the hook's J, so it hangs rather than floats
-  { name: 'hook', dx: 0.42, dy: 1.20, w: 0.07, z: 4 },
-  { name: 'partyhat', dx: 0.42, dy: 1.035, w: 0.17, z: 3 },
-  { name: 'hook', dx: -0.95, dy: 1.26, w: 0.07, z: 4 },
-  { name: 'beanie', dx: -0.95, dy: 1.10, w: 0.21, z: 3 },
+  { name: 'shelf', dx: 0.98, dy: 1.10, w: 0.64, z: 2 },
+  { name: 'bell', dx: 0.76, dy: 1.14, w: 0.13, z: 3 },
+  { name: 'bowl', dx: 0.98, dy: 1.14, w: 0.29, z: 3 },
+  { name: 'yarn', dx: 1.20, dy: 1.14, w: 0.17, z: 3 },
+  // shelf 3 sits over the locker, the locker's own width: the cone lives here, since cones do not hang
+  { name: 'shelf', dx: -0.95, dy: 1.12, w: 0.62, z: 2 },
+  { name: 'partyhat', dx: -1.15, dy: 1.16, w: 0.15, z: 3 },
+  { name: 'shades', dx: -0.93, dy: 1.16, w: 0.24, z: 3 },
+  { name: 'bow', dx: -0.73, dy: 1.16, w: 0.19, z: 3 },
+  { name: 'pricetag', dx: -0.655, dy: 1.12, w: 0.055, z: 4, rot: -10 },
+  // hooks. The hook sits BEHIND what hangs on it: the plate and stem show above, the J is inside the
+  // handles or the crown, and the thing tilts a little the way hung things do.
+  { name: 'hook', dx: 0.42, dy: 1.20, w: 0.09, z: 2 },
+  { name: 'bag', dx: 0.43, dy: 0.985, w: 0.28, z: 3, rot: -5 },          // handles looped over the J
+  { name: 'hook', dx: -0.50, dy: 0.88, w: 0.09, z: 2 },                  // in the gap between locker and cat
+  { name: 'beanie', dx: -0.49, dy: 0.72, w: 0.21, z: 3, rot: -8 },        // crown over the J
 ];
 
 /** Convert the shop to frame fractions for a given frame, cat scale and cat position. */
 const scene = ({ w, h, floorAt, unit, at = 0.5 }) => {
   const U = h * unit, cx = w * at, floorY = h * floorAt;
   const out = SHOP.map((e) => {
-    const ew = U * e.w, eh = e.cat ? ew : ew / (AR[e.name] ?? 1);
+    const ew = U * e.w;
+    if (e.shadow) return { ...e, x: (cx + U * e.dx - ew / 2) / w, y: (floorY + U * (e.dy ?? 0)) / h, w: ew / w };
+    const eh = e.cat ? ew : ew / (AR[e.name] ?? 1);
     const left = cx + U * e.dx - ew / 2, top = floorY - U * e.dy - eh;
     return { ...e, x: left / w, y: top / h, w: ew / w };
   });
@@ -205,8 +213,8 @@ shot('items-banner', { use: 'Page header · 8:3 on desktop, cropped to the middl
 
 // Featured, 3:2.
 shot('items-featured', { use: 'Featured / card · 3:2.',
-  w: 1200, h: 800, floorAt: 0.9, unit: 0.46, items: [],
-  extra: scene({ w: 1200, h: 800, floorAt: 0.9, unit: 0.46 }) });
+  w: 1200, h: 800, floorAt: 0.92, unit: 0.5, items: [],
+  extra: scene({ w: 1200, h: 800, floorAt: 0.92, unit: 0.5 }) });
 
 // X header, 3:1. The avatar covers the bottom-left, so the shop sits right of centre.
 shot('items-x-header', { use: 'X header · 1500×500 (3:1). Avatar covers the bottom-left, so the shop sits right of centre.',
