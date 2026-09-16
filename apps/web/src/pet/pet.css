@@ -43,3 +43,11 @@
 .pet svg.ghost path[fill="#724278"] { fill: #B894D8; }
 .pet svg.ghost path[fill="#906096"] { fill: #B894D8; }
 .pet svg.ghost path[fill="#E84D7F"] { fill: #EAC6EA; }
+
+/* A crowned cat in a costume wears the golden version of it: the crown itself would be hidden under a
+   hat, so the hat carries the status instead. Same drawing, recoloured by fill, like the ghost. The
+   cone takes the crown's pale gold and the brim its darker base gold; band, studs and ruby stay. */
+.pet #witchhat.gold path[fill="#281828"] { fill: #E8D89B; }
+.pet #witchhat.gold path[fill="#502858"] { fill: #D4A646; }
+.pet #witchhat.gold path[stroke="#724278"] { stroke: #A8741F; }
+.pet #witchhat.gold path[stroke="#EAC6EA"] { stroke: #FFFFFF; }

@@ -90,7 +90,11 @@ def tapered(pts, w0, w1, t=0.5, fill=FUR):
         left.append((x+nx*w, y+ny*w)); right.append((x-nx*w, y-ny*w))
     tipx, tipy = c[-1]; x0, y0 = c[-2]; tx, ty = tipx-x0, tipy-y0; L = math.hypot(tx, ty) or 1
     r = w1/2; ang0 = math.atan2(-ty/L, -tx/L) + math.pi/2  # from the left side round the tip
-    tip = [(tipx + r*math.cos(ang0 + math.pi*k/4), tipy + r*math.sin(ang0 + math.pi*k/4)) for k in range(1, 4)]
+    # The arc must run from the left side round to the right, because the polygon is assembled as
+    # left + tip + reversed right. Swept the other way it starts on the right side and ends on the left,
+    # so the outline crosses the tail's width twice at the tip and the stroke on those crossings shows
+    # as a little black dash past the fur. (The on-chain art was baked with the dash; the site is live.)
+    tip = [(tipx + r*math.cos(ang0 + math.pi*k/4), tipy + r*math.sin(ang0 + math.pi*k/4)) for k in range(3, 0, -1)]
     poly_pts = left + tip + right[::-1]
     return [path(smooth_closed(poly_pts, 0.4), fill)]
 

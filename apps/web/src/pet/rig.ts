@@ -305,7 +305,14 @@ export class PetRig {
   }
 
   // ---- toggles ----
+  private crownOn = false;
+  private costumeOn = false;
+  /** Crown + costume = the golden version of the costume, since a hat hides the crown itself. */
+  private gild() {
+    this.el.witchhat?.classList.toggle('gold', this.crownOn && this.costumeOn);
+  }
   setCrown(on: boolean, ms = 240) {
+    this.crownOn = on; this.gild();
     const c = this.el.crown as HTMLElement | null;
     if (!c) return;
     const cur = c.style.opacity === '' ? 1 : Number(c.style.opacity);
@@ -317,6 +324,7 @@ export class PetRig {
    * they are one costume; the pieces fade together.
    */
   setCostume(on: boolean, ms = 240) {
+    this.costumeOn = on; this.gild();
     // Off means display:none, not opacity 0. #body and #figure take their transform pivot from their
     // bounding box, and an invisible robe still widens that box, which moved every cat's squash and
     // crouch pivot by a few pixels. Out of layout entirely until worn.
