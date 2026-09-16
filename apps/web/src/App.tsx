@@ -4,6 +4,7 @@ import type { Director, DirectorState } from './scene/director';
 import type { PropName } from './scene/props';
 import { initial, isDirty, isSad, need, reduce, type Game, type PaidAction } from './game/state';
 import { CHAIN_MODE, chainCfg, chainClient, chainStore, toGame, type ChainSnapshot } from './game/chain';
+import type { CatView } from '@emo-pets/chain';
 import { EMPTY_WALLET, connectDemo, connectInjected, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState } from './wallet';
 import { Header } from './ui/Header';
 import { ConnectModal } from './ui/ConnectModal';
@@ -15,7 +16,8 @@ import { NftArt, NFT_STATES, type NftState } from './ui/NftArt';
 import { DevDrawer, type ViewOverride } from './ui/DevDrawer';
 import { Leaderboard } from './ui/Leaderboard';
 import { BurnBar } from './ui/BurnBar';
-import { downloadShareCard, shareText } from './ui/shareCard';
+import { renderShareCard } from './ui/shareCard';
+import { ShareModal } from './ui/ShareModal';
 import { marketplace } from './links';
 import { Claim } from './ui/Claim';
 import { Gallery } from './ui/Gallery';
@@ -241,18 +243,18 @@ function Home({ petId }: { petId: number | null }) {
 
   // ---- share card: drawn in the browser from the cat's own on-chain picture and numbers ----
   const [shareNote, setShareNote] = useState<string | null>(null);
+  const [shareCard, setShareCard] = useState<{ cat: CatView; blob: Blob } | null>(null);
   const onShare = async () => {
     if (!activeCat || !chainClient) return;
     setShareNote('Drawing…');
     try {
       const svg = await chainClient.artImage(activeCat.alive ? activeCat.mood : 'dead', activeCat.crowned);
-      const how = await downloadShareCard(activeCat, svg);
-      setShareNote(how === 'copied' ? 'Copied and saved · opening X' : 'Saved · opening X');
-      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText(activeCat))}`, '_blank', 'noopener');
+      setShareCard({ cat: activeCat, blob: await renderShareCard(activeCat, svg) });
+      setShareNote(null);
     } catch (e) {
       setShareNote((e as Error).message.slice(0, 60));
+      setTimeout(() => setShareNote(null), 5000);
     }
-    setTimeout(() => setShareNote(null), 5000);
   };
 
   // ---- thought bubble ----
@@ -299,6 +301,7 @@ function Home({ petId }: { petId: number | null }) {
       {which !== 'landing' && which !== 'nopet' && which !== 'loading' && (
         <><BurnBar /><footer className="foot"><span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span><span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/cats">All cats</a> · <a href="/leaderboard">Leaderboard</a> · {catOnChain && <><a href={catOnChain} target="_blank" rel="noreferrer">This cat on chain</a> · </>}{explorer ? <a href={explorer} target="_blank" rel="noreferrer">Contract</a> : 'Contract: soon'}</span></footer></>
       )}
+      {shareCard && <ShareModal cat={shareCard.cat} blob={shareCard.blob} onClose={() => setShareCard(null)} />}
       <ConnectModal open={modal} onClose={() => setModal(false)} onInjected={() => void doInjected()} onDemo={doDemo} error={wallet.error} busy={wallet.status === 'connecting'} />
       {DEV && <DevDrawer director={director} dispatch={dispatch} view={view} setView={setView} crown={crown} setCrown={setCrownOverride} speed={g.speed} onConnectDemo={doDemo} onDisconnect={doDisconnect} live={live} onCrank={() => void chainStore?.crank()} />}
     </div>

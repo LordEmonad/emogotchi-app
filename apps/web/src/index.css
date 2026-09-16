@@ -401,3 +401,10 @@
 .gal-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px; }
 .gal-filter-note { text-align: center; margin: 10px 0 0; max-width: 620px; margin-inline: auto; line-height: 1.5; }
 .share-row { display: flex; justify-content: center; margin-top: -2px; }
+
+/* ---- share card popup */
+.share-modal { max-width: 720px; }
+.share-preview { display: block; width: 100%; height: auto; border-radius: 14px; margin: 4px 0 14px;
+  border: 1px solid rgba(184,148,216,.25); box-shadow: 0 12px 40px rgba(0,0,0,.45); }
+.share-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.share-actions .btn { flex: 1 1 auto; }

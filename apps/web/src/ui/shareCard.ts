@@ -118,25 +118,6 @@ export async function renderShareCard(cat: CatView, svg: string): Promise<Blob> 
   return new Promise<Blob>((resolve, reject) => cv.toBlob((b) => (b ? resolve(b) : reject(new Error('could not make the image'))), 'image/png'));
 }
 
-/** Save it, and copy it to the clipboard where the browser allows. */
-export async function downloadShareCard(cat: CatView, svg: string): Promise<'copied' | 'saved'> {
-  const blob = await renderShareCard(cat, svg);
-  let copied = false;
-  try {
-    if (navigator.clipboard && 'ClipboardItem' in window) {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      copied = true;
-    }
-  } catch { /* Safari and Firefox are fussy; the download still happens */ }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `emogotchi-${cat.name ? cat.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : cat.id}.png`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-  return copied ? 'copied' : 'saved';
-}
-
 /** The X composer, pre-filled. The image has to be attached by hand; X has no way to take it from us. */
 export function shareText(cat: CatView): string {
   const who = cat.name ? `${cat.name} (#${cat.id})` : `Emogotchi #${cat.id}`;
