@@ -112,7 +112,7 @@ writeFileSync(OUT + 'index.html', `<!doctype html><html><head><meta charset="utf
 body{margin:0;background:#0c0614;color:#F8F8FF;font:16px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;padding:32px 20px 80px}h1{font-size:28px;margin:0 0 4px}p.lead{color:#B894D8;margin:0 0 32px}
 .piece{max-width:1200px;margin:0 auto 48px}.piece h2{font-size:17px;margin:0 0 8px;font-weight:600}.piece small{color:#B894D8;font-weight:400;margin-left:8px}
 .frame{background:repeating-conic-gradient(#1a1024 0 25%,#12091b 0 50%) 0 0/28px 28px;border-radius:14px;padding:12px;display:inline-block;max-width:100%}.frame img{display:block;max-width:100%;height:auto;border-radius:8px}
-a{color:#ff7aa6}</style></head><body><h1>Emogotchi brand kit</h1><p class="lead">Every piece is generated from the on-chain cat art by <code>tools/brand.mjs</code>. Right-click → Save, or use the direct link.</p>
+a{color:#ff7aa6}</style></head><body><h1>Emogotchi brand kit</h1><p class="lead">Every piece is generated from the on-chain cat art by <code>tools/brand.mjs</code>. Right-click → Save, or use the direct link. The items collection kit is at <a href="items/">/brand/items/</a>.</p>
 ${written.map((p) => `<div class="piece"><h2>${p.use}<small>${p.px} · ${p.kb} KB · <a href="${p.file}" download>${p.file.replace('../', '')}</a></small></h2><div class="frame"><img src="${p.file}" alt=""></div></div>`).join('')}
 </body></html>`);
 writeFileSync(OUT + 'pieces.json', JSON.stringify(written, null, 2));

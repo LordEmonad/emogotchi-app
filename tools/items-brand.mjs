@@ -14,7 +14,7 @@
 //   beside it, so nothing goes there and there is no text anywhere.
 //
 //   node tools/items-brand.mjs [--guides]
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -95,12 +95,14 @@ html,body { margin:0; width:${w}px; height:${h}px; overflow:hidden; background:#
 ${safe ? '<div class="safe"></div>' : ''}</div></body></html>`;
 };
 
-const shot = (name, { w, h, dpr = 1, ...opts }) => {
+const written = [];
+const shot = (name, { w, h, dpr = 1, use = '', ...opts }) => {
   const file = `${OUT}${name}.png`;
   const tmp = `/tmp/items-${name}.html`;
   writeFileSync(tmp, page({ w, h, safe: GUIDES && opts.showSafe, ...opts }));
   execFileSync(CHROME, ['--headless', '--disable-gpu', '--hide-scrollbars', `--screenshot=${file}`,
     `--window-size=${w},${h}`, `--force-device-scale-factor=${dpr}`, 'file://' + tmp], { stdio: 'ignore' });
+  written.push({ file: `../${name}.png`, name: `${name}.png`, use, px: `${w * dpr}×${h * dpr}`, kb: Math.round(statSync(file).size / 1024) });
   console.log(`  ${name.padEnd(22)} ${w}x${h}`);
 };
 
@@ -112,7 +114,7 @@ console.log('Emogotchi Items brand:');
 
 // Logo, 1:1. OpenSea shows it small and round, so it is one object, big, dead centre.
 // centred in the square, and inside the inscribed circle in case a surface crops it round
-shot('items-logo', { w: 1024, h: 1024, floorAt: 0.875, unit: 0.75, items: [it('witchhat', { size: 1 })] });
+shot('items-logo', { use: 'Collection logo · PNG, 1:1. OpenSea asks for 240×240 minimum; this is 1024 so it stays sharp.', w: 1024, h: 1024, floorAt: 0.875, unit: 0.75, items: [it('witchhat', { size: 1 })] });
 
 // A grouped icon (yarn + hat + bowl) was tried and dropped: at the ~100px OpenSea actually renders a
 // collection logo at, three objects turn to mush. One object, big, survives the thumbnail.
@@ -132,7 +134,7 @@ if (process.argv.includes('--tune')) {
 }
 
 shot('items-banner', {
-  w: 2400, h: 900, floorAt: 0.93, unit: 0.86, gap: 0.10, showSafe: true,
+  use: 'Page header · 8:3 on desktop, cropped to the middle 16:9 on a phone. Same file, two crops.', w: 2400, h: 900, floorAt: 0.93, unit: 0.86, gap: 0.10, showSafe: true,
   // The collection is costumes, so the banner shows a costume being worn. A hat on its own is a nice
   // object; a cat in the hat is the product.
   items: [
@@ -144,11 +146,54 @@ shot('items-banner', {
 
 // Featured / card, 3:2.
 shot('items-featured', {
-  w: 1200, h: 800, floorAt: 0.93, unit: 0.86, gap: 0.12,
+  use: 'Featured / card · 3:2.', w: 1200, h: 800, floorAt: 0.93, unit: 0.86, gap: 0.12,
   items: [
     { cat: 'content', hat: HAT, ar: 1, size: 1.0, z: 9, sink: 0.115, hero: true },
     it('witchhat', { size: 0.34, z: 3 }),
   ],
 });
 
-console.log(`\nwritten to ${OUT}`);
+// A page with everything on it, at /brand/items/. The header previews use object-fit: cover inside a
+// fixed aspect box, which is exactly how a marketplace crops it, so what is on this page is what they
+// will see rather than a promise about it.
+mkdirSync(OUT + 'items/', { recursive: true });
+
+const style = `
+body{margin:0;background:#0c0614;color:#F8F8FF;font:16px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;padding:32px 20px 80px}
+h1{font-size:28px;margin:0 0 4px}p.lead{color:#B894D8;margin:0 0 10px;max-width:780px}
+.piece{max-width:1200px;margin:0 auto 48px}.piece h2{font-size:17px;margin:0 0 8px;font-weight:600}
+.piece small{color:#B894D8;font-weight:400;margin-left:8px}
+.frame{background:repeating-conic-gradient(#1a1024 0 25%,#12091b 0 50%) 0 0/28px 28px;border-radius:14px;padding:12px;display:inline-block;max-width:100%}
+.frame img{display:block;max-width:100%;height:auto;border-radius:8px}
+.crops{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}
+.crop{flex:1 1 320px;min-width:280px}.crop b{font-size:13px;color:#EAC6EA;display:block;margin-bottom:6px}
+.crop .box{border-radius:10px;overflow:hidden;border:1px solid rgba(184,148,216,.25)}
+.crop img{width:100%;height:100%;object-fit:cover;display:block}
+.d{aspect-ratio:8/3}.m{aspect-ratio:16/9}
+.thumbs{display:flex;gap:16px;align-items:center;margin-top:12px}
+.thumbs img{border-radius:10px}
+a{color:#ff7aa6}code{color:#EAC6EA}`;
+
+const block = (p) => {
+  const crops = p.name === 'items-banner.png' ? `<div class="crops">
+  <div class="crop"><b>Desktop · 8:3</b><div class="box d"><img src="${p.file}" alt=""></div></div>
+  <div class="crop"><b>Phone · 16:9, the middle of the same file</b><div class="box m"><img src="${p.file}" alt=""></div></div>
+</div>` : '';
+  const thumbs = p.name === 'items-logo.png' ? `<div class="thumbs"><img src="${p.file}" width="120" height="120" alt="">
+  <img src="${p.file}" width="64" height="64" alt=""><small>how it reads at the sizes a marketplace actually renders it</small></div>` : '';
+  return `<div class="piece"><h2>${p.use}<small>${p.px} · ${p.kb} KB · <a href="${p.file}" download>${p.name}</a></small></h2>
+<div class="frame"><img src="${p.file}" alt=""></div>${thumbs}${crops}</div>`;
+};
+
+writeFileSync(OUT + 'items/index.html', `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Emogotchi Items brand kit</title><style>${style}</style></head><body>
+<h1>Emogotchi Items — brand kit</h1>
+<p class="lead">The costumes and tools collection. Generated from the same room and the same on-chain cat art as
+Emogotchi itself, by <code>tools/items-brand.mjs</code>. The cats kit is at <a href="../">/brand/</a>.</p>
+<p class="lead">A marketplace crops one header file twice: <b>8:3</b> on desktop and <b>16:9</b> on a phone. A 16:9
+slice of an 8:3 image is the middle 66.7% of its width, so nothing that matters may sit outside that band. The round
+collection logo also covers the bottom-left corner, which is why there is no text anywhere on it.</p>
+${written.map(block).join('\n')}
+</body></html>`);
+console.log(`\nwritten to ${OUT}  ·  gallery at /brand/items/`);
