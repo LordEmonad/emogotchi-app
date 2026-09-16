@@ -276,16 +276,16 @@ ${extra.map((e) => { const ew = w * e.w, eh = ew / (AR[e.name] ?? 1); return `<i
   const file = `${OUT}${name}.png`, tmp = `/tmp/items-${name}.html`;
   writeFileSync(tmp, html);
   execFileSync(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', `--screenshot=${file}`, `--window-size=${w},${h}`, 'file://' + tmp], { stdio: 'ignore' });
-  written.push({ file: `../${name}.png`, name: `${name}.png`, use: 'Item card · 1:1. The witch outfit as its token image: the costume alone, on a hanger, no cat, so it fits any character later.', px: `${w}×${h}`, kb: Math.round(statSync(file).size / 1024) });
+  written.push({ file: `../${name}.png`, name: `${name}.png`, use: 'Item card · 1:1. The witch outfit as its token image: the hat, big and centred, no cat, so it fits any character later.', px: `${w}×${h}`, kb: Math.round(statSync(file).size / 1024) });
   console.log(`  ${name.padEnd(22)} ${w}x${h}`);
 };
 itemCard('item-witch', { extra: [
-  // the outfit exactly as it is on the cat, cat removed, tall in the frame with the hem on the plinth glow
-  { name: 'outfit', x: 0.20, y: 0.10, w: 0.60, z: 3, hatDrop: 46 },
-  { name: 'sparkle', x: 0.13, y: 0.24, w: 0.045, z: 2, opacity: 0.9 },
-  { name: 'sparkle', x: 0.83, y: 0.18, w: 0.035, z: 2, opacity: 0.8 },
-  { name: 'sparkle', x: 0.84, y: 0.58, w: 0.05, z: 2, opacity: 0.85 },
-  { name: 'sparkle', x: 0.13, y: 0.66, w: 0.03, z: 2, opacity: 0.7 },
+  // the hat alone, big and centred, brim resting on the plinth glow
+  { name: 'witchhat', x: 0.19, y: 0.164, w: 0.62, z: 5, rot: -4 },
+  { name: 'sparkle', x: 0.12, y: 0.22, w: 0.05, z: 2, opacity: 0.9 },
+  { name: 'sparkle', x: 0.84, y: 0.16, w: 0.04, z: 2, opacity: 0.8 },
+  { name: 'sparkle', x: 0.85, y: 0.62, w: 0.055, z: 2, opacity: 0.85 },
+  { name: 'sparkle', x: 0.11, y: 0.66, w: 0.035, z: 2, opacity: 0.7 },
 ] });
 
 // A page with everything on it, at /brand/items/. The header previews use object-fit: cover inside a
