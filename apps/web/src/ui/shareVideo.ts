@@ -12,10 +12,12 @@ import type { CatView, Mood } from '@emo-pets/chain';
 export type Loop = { key: string; label: string; blurb: string; moods: Mood[]; crown?: boolean };
 
 export const LOOPS: Loop[] = [
-  { key: 'day', label: 'A day in the life', blurb: 'fed, filthy, bored, then asleep', moods: ['happy', 'hungry', 'grubby', 'bored', 'sleepy', 'sleeping', 'content'] },
-  { key: 'neglect', label: 'Neglected', blurb: 'what happens if you forget it', moods: ['happy', 'content', 'hungry', 'sad', 'dead'] },
-  { key: 'crown', label: 'Crowned', blurb: 'the cat wearing it, every mood', moods: ['content', 'happy', 'sleepy', 'sleeping'], crown: true },
-  { key: 'moods', label: 'Every mood', blurb: 'all nine, in order', moods: ['content', 'happy', 'hungry', 'grubby', 'bored', 'sleepy', 'sleeping', 'sad', 'dead'] },
+  // deliberately different from each other: one is *this* cat, one is the story, one is the reward,
+  // one is the whole set. Overlapping mood lists made them look like the same clip four times.
+  { key: 'mine', label: 'Just my cat', blurb: 'how it looks right now, breathing', moods: [] },
+  { key: 'neglect', label: 'Neglected', blurb: 'happy, hungry, sad, gone', moods: ['happy', 'hungry', 'sad', 'dead'] },
+  { key: 'crown', label: 'Crowned', blurb: 'wearing it, awake and asleep', moods: ['happy', 'content', 'sleepy', 'sleeping'], crown: true },
+  { key: 'moods', label: 'Every mood', blurb: 'all nine on chain', moods: ['content', 'happy', 'hungry', 'grubby', 'bored', 'sleepy', 'sleeping', 'sad', 'dead'] },
 ];
 
 const W = 1200, H = 630, FPS = 30, HOLD = 0.9, FADE = 0.45;
@@ -44,7 +46,8 @@ export async function recordShareVideo(
 ): Promise<{ blob: Blob; type: 'mp4' | 'webm' }> {
   await (document as Document & { fonts?: FontFaceSet }).fonts?.ready;
   const crowned = loop.crown ?? cat.crowned;
-  const frames = await Promise.all(loop.moods.map(async (m) => loadSvg(await art(m, crowned))));
+  const moods: Mood[] = loop.moods.length ? loop.moods : [cat.alive ? cat.mood : 'dead'];
+  const frames = await Promise.all(moods.map(async (m) => loadSvg(await art(m, crowned))));
 
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
@@ -59,7 +62,9 @@ export async function recordShareVideo(
   const chunks: BlobPart[] = [];
   rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
 
-  const per = HOLD + FADE;
+  // a single-mood clip has nothing to cross-fade to, so it just breathes for a few seconds
+  const single = frames.length === 1;
+  const per = single ? 4 : HOLD + FADE;
   const total = per * frames.length;
   const totalFrames = Math.round(total * FPS);
 
@@ -77,7 +82,7 @@ export async function recordShareVideo(
     // which two pictures, and how far between them
     const idx = Math.floor(t / per) % frames.length;
     const into = (t % per) - HOLD;
-    const mix = into <= 0 ? 0 : Math.min(1, into / FADE);
+    const mix = single || into <= 0 ? 0 : Math.min(1, into / FADE);
     const a = frames[idx]!, b = frames[(idx + 1) % frames.length]!;
 
     const size = 500, px = 50, py = (H - size) / 2;
@@ -105,16 +110,25 @@ export async function recordShareVideo(
     x.fillText(`#${cat.id} · a cat that lives in a wallet`, L, 264);
 
     // the mood, changing with the picture
-    const showing = mix > 0.5 ? loop.moods[(idx + 1) % frames.length]! : loop.moods[idx]!;
+    const showing = mix > 0.5 ? moods[(idx + 1) % frames.length]! : moods[idx]!;
     x.font = `700 34px ${FONT}`; x.fillStyle = showing === 'dead' ? '#ff7a8a' : '#B894D8';
     x.fillText(showing, L, 344);
 
+    if (single && cat.started && cat.alive) {
+      const stats: [string, string][] = [['CARE SCORE', cat.score.toFixed(0)], ['STREAK', `${cat.streak}d`], ['DAY', `${cat.day}`]];
+      stats.forEach(([label, v], i) => {
+        const sx = L + i * 150;
+        x.font = `700 30px ${FONT}`; x.fillStyle = '#F8F8FF'; x.fillText(v, sx, 420);
+        x.font = `600 12px ${FONT}`; x.fillStyle = 'rgba(248,248,255,0.45)'; x.fillText(label, sx, 440);
+      });
+    }
     // a progress rail, so the loop reads as a cycle
-    const rw = 480, ry = 392;
+    const rw = 480, ry = single ? 476 : 392;
     x.fillStyle = 'rgba(255,255,255,0.12)'; rounded(x, L, ry, rw, 8, 4); x.fill();
     const g = x.createLinearGradient(L, 0, L + rw, 0);
     g.addColorStop(0, '#B894D8'); g.addColorStop(1, '#E84D7F');
-    x.fillStyle = g; rounded(x, L, ry, Math.max(10, (rw * (t % total)) / total), 8, 4); x.fill();
+    if (!single) { x.fillStyle = g; rounded(x, L, ry, Math.max(10, (rw * (t % total)) / total), 8, 4); x.fill(); }
+    else { x.fillStyle = g; rounded(x, L, ry, rw, 8, 4); x.fill(); }
 
     x.font = `600 18px ${FONT}`; x.fillStyle = 'rgba(234,198,234,0.75)';
     x.fillText('emogotchi.emonad.lol', L, H - 90);
