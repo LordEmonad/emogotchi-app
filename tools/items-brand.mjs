@@ -260,9 +260,9 @@ ${extra.map((e) => { const ew = w * e.w, eh = ew / (AR[e.name] ?? 1); return `<i
 };
 itemCard('item-witch', { extra: [
   // the robe at 52% of the frame, hem just above the plinth glow; the hat a quarter of the frame wide,
-  // its brim at the hanger's neck so it perches on the hook above the collar
+  // its brim resting on the collar
   { name: 'robehung', x: 0.24, y: 0.24, w: 0.52, z: 3 },
-  { name: 'witchhat', x: 0.385, y: 0.086, w: 0.24, z: 5, rot: -6 },
+  { name: 'witchhat', x: 0.385, y: 0.118, w: 0.24, z: 5, rot: -6 },
   { name: 'sparkle', x: 0.17, y: 0.26, w: 0.045, z: 2, opacity: 0.9 },
   { name: 'sparkle', x: 0.79, y: 0.20, w: 0.035, z: 2, opacity: 0.8 },
   { name: 'sparkle', x: 0.78, y: 0.60, w: 0.05, z: 2, opacity: 0.85 },

@@ -287,7 +287,7 @@ def witchhat():
     cone = [(34, 106), (36, 82), (42, 58), (52, 36), (65, 18), (77, 7), (88, 4), (96, 9), (96, 16),
             (89, 16), (80, 21), (72, 40), (67, 66), (69, 106)]
     g.append(path(smooth_closed(cone, 0.5), PUPIL, INK, LW))
-    g.append(path("M73,38 Q80,30 88,24", "none", INK, 1.6, 'opacity="0.35"'))       # crease under the curl
+    g.append(path("M58,38 Q64,30 72,25", "none", INK, 1.6, 'opacity="0.35"'))       # crease under the curl, kept inside the cone
     g.append(path("M44,62 Q51,44 62,30", "none", LAV, 2.2, 'opacity="0.22"'))       # soft edge light
     # the band is the collar: black, with the same lavender studs
     g.append(path(smooth_closed([(30, 103), (32, 85), (73, 81), (77, 99)], 0.45), INK, INK, 2.0))
@@ -521,7 +521,7 @@ def robehung():
     """The witch robe as a garment on a hanger, for the item's own picture: no cat in it, so it can be
     sold for any character later. An A-line cloak with the front open in a V on the lining, sleeves in
     front angled out with lining cuffs, a pointed stand-up collar, a clasp at the throat like the hat's
-    buckle, a wavy hem, stars. The hanger's wire is drawn last so it shows over the shoulders."""
+    buckle, a wavy hem, stars. No hanger: the outfit simply stands, the hat resting on the collar."""
     g = []
     cloak = [(38, 68), (30, 120), (24, 170), (20, 216), (30, 238), (56, 242), (80, 236), (100, 240), (120, 236),
              (144, 242), (170, 238), (180, 216), (176, 170), (170, 120), (162, 68), (100, 60)]
@@ -540,10 +540,6 @@ def robehung():
                          ([(134, 68), (142, 50), (130, 36), (108, 48), (106, 68)], [(137, 62), (138, 50), (128, 40), (112, 50)])):
         g.append(path(smooth_closed(wing, 0.4), PUPIL, INK, LW))
         g.append(path(smooth_open(lining, 0.4), "none", STRAND, 3.0, 'opacity="0.85"'))
-    # the hanger, over everything: hook, neck, shoulders
-    wire = "M100,4 Q88,4 88,14 Q88,22 100,24 L100,30 L34,70 L166,70 L100,30"
-    g.append(path(wire, "none", INK, 5.2))
-    g.append(path(wire, "none", GOLD2, 2.8))
     # the clasp at the throat
     g.append(ellipse(100, 82, 7.5, 7.5, "none", INK, 5.0))
     g.append(ellipse(100, 82, 7.5, 7.5, "none", GOLD, 2.6))
