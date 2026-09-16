@@ -40,6 +40,27 @@ const cat = (mood, crown) => {
   return 'data:image/svg+xml;base64,' + Buffer.from(svg, 'latin1').toString('base64');
 };
 
+/**
+ * The outfit as it is on the cat, with the cat removed. The robe the operator likes is the one drawn
+ * into the cat (shaped to its body, sleeves inside its legs), so the item picture is that drawing with
+ * everything that is cat hidden: the robe, both sleeves and the hat stay, floating where the cat was.
+ * The hat drops so the gap above the collar is small rather than the height of a head.
+ */
+const outfitSvg = (hatDrop = 46) => {
+  let svg = readFileSync(root + 'packages/pet/cat.svg', 'utf8')
+    .replace('viewBox="0 0 200 230"', 'viewBox="0 -40 200 262"')
+    .replace(/width="200" height="230"/, 'width="200" height="262"');
+  const css = `<style>
+    #shadow,#tail,#headstack,#head,#crown,#halo,#sweat,#stink,#zzz,#tear{display:none}
+    #body>*:not(#robe):not(#legL):not(#legR){display:none}
+    #legL>*:not(#sleeveL),#legR>*:not(#sleeveR){display:none}
+    #robe,#sleeveL,#sleeveR,#witchhat{display:inline}
+    #witchhat{transform:translateY(${hatDrop}px)}
+  </style>`;
+  svg = svg.replace(/<svg([^>]*)>/, (m) => m + css);
+  return 'data:image/svg+xml;base64,' + Buffer.from(svg, 'utf8').toString('base64');
+};
+
 const prop = (name) => 'data:image/svg+xml;base64,' + Buffer.from(readFileSync(PROPS + name + '.svg', 'utf8'), 'utf8').toString('base64');
 
 /**
@@ -120,7 +141,7 @@ const shot = (name, { w, h, dpr = 1, use = '', ...opts }) => {
 const AR = { witchhat: 120 / 130, yarn: 72 / 74, bowl: 120 / 74, sponge: 64 / 40, coin: 1, moon: 1, sparkle: 1,
   locker: 100 / 202, lockeropen: 126 / 202, pricetag: 44 / 60, bag: 80 / 92, shelf: 200 / 34,
   partyhat: 80 / 100, bow: 90 / 62, shades: 100 / 40, bell: 50 / 58, fish: 90 / 50, potion: 60 / 80, wand: 60 / 110,
-  cushion: 120 / 62, crate: 110 / 82, beanie: 80 / 80, hook: 34 / 40, milk: 60 / 90, robehung: 200 / 250 };
+  cushion: 120 / 62, crate: 110 / 82, beanie: 80 / 80, hook: 34 / 40, milk: 60 / 90, robehung: 200 / 300, outfit: 200 / 262 };
 const it = (name, o = {}) => ({ name, ar: AR[name] ?? 1, ...o });
 
 /**
@@ -250,7 +271,7 @@ html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;background:#000}
   background:radial-gradient(closest-side,rgba(184,148,216,.34),rgba(184,148,216,.12) 55%,transparent 72%)}
 .it{position:absolute;display:block}
 </style></head><body><div class="card"><div class="dots"></div><div class="beam"></div><div class="plinth"></div>
-${extra.map((e) => { const ew = w * e.w, eh = ew / (AR[e.name] ?? 1); return `<img class="it" style="left:${w*e.x}px;top:${h*e.y}px;width:${ew}px;height:${eh}px;z-index:${e.z ?? 1};transform:rotate(${e.rot ?? 0}deg);opacity:${e.opacity ?? 1}" src="${prop(e.name)}">`; }).join('')}
+${extra.map((e) => { const ew = w * e.w, eh = ew / (AR[e.name] ?? 1); return `<img class="it" style="left:${w*e.x}px;top:${h*e.y}px;width:${ew}px;height:${eh}px;z-index:${e.z ?? 1};transform:rotate(${e.rot ?? 0}deg);opacity:${e.opacity ?? 1}" src="${e.name === 'outfit' ? outfitSvg(e.hatDrop) : prop(e.name)}">`; }).join('')}
 </div></body></html>`;
   const file = `${OUT}${name}.png`, tmp = `/tmp/items-${name}.html`;
   writeFileSync(tmp, html);
@@ -259,13 +280,12 @@ ${extra.map((e) => { const ew = w * e.w, eh = ew / (AR[e.name] ?? 1); return `<i
   console.log(`  ${name.padEnd(22)} ${w}x${h}`);
 };
 itemCard('item-witch', { extra: [
-  // the robe at 48% of the frame, hem on the plinth glow; the hat floats a small gap above the collar
-  { name: 'robehung', x: 0.26, y: 0.27, w: 0.48, z: 3 },
-  { name: 'witchhat', x: 0.39, y: 0.088, w: 0.23, z: 5, rot: -6 },
-  { name: 'sparkle', x: 0.17, y: 0.26, w: 0.045, z: 2, opacity: 0.9 },
-  { name: 'sparkle', x: 0.79, y: 0.20, w: 0.035, z: 2, opacity: 0.8 },
-  { name: 'sparkle', x: 0.78, y: 0.60, w: 0.05, z: 2, opacity: 0.85 },
-  { name: 'sparkle', x: 0.19, y: 0.68, w: 0.03, z: 2, opacity: 0.7 },
+  // the outfit exactly as it is on the cat, cat removed, tall in the frame with the hem on the plinth glow
+  { name: 'outfit', x: 0.20, y: 0.10, w: 0.60, z: 3, hatDrop: 46 },
+  { name: 'sparkle', x: 0.13, y: 0.24, w: 0.045, z: 2, opacity: 0.9 },
+  { name: 'sparkle', x: 0.83, y: 0.18, w: 0.035, z: 2, opacity: 0.8 },
+  { name: 'sparkle', x: 0.84, y: 0.58, w: 0.05, z: 2, opacity: 0.85 },
+  { name: 'sparkle', x: 0.13, y: 0.66, w: 0.03, z: 2, opacity: 0.7 },
 ] });
 
 // A page with everything on it, at /brand/items/. The header previews use object-fit: cover inside a
