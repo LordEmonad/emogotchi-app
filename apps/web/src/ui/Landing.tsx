@@ -17,6 +17,7 @@ export function Landing({ stage, onConnect, connecting, claimHref = null }: Prop
           <div className="cta-row">
             <button className="btn btn-pink btn-lg" onClick={onConnect} disabled={connecting}>{connecting ? 'Connecting…' : 'Connect wallet'}</button>
             {claimHref && <a className="btn btn-ghost btn-lg" href={claimHref}>Am I on the claim list?</a>}
+            {marketplace() && <a className="btn btn-ghost btn-lg" href={marketplace()!} target="_blank" rel="noreferrer">Buy one on OpenSea</a>}
             <a className="btn btn-ghost btn-lg" href="#how">How it works</a>
           </div>
           <p className="fine">Works on a PC, or in your mobile wallet's browser on your phone.</p>
