@@ -154,7 +154,6 @@ const SHOP = [
   { shadow: true, dx: 0.02, dy: 0.01, w: 0.78, z: 8 },                  // the cat's contact shadow
   { cat: 'content', dx: 0, dy: -0.115, w: 1.0, z: 9 },                 // feet at 0.885 of the box
   { name: 'crate', dx: 0.74, dy: 0, w: 0.44, z: 5 },
-  { name: 'wand', dx: 0.84, dy: 0.22, w: 0.19, z: 4, rot: 8 },          // standing in the crate
   { name: 'milk', dx: 1.12, dy: 0, w: 0.17, z: 6 },                     // a carton on the floor by the crate
   // shelf 1, right, low. A tag's string is at the top of its box, so the box top sits on the shelf's
   // top edge and the body hangs in front of the shelf.
@@ -201,8 +200,16 @@ const scene = ({ w, h, floorAt, unit, at = 0.5 }) => {
 };
 
 // Logo: the locker, closed, with the heart padlock and the stickers. One shape that reads at 100px.
-shot('items-logo', { use: 'Collection logo · PNG, 1:1. OpenSea asks for 240×240 minimum; this is 1024 so it stays sharp.',
-  w: 1024, h: 1024, floorAt: 0.905, unit: 0.86, items: [it('locker', { size: 1, hero: true })] });
+{
+  const w = 1024, h = 1024, floorAt = 0.9, unit = 0.72;
+  const lh = h * 0.72, lw = lh * AR.locker;
+  shot('items-logo', { use: 'Collection logo · PNG, 1:1. OpenSea asks for 240×240 minimum; this is 1024 so it stays sharp.',
+    w, h, floorAt, unit, items: [],
+    extra: [
+      { shadow: true, x: 0.5 - 0.21, y: floorAt + 0.008, w: 0.42, z: 2 },
+      { name: 'locker', x: (w / 2 - lw / 2) / w, y: floorAt - lh / h, w: lw / w, z: 3 },
+    ] });
+}
 shot('items-logo-transparent', { use: 'Logo on transparent · 1024×1024. For overlays and avatars.',
   w: 1024, h: 1024, floorAt: 0.94, unit: 0.9, transparent: true, items: [it('locker', { size: 1, hero: true })] });
 
