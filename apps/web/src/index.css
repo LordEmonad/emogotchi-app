@@ -418,3 +418,10 @@
 .pager-btn.is-on { background: var(--pink, #E84D7F); border-color: transparent; color: #1a0620; font-weight: 700; }
 .pager-gap { color: rgba(248,248,255,.35); padding: 0 2px; }
 .pager-of { width: 100%; text-align: center; font-size: 12.5px; color: rgba(248,248,255,.45); margin-top: 6px; }
+
+/* ---- share: still or animated */
+.share-toggle, .share-loops { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 10px; }
+.share-loops .chip-btn { font-size: 12.5px; padding: 6px 12px; }
+.share-rec { height: 5px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; margin: 0 0 10px; }
+.share-rec > span { display: block; height: 100%; background: linear-gradient(90deg,#B894D8,#E84D7F); transition: width .12s linear; }
+video.share-preview { background: #170b2a; }
