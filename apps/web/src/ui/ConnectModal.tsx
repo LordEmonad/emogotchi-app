@@ -42,13 +42,8 @@ export function ConnectModal({ open, onClose, onInjected, onDemo, error, busy }:
               <a className="wallet-opt" href={links.okx}><span className="wallet-opt-ico">⭕️</span><span className="wallet-opt-text"><b>OKX Wallet</b><small>Opens in OKX's browser</small></span><span className="wallet-opt-go">→</span></a>
             </>
           ) : (
-            <p className="wallet-hint">No browser wallet found. Install MetaMask, Rabby or Phantom, or open this page on your phone inside your wallet app.</p>
+            <p className="wallet-hint">No wallet found in this browser. Install MetaMask, Rabby or Phantom, or open this page on your phone inside your wallet app's own browser.</p>
           )}
-          <button className="wallet-opt is-soon" disabled>
-            <span className="wallet-opt-ico">🔗</span>
-            <span className="wallet-opt-text"><b>WalletConnect</b><small>Scan from any mobile wallet · coming with launch</small></span>
-            <span className="wallet-opt-go">soon</span>
-          </button>
         </div>
         {error && <p className="modal-err">{error}</p>}
         <button className="modal-demo" onClick={onDemo}>Just looking? <b>Try the demo cat</b> without a wallet</button>
