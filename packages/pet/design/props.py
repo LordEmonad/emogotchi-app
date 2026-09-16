@@ -7,7 +7,7 @@ for the rig (food layers in the bowl, stink lines on the poop, ...).
 import os, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cat import (INK, FUR, HAIR, STRAND, PURPLE, LAV, LAV2, PINK, GOLD, GOLD2, RUBY, GREEN, TEAL, PUPIL,
-                 LW, LD, smooth_closed, smooth_open, poly, path, ellipse, tube)
+                 LW, LD, smooth_closed, smooth_open, poly, path, ellipse, tube, tapered)
 from wobble import bake
 
 OUT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
@@ -518,38 +518,50 @@ def milk():
 
 
 def robehung():
-    """The witch robe as a garment on a hanger, for the item's own picture: no cat in it, so it can be
-    sold for any character later. An A-line cloak with the front open in a V on the lining, sleeves in
-    front angled out with lining cuffs, a pointed stand-up collar, a clasp at the throat like the hat's
-    buckle, a wavy hem, stars. No hanger: the outfit simply stands, the hat resting on the collar."""
+    """The witch robe as a garment, for the item's own picture: no cat in it, so it can be sold for any
+    character later. Sloped shoulders, an A-line cloak to a scalloped hem, drape lines so it reads as
+    cloth, the front open in a V on the lining with gold piping down the edges, long bell sleeves in
+    front with lining cuffs, a pointed stand-up collar, a ruby clasp at the throat like the hat's
+    buckle, a crescent and stars. No hanger; the hat floats a little above it in the card."""
     g = []
-    cloak = [(38, 68), (30, 120), (24, 170), (20, 216), (30, 238), (56, 242), (80, 236), (100, 240), (120, 236),
-             (144, 242), (170, 238), (180, 216), (176, 170), (170, 120), (162, 68), (100, 60)]
+    cloak = [(46, 82), (32, 126), (22, 172), (18, 214), (26, 238), (44, 243), (62, 237), (80, 243), (100, 238),
+             (120, 243), (138, 237), (156, 243), (174, 238), (182, 214), (178, 172), (168, 126), (154, 82),
+             (134, 70), (100, 74), (66, 70)]
     g.append(path(smooth_closed(cloak, 0.45), PUPIL, INK, LW))
-    g.append(path(smooth_closed([(93, 74), (107, 74), (128, 236), (72, 236)], 0.25), PURPLE, "none", 0))     # the V of lining
-    g.append(path(smooth_open([(94, 76), (84, 150), (74, 234)]), "none", INK, 2.2, 'opacity="0.75"'))
-    g.append(path(smooth_open([(106, 76), (116, 150), (126, 234)]), "none", INK, 2.2, 'opacity="0.75"'))
-    g.append(path(smooth_open([(100, 90), (98, 160), (100, 228)]), "none", STRAND, 2.4, 'opacity="0.5"'))
-    g.append(path(smooth_open([(30, 226), (60, 234), (100, 230), (140, 234), (170, 226)]), "none", PURPLE, 3.2, 'opacity="0.6"'))
-    # sleeves, in front of the cloak, angled out, ending in lining cuffs
-    for sx, dx in ((48, -1), (152, 1)):
-        g += tube([(sx, 74), (sx + dx * 10, 122), (sx + dx * 18, 168)], 22, PUPIL)
-        g.append(f'<g transform="rotate({dx * 14} {sx + dx * 19} 171)">' + ellipse(sx + dx * 19, 171, 12, 6.5, PURPLE, INK, 1.8) + '</g>')
-    # a pointed stand-up collar with a thin lining stripe along its inner edge
-    for wing, lining in (([(66, 68), (58, 50), (70, 36), (92, 48), (94, 68)], [(63, 62), (62, 50), (72, 40), (88, 50)]),
-                         ([(134, 68), (142, 50), (130, 36), (108, 48), (106, 68)], [(137, 62), (138, 50), (128, 40), (112, 50)])):
+    # drape
+    for pts in ([(50, 112), (44, 170), (40, 226)], [(64, 124), (60, 178), (58, 228)], [(150, 112), (156, 170), (160, 226)], [(136, 124), (140, 178), (142, 228)]):
+        g.append(path(smooth_open(pts, 0.5), "none", STRAND, 1.8, 'opacity="0.35"'))
+    # the V of lining, its edges, gold piping just inside them, a fold down the middle
+    g.append(path(smooth_closed([(92, 78), (108, 78), (130, 238), (70, 238)], 0.25), PURPLE, "none", 0))
+    g.append(path(smooth_open([(93, 80), (82, 158), (72, 236)]), "none", INK, 2.2, 'opacity="0.8"'))
+    g.append(path(smooth_open([(107, 80), (118, 158), (128, 236)]), "none", INK, 2.2, 'opacity="0.8"'))
+    g.append(path(smooth_open([(95.5, 82), (85, 158), (75, 234)]), "none", GOLD, 1.5, 'opacity="0.9"'))
+    g.append(path(smooth_open([(104.5, 82), (115, 158), (125, 234)]), "none", GOLD, 1.5, 'opacity="0.9"'))
+    g.append(path(smooth_open([(100, 94), (98, 160), (100, 230)]), "none", STRAND, 2.2, 'opacity="0.45"'))
+    g.append(path(smooth_open([(28, 228), (60, 236), (100, 232), (140, 236), (172, 228)]), "none", PURPLE, 3.0, 'opacity="0.55"'))
+    # bell sleeves, in front, long and tapering out to a wide cuff
+    for sx, dx in ((46, -1), (154, 1)):
+        g += tapered([(sx, 80), (sx + dx * 6, 130), (sx + dx * 14, 184)], 20, 30, 0.5, PUPIL)
+        g.append(f'<g transform="rotate({dx * 10} {sx + dx * 14} 186)">' + ellipse(sx + dx * 14, 186, 15, 6.5, PURPLE, INK, 1.8) + '</g>')
+        g.append(f'<g transform="rotate({dx * 10} {sx + dx * 14} 186)">' + ellipse(sx + dx * 14, 186, 9, 3.4, STRAND, "none", 0, 'opacity="0.6"') + '</g>')
+    # pointed stand-up collar: two lapels folded back to show the lining
+    for wing, lin in (([(70, 76), (62, 62), (68, 48), (90, 58), (94, 76)], [(73, 71), (67, 61), (72, 53), (87, 61), (90, 71)]),
+                      ([(130, 76), (138, 62), (132, 48), (110, 58), (106, 76)], [(127, 71), (133, 61), (128, 53), (113, 61), (110, 71)])):
         g.append(path(smooth_closed(wing, 0.4), PUPIL, INK, LW))
-        g.append(path(smooth_open(lining, 0.4), "none", STRAND, 3.0, 'opacity="0.85"'))
-    # the clasp at the throat
-    g.append(ellipse(100, 82, 7.5, 7.5, "none", INK, 5.0))
-    g.append(ellipse(100, 82, 7.5, 7.5, "none", GOLD, 2.6))
-    g.append(ellipse(100, 82, 3.2, 3.0, RUBY, INK, 1.2))
-    g.append(_glint(99, 81, 0.9))
+        g.append(path(smooth_closed(lin, 0.4), STRAND, "none", 0, 'opacity="0.9"'))
+    # clasp
+    g.append(ellipse(100, 86, 7.5, 7.5, "none", INK, 5.0))
+    g.append(ellipse(100, 86, 7.5, 7.5, "none", GOLD, 2.6))
+    g.append(ellipse(100, 86, 3.2, 3.0, RUBY, INK, 1.2))
+    g.append(_glint(99, 85, 0.9))
+    # a crescent on the left panel, stars on both
+    g.append(ellipse(52, 150, 7.5, 7.5, LAV, "none", 0, 'opacity="0.9"'))
+    g.append(ellipse(55, 148, 6.2, 6.2, PUPIL, "none", 0))
     def star(cx, cy, r):
         return path(f"M{cx},{cy-r} L{cx+r*0.28},{cy-r*0.28} L{cx+r},{cy} L{cx+r*0.28},{cy+r*0.28} L{cx},{cy+r} "
                     f"L{cx-r*0.28},{cy+r*0.28} L{cx-r},{cy} L{cx-r*0.28},{cy-r*0.28} Z", LAV, "none", 0, 'opacity="0.85"')
-    g.append(star(56, 200, 3.4)); g.append(star(66, 140, 2.6)); g.append(star(144, 160, 3.2)); g.append(star(150, 214, 2.6))
-    svg("robehung", 200, 248, g)
+    g.append(star(40, 200, 3.2)); g.append(star(62, 108, 2.4)); g.append(star(150, 140, 3.2)); g.append(star(160, 208, 2.6)); g.append(star(140, 96, 2))
+    svg("robehung", 200, 250, g)
 
 
 for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat, locker, lockeropen, pricetag, bag, shelf,

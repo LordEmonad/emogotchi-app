@@ -120,7 +120,7 @@ const shot = (name, { w, h, dpr = 1, use = '', ...opts }) => {
 const AR = { witchhat: 120 / 130, yarn: 72 / 74, bowl: 120 / 74, sponge: 64 / 40, coin: 1, moon: 1, sparkle: 1,
   locker: 100 / 202, lockeropen: 126 / 202, pricetag: 44 / 60, bag: 80 / 92, shelf: 200 / 34,
   partyhat: 80 / 100, bow: 90 / 62, shades: 100 / 40, bell: 50 / 58, fish: 90 / 50, potion: 60 / 80, wand: 60 / 110,
-  cushion: 120 / 62, crate: 110 / 82, beanie: 80 / 80, hook: 34 / 40, milk: 60 / 90, robehung: 200 / 248 };
+  cushion: 120 / 62, crate: 110 / 82, beanie: 80 / 80, hook: 34 / 40, milk: 60 / 90, robehung: 200 / 250 };
 const it = (name, o = {}) => ({ name, ar: AR[name] ?? 1, ...o });
 
 /**
@@ -259,10 +259,9 @@ ${extra.map((e) => { const ew = w * e.w, eh = ew / (AR[e.name] ?? 1); return `<i
   console.log(`  ${name.padEnd(22)} ${w}x${h}`);
 };
 itemCard('item-witch', { extra: [
-  // the robe at 52% of the frame, hem just above the plinth glow; the hat a quarter of the frame wide,
-  // its brim resting on the collar
-  { name: 'robehung', x: 0.24, y: 0.24, w: 0.52, z: 3 },
-  { name: 'witchhat', x: 0.385, y: 0.118, w: 0.24, z: 5, rot: -6 },
+  // the robe at 48% of the frame, hem on the plinth glow; the hat floats a small gap above the collar
+  { name: 'robehung', x: 0.26, y: 0.27, w: 0.48, z: 3 },
+  { name: 'witchhat', x: 0.39, y: 0.088, w: 0.23, z: 5, rot: -6 },
   { name: 'sparkle', x: 0.17, y: 0.26, w: 0.045, z: 2, opacity: 0.9 },
   { name: 'sparkle', x: 0.79, y: 0.20, w: 0.035, z: 2, opacity: 0.8 },
   { name: 'sparkle', x: 0.78, y: 0.60, w: 0.05, z: 2, opacity: 0.85 },
