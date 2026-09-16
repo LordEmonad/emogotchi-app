@@ -34,9 +34,11 @@ export function ConnectModal({ open, onClose, onInjected, onDemo, error, busy }:
             </button>
           ) : mobile ? (
             <>
-              <p className="wallet-hint">Open this page inside your wallet app's browser:</p>
+              <p className="wallet-hint">Open this page inside your wallet app's own browser. Any wallet with a built-in browser works, even if it is not listed: look for a Browser or DApps tab and type emogotchi.emonad.lol.</p>
               <a className="wallet-opt" href={links.metamask}><span className="wallet-opt-ico">🦊</span><span className="wallet-opt-text"><b>MetaMask</b><small>Opens emogotchi.emonad.lol in MetaMask</small></span><span className="wallet-opt-go">→</span></a>
               <a className="wallet-opt" href={links.phantom}><span className="wallet-opt-ico">👻</span><span className="wallet-opt-text"><b>Phantom</b><small>Opens in Phantom's browser</small></span><span className="wallet-opt-go">→</span></a>
+              <a className="wallet-opt" href={links.safepal}><span className="wallet-opt-ico">🛡️</span><span className="wallet-opt-text"><b>SafePal</b><small>Opens in SafePal's browser</small></span><span className="wallet-opt-go">→</span></a>
+              <a className="wallet-opt" href={links.trust}><span className="wallet-opt-ico">🔷</span><span className="wallet-opt-text"><b>Trust Wallet</b><small>Opens in Trust's browser</small></span><span className="wallet-opt-go">→</span></a>
               <a className="wallet-opt" href={links.okx}><span className="wallet-opt-ico">⭕️</span><span className="wallet-opt-text"><b>OKX Wallet</b><small>Opens in OKX's browser</small></span><span className="wallet-opt-go">→</span></a>
             </>
           ) : (

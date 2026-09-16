@@ -98,4 +98,6 @@ export const walletLinks = (url: string) => ({
   phantom: `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
   rabby: `rabby://dapp?url=${encodeURIComponent(url)}`,
   okx: `okx://wallet/dapp/url?dappUrl=${encodeURIComponent(url)}`,
+  safepal: `safepalwallet://open_url?url=${encodeURIComponent(url)}`,
+  trust: `https://link.trustwallet.com/open_url?url=${encodeURIComponent(url)}`,
 });
