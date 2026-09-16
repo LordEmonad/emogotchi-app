@@ -37,7 +37,7 @@ const matches = (c: CatView, f: Filter) =>
   : f === 'asleep' ? c.alive && !c.started
   : /* care */ c.alive && c.started && (c.poop || c.food < 35 || c.clean < 35 || c.fun < 35 || c.energy < 35);
 
-type CatIndex = { generatedAt: string; block: number; named: number[]; died: number[] };
+type CatIndex = { generatedAt: string; block?: number; live?: boolean; named: number[]; died: number[] };
 const PAGE = 60;
 
 const ago = (s: number) => {
@@ -66,9 +66,20 @@ export function Gallery() {
   const [wallet, setWallet] = useState<Address | null>(null);
   const [index, setIndex] = useState<CatIndex | null>(null);
 
-  // the published index of named and dead cats: ids only, their state is still read from the contract
+  /**
+   * Which cats are named or dead, across the whole collection. `/api/cats` is a Cloudflare Worker that
+   * asks HyperSync and is at most 30 seconds behind the chain, so a cat named a minute ago shows up.
+   * If it is unreachable the site falls back to the snapshot it shipped with, which is stale but never
+   * wrong about the cats it does list.
+   */
   useEffect(() => {
-    void fetch('/index/cats.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).then(setIndex).catch(() => setIndex(null));
+    let dead = false;
+    const take = (j: CatIndex | null) => { if (!dead && j && Array.isArray(j.named)) setIndex(j); };
+    void fetch('/api/cats', { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('worker'))))
+      .then(take)
+      .catch(() => fetch('/index/cats.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).then(take).catch(() => {}));
+    return () => { dead = true; };
   }, []);
 
   /** one distinct portrait per mood+crown, fetched once, all at the same time */
@@ -184,7 +195,7 @@ export function Gallery() {
       )}
       {INDEXED.includes(filter) && index && rows?.length ? (
         <p className="gallery-count tnum gal-filter-note">
-          Every {filter === 'named' ? 'named' : 'dead'} cat in the collection, as of block {index.block.toLocaleString()}. Their numbers below are live.
+          Every {filter === 'named' ? 'named' : 'dead'} cat in the collection{index.live ? '' : index.block ? `, as of block ${index.block.toLocaleString()}` : ''}. Their numbers below are read live from the contract.
         </p>
       ) : null}
       <div className="gallery-grid">
