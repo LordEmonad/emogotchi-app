@@ -198,7 +198,8 @@ export class PetRig {
   constructor(private root: SVGSVGElement) {
     for (const id of ['cat', 'figure', 'shadow', 'tail', 'headstack', 'earL', 'earR', 'hairback', 'body', 'pendant', 'head', 'eyeL', 'eyeR', 'mouth',
       'fringe', 'crown', 'crownlift', 'glintL', 'glintC', 'glintR', 'sweat', 'tear', 'dirt', 'stink', 'zzz', 'legL', 'legR', 'footL', 'footR',
-      'mouth-idle', 'mouth-smug', 'mouth-open', 'mouth-smile', 'mouth-frown', 'mouth-yum', 'whiskers', 'halo']) {
+      'mouth-idle', 'mouth-smug', 'mouth-open', 'mouth-smile', 'mouth-frown', 'mouth-yum', 'whiskers', 'halo',
+      'witchhat', 'robe', 'sleeveL', 'sleeveR']) {
       this.el[id] = root.querySelector('#' + id);
     }
     this.q.set('pupil', [...root.querySelectorAll('.pupil')]);
@@ -217,7 +218,7 @@ export class PetRig {
 
   get currentMood() { return this.mood; }
   /** Face, back hair and crown always move as one unit around the neck pivot (pet.css gives all three the same origin). */
-  private get heads(): Element[] { return [this.el.head, this.el.headstack, this.el.crown].filter((e): e is Element => !!e); }
+  private get heads(): Element[] { return [this.el.head, this.el.headstack, this.el.crown, this.el.witchhat].filter((e): e is Element => !!e); }
 
   private show(e: Element | null | undefined, opacity: number) {
     if (!e) return;
@@ -241,7 +242,7 @@ export class PetRig {
     for (const l of this.q.get('lid') ?? []) A(l, K.blink, { duration: 9200, iterations: Infinity });
     A(this.el.tail, K.sway, { duration: 3200, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' });
     A(this.el.body, K.breathe, { duration: 3200, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' });
-    for (const id of ['head', 'headstack', 'crown']) A(this.el[id], K.headBob, { duration: 3200, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out', delay: -250 });
+    for (const id of ['head', 'headstack', 'crown', 'witchhat']) A(this.el[id], K.headBob, { duration: 3200, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out', delay: -250 });
     for (const p of this.q.get('pupil') ?? []) A(p, K.pupilDrift, { duration: 14000, iterations: Infinity, easing: 'ease-in-out' });
     A(this.el.earL, K.earTwitch, { duration: 7000, iterations: Infinity });
     A(this.el.pendant, K.pendantIdle, { duration: 5500, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' });
@@ -310,6 +311,24 @@ export class PetRig {
     const cur = c.style.opacity === '' ? 1 : Number(c.style.opacity);
     if ((cur > 0.5) === on) return;
     this.fade(c, on ? 1 : 0, ms);
+  }
+  /**
+   * The witch outfit: hat in the head unit, robe in the body, a sleeve in each leg. One switch, because
+   * they are one costume; the pieces fade together.
+   */
+  setCostume(on: boolean, ms = 240) {
+    // Off means display:none, not opacity 0. #body and #figure take their transform pivot from their
+    // bounding box, and an invisible robe still widens that box, which moved every cat's squash and
+    // crouch pivot by a few pixels. Out of layout entirely until worn.
+    for (const id of ['witchhat', 'robe', 'sleeveL', 'sleeveR']) {
+      const e = this.el[id] as HTMLElement | null;
+      if (!e) continue;
+      if (on) { e.style.display = 'inline'; e.style.opacity = '0'; this.fade(e, 1, ms); }
+      else if (e.style.display === 'inline') { this.fade(e, 0, ms); setTimeout(() => { if (e.style.opacity === '0') e.style.display = 'none'; }, ms + 20); }
+    }
+    // the halo floats over the hair; with a hat on it has to clear the tip of the cone instead
+    const halo = this.el.halo as HTMLElement | null;
+    if (halo) halo.style.transform = on ? 'translateY(-56px)' : '';
   }
   private stinkAnims: Animation[] = [];
   setDirty(on: boolean) {
@@ -597,7 +616,7 @@ export class PetRig {
       L(this.el.figure, K.hop2, o); L(this.el.figure, rock, o); L(this.el.shadow, K.shadowHop, o);
       L(this.el.legL, leg(1), o); L(this.el.legR, leg(-1), o);
       L(this.el.footL, K.feetDangle, o); L(this.el.footR, K.feetDangle, o);
-      L(this.el.head, K.headLag, o); L(this.el.headstack, K.headLag, o); L(this.el.crown, K.headLag, o);
+      L(this.el.head, K.headLag, o); L(this.el.headstack, K.headLag, o); L(this.el.crown, K.headLag, o); L(this.el.witchhat, K.headLag, o);
       L(this.el.fringe, K.fringeLag, o); L(this.el.earL, K.earBounce, o); L(this.el.earR, K.earBounce, o);
       L(this.el.pendant, pend, o); L(this.el.tail, tail, o);
       void M;
@@ -694,7 +713,7 @@ export class PetRig {
   async chomp(dir: Dir) {
     this.face(undefined, 'open', 90);
     const p = this.shot(360, (A) => {
-      A(this.el.head, K.chompHead); A(this.el.headstack, K.chompHead); A(this.el.crown, K.chompHead); A(this.el.figure, [{ transform: 'none' }, { transform: 'translateY(1.5px) scaleY(0.99)', offset: 0.45 }, { transform: 'none' }]);
+      A(this.el.head, K.chompHead); A(this.el.headstack, K.chompHead); A(this.el.crown, K.chompHead); A(this.el.witchhat, K.chompHead); A(this.el.figure, [{ transform: 'none' }, { transform: 'translateY(1.5px) scaleY(0.99)', offset: 0.45 }, { transform: 'none' }]);
       A(dir < 0 ? this.el.earL : this.el.earR, K.earWiggle);
     });
     await wait(190);
@@ -703,12 +722,12 @@ export class PetRig {
   }
   async lick() {
     this.face('happy', 'yum', 160);
-    await this.shot(760, (A) => { A(this.el.head, K.lickHead); A(this.el.headstack, K.lickHead); A(this.el.crown, K.lickHead); });
+    await this.shot(760, (A) => { A(this.el.head, K.lickHead); A(this.el.headstack, K.lickHead); A(this.el.crown, K.lickHead); A(this.el.witchhat, K.lickHead); });
   }
   /** Shake off water. */
   shake() {
     return this.shot(760, (A) => {
-      A(this.el.head, K.shakeHead); A(this.el.headstack, K.shakeHead); A(this.el.crown, K.shakeHead); A(this.el.figure, K.shakeBody);
+      A(this.el.head, K.shakeHead); A(this.el.headstack, K.shakeHead); A(this.el.crown, K.shakeHead); A(this.el.witchhat, K.shakeHead); A(this.el.figure, K.shakeBody);
       A(this.el.earL, K.shakeEar); A(this.el.earR, K.shakeEar); A(this.el.fringe, K.shakeFringe); A(this.el.pendant, K.pendantSwing);
     });
   }
@@ -716,7 +735,7 @@ export class PetRig {
   async stretch() {
     const ms = 1500;
     const p = this.shot(ms, (A) => {
-      A(this.el.figure, K.stretchBody); A(this.el.head, K.stretchHead); A(this.el.headstack, K.stretchHead); A(this.el.crown, K.stretchHead);
+      A(this.el.figure, K.stretchBody); A(this.el.head, K.stretchHead); A(this.el.headstack, K.stretchHead); A(this.el.crown, K.stretchHead); A(this.el.witchhat, K.stretchHead);
       A(this.el.legL, K.legStretch); A(this.el.legR, K.legStretch);
       A(this.el.earL, K.perkL, { delay: ms * 0.65, duration: ms * 0.35 }); A(this.el.earR, K.perkR, { delay: ms * 0.65, duration: ms * 0.35 });
       A(this.el.tail, [{ transform: 'none', offset: 0 }, { transform: 'rotate(-14deg)', offset: 0.45 }, { transform: 'rotate(-14deg)', offset: 0.68 }, { transform: 'none', offset: 1 }]);

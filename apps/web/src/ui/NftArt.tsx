@@ -19,7 +19,7 @@ const SIZE = 1024; const CAT_W = 620; const CAT_H = CAT_W * 230 / 200; const FLO
  * One square portrait, 1024 world units scaled to its box. `still` freezes the pose after the
  * state has eased in (portrait renders); otherwise the cat idles.
  */
-export function NftArt({ state, still = false, crown = false, onReady }: { state: NftState; still?: boolean; crown?: boolean; onReady?: () => void }) {
+export function NftArt({ state, still = false, crown = false, costume, onReady }: { state: NftState; still?: boolean; crown?: boolean; costume?: string; onReady?: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [k, setK] = useState(1);
   const [rig, setRig] = useState<PetRig | null>(null);
@@ -33,6 +33,7 @@ export function NftArt({ state, still = false, crown = false, onReady }: { state
     if (!rig) return;
     rig.busy = true; // no idle flourishes in a portrait
     rig.setCrown(crown, 0);
+    rig.setCostume(costume === 'witch', 0);
     switch (state) {
       case 'happy': rig.face('happy', 'smile', 0); break;
       case 'hungry': rig.face('open', 'frown', 0); rig.look(0.4, 0.5); break;
@@ -49,6 +50,9 @@ export function NftArt({ state, still = false, crown = false, onReady }: { state
     return () => clearTimeout(t);
   }, [rig, state, still, crown, onReady]);
   const night = state === 'sleeping'; const dead = state === 'dead';
+  // a hat rises above the cat's own box, and the ghost floats up further with a halo over the hat, so a
+  // costumed cat is drawn 10% smaller to keep all of that inside the frame
+  const catW = costume ? 560 : CAT_W; const catH = catW * 230 / 200;
   return (
     <div ref={box} className="nft-art" data-state={state} data-night={night ? 'on' : 'off'} style={{ aspectRatio: '1 / 1' }}>
       <div className="nft-world" style={{ width: SIZE, height: SIZE, transform: `scale(${k})` }}>
@@ -56,13 +60,13 @@ export function NftArt({ state, still = false, crown = false, onReady }: { state
         {night && <div className="nft-moon" dangerouslySetInnerHTML={{ __html: PROPS.moon }} />}
         <div className="nft-floor" style={{ top: FLOOR - 40 }} />
         <div className="nft-rug" style={{ top: FLOOR - 6 }} />
-        <div className="nft-cat" style={{ width: CAT_W, height: CAT_H, left: (SIZE - CAT_W) / 2, top: FLOOR - CAT_H * (212 / 230) + (dead ? -70 : 0) }}>
+        <div className="nft-cat" style={{ width: catW, height: catH, left: (SIZE - catW) / 2, top: FLOOR - catH * (212 / 230) + (dead ? -70 : 0) }}>
           <Pet onRig={setRig} style={{ width: '100%', height: '100%' }} />
         </div>
         {dead && <div className="nft-prop" style={{ left: 512 + 200 - 75, top: FLOOR + 26 - 161, width: 150, height: 161 }} dangerouslySetInnerHTML={{ __html: PROPS.grave }} />}
         {state === 'grubby' && <div className="nft-prop" style={{ left: 512 - 262 - 75, top: FLOOR + 22 - 135, width: 150, height: 135 }} dangerouslySetInnerHTML={{ __html: PROPS.poop }} />}
         {(state === 'hungry' || state === 'bored') && (
-          <div className="nft-thought" style={{ left: 512 + 150, top: FLOOR - CAT_H - 30 }}>
+          <div className="nft-thought" style={{ left: 512 + 150, top: FLOOR - catH - 30 }}>
             <div className="thought-cloud" dangerouslySetInnerHTML={{ __html: PROPS.thought }} />
             <div className="thought-icon" dangerouslySetInnerHTML={{ __html: PROPS[state === 'hungry' ? 'bowl' : 'yarn'] }} />
           </div>

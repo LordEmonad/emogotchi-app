@@ -10,6 +10,7 @@ import { Header } from './ui/Header';
 import { ConnectModal } from './ui/ConnectModal';
 import { Landing } from './ui/Landing';
 import { Faq } from './ui/Faq';
+import { CostumeLab } from './ui/CostumeLab';
 import { SiteFooter } from './ui/SiteFooter';
 import { PetView, type CatTab } from './ui/PetView';
 import { NoPet } from './ui/NoPet';
@@ -31,6 +32,7 @@ const NAME_KEY = 'emogotchi.name';
 const readName = () => { try { return localStorage.getItem(NAME_KEY) ?? ''; } catch { return ''; } };
 const params = new URLSearchParams(location.search);
 const DEV = params.has('dev');
+const COSTUME = params.get('costume');   // ?costume=witch dresses the cat, for the costume lab and portraits
 const EMPTY: DirectorState = { x: 300, dir: 1, busy: null, poop: false, sleeping: false, inTub: false, dead: false };
 const EMPTY_SNAP: ChainSnapshot = { owner: null, cats: [], activeId: null, spectator: null, totals: null, loaded: false, pending: null, pendingLabel: '', error: null, log: [] };
 
@@ -39,10 +41,11 @@ export function App() {
   const path = location.pathname.replace(/\/+$/, '') || '/';
   if (path === '/nft') {
     const card = params.get('card') as NftState | null;
-    if (card && (NFT_STATES as readonly string[]).includes(card)) return <div className="card-only"><NftArt state={card} still crown={params.has('crown')} onReady={() => { (window as unknown as { __card_ready?: boolean }).__card_ready = true; }} /></div>;
+    if (card && (NFT_STATES as readonly string[]).includes(card)) return <div className="card-only"><NftArt state={card} still crown={params.has('crown')} costume={COSTUME ?? undefined} onReady={() => { (window as unknown as { __card_ready?: boolean }).__card_ready = true; }} /></div>;
     return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><NftPreview /><SiteFooter /></div>;
   }
   if (path === '/claim') return <Claim />;
+  if (path === '/costume') return <CostumeLab />;
   if (path === '/faq') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><main className="landing"><Faq /></main><SiteFooter /></div>;
   if (path === '/leaderboard') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Leaderboard /><SiteFooter /></div>;
   if (path === '/cats' || path === '/collection') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Gallery /><SiteFooter /></div>;
@@ -135,6 +138,7 @@ function Home({ petId }: { petId: number | null }) {
   useEffect(() => { director?.setSad(sad); }, [director, sad]);
   useEffect(() => { director?.setDirty(dirty); }, [director, dirty]);
   useEffect(() => { director?.setCrown(crown); }, [director, crown]);
+  useEffect(() => { director?.setCostume(COSTUME === 'witch'); }, [director]);
 
   // ---- events the world raises on its own (demo: from the clock; live: from the contract) ----
   const poopFired = useRef(false);

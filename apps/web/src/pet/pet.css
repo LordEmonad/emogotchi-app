@@ -5,7 +5,7 @@
 .pet #cat, .pet #figure, .pet #shadow, .pet #eyeL, .pet #eyeR, .pet #tail, .pet #fringe, .pet #crown, .pet #crownlift,
 .pet #earL, .pet #earR, .pet #head, .pet #headstack, .pet #body, .pet #pendant, .pet .pupil, .pet .lid,
 .pet #legL, .pet #legR, .pet #footL, .pet #footR, .pet #glintL, .pet #glintC, .pet #glintR, .pet #sweat, .pet #tear,
-.pet #zzz .z, .pet #stink .s, .pet #dirt, .pet #mouth {
+.pet #zzz .z, .pet #stink .s, .pet #dirt, .pet #mouth, .pet #witchhat, .pet #robe, .pet #sleeveL, .pet #sleeveR {
   transform-box: fill-box;
 }
 .pet #eyeL, .pet #eyeR { transform-origin: 50% 55%; }
@@ -14,7 +14,7 @@
 .pet #fringe { transform-origin: 20% 10%; }
 .pet #crown, .pet #crownlift { transform-origin: 50% 70%; }
 /* the head unit (face, back hair, crown) pivots at the neck; one shared point so nothing detaches */
-.pet #head, .pet #headstack, .pet #crown { transform-box: view-box; transform-origin: 100px 132px; }
+.pet #head, .pet #headstack, .pet #crown, .pet #witchhat { transform-box: view-box; transform-origin: 100px 132px; }
 .pet #body { transform-origin: 50% 100%; }
 .pet #cat, .pet #figure { transform-origin: 50% 100%; }
 .pet #shadow { transform-origin: 50% 50%; }

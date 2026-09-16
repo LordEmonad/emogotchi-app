@@ -82,6 +82,7 @@ export class Director {
   setSad(on: boolean) { this.sad = on; if (!this.isBusy) this.settleMood(); }
   setDirty(on: boolean) { this.rig.setDirty(on); }
   setCrown(on: boolean) { this.rig.setCrown(on); }
+  setCostume(on: boolean) { this.rig.setCostume(on); }
   private settleMood() {
     if (this.destroyed) return;
     this.rig.setMood(this.st.dead ? 'idle' : this.st.sleeping ? 'sleep' : this.sad ? 'sad' : 'idle');

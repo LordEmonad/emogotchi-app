@@ -211,6 +211,27 @@ def build():
 
     # hips, hind feet, torso, front legs, wristbands, collar and pendant
     g.append('<g id="body">')
+    # witch robe (costume; hidden until worn). First in the body group so it squashes and crouches
+    # with the body. A dark cape from under the collar, out past the hips to a wavy hem, lining on
+    # the inner edges, a stand-up collar behind the cheeks, a few stars. Its right edge stops short of
+    # the tail, so the tail comes out from under the hem instead of through the panel. The sleeves
+    # live inside the leg groups so they swing with the legs.
+    g.append('<g id="robe" display="none">')
+    g.append(path(smooth_closed([(62, 134), (36, 152), (24, 178), (22, 202), (30, 212), (48, 214), (70, 212), (100, 215),
+                                 (128, 212), (146, 213), (158, 210), (163, 196), (165, 176), (156, 152), (138, 134),
+                                 (100, 140)], 0.4), PUPIL, INK, LW))
+    g.append(path(smooth_open([(57, 141), (40, 162), (31, 190), (35, 209)]), "none", PURPLE, 4.4, 'opacity="0.8"'))
+    g.append(path(smooth_open([(143, 141), (157, 162), (162, 190), (157, 208)]), "none", PURPLE, 4.4, 'opacity="0.8"'))
+    for wing in ([(60, 136), (48, 124), (42, 110), (57, 108), (71, 121), (74, 137)],
+                 [(140, 136), (152, 124), (158, 110), (143, 108), (129, 121), (126, 137)]):
+        g.append(path(smooth_closed(wing, 0.45), PUPIL, INK, LW))
+    g.append(path(smooth_closed([(51, 127), (46, 116), (57, 114), (67, 125), (67, 135)], 0.45), STRAND, "none", 0, 'opacity="0.85"'))
+    g.append(path(smooth_closed([(149, 127), (154, 116), (143, 114), (133, 125), (133, 135)], 0.45), STRAND, "none", 0, 'opacity="0.85"'))
+    def star(cx, cy, r):
+        return path(f"M{cx},{cy-r} L{cx+r*0.28},{cy-r*0.28} L{cx+r},{cy} L{cx+r*0.28},{cy+r*0.28} L{cx},{cy+r} "
+                    f"L{cx-r*0.28},{cy+r*0.28} L{cx-r},{cy} L{cx-r*0.28},{cy-r*0.28} Z", LAV, "none", 0, 'opacity="0.85"')
+    g.append(star(30, 190, 3.2)); g.append(star(40, 170, 2.2)); g.append(star(27, 206, 1.7)); g.append(star(160, 176, 2.2))
+    g.append('</g>')
     g.append(path(smooth_closed(hipL, 0.6), FUR))
     g.append(path(smooth_closed(hipR, 0.6), FUR))
     for fid, fx, toes in (("footL", 50, (46, 52)), ("footR", 150, (148, 154))):
@@ -228,6 +249,15 @@ def build():
     for lid_, (a, b), pawx, toes in (("legL", legL, 78, (72, 80)), ("legR", legR, 122, (120, 128))):
         g.append(f'<g id="{lid_}" class="leg">')
         g += tube([a, b], LEG_W, FUR)
+        # robe sleeve (costume; hidden until worn): the upper leg in the robe's cloth, a lining cuff,
+        # the paw and the wristband left out. In the leg group so it swings with the leg.
+        g.append(f'<g id="sleeve{lid_[-1]}" class="robe" display="none">')
+        g += tube([a, lerp(a, b, 0.60)], LEG_W + 6, PUPIL)
+        dx_, dy_ = b[0]-a[0], b[1]-a[1]; L_ = math.hypot(dx_, dy_); nx_, ny_ = -dy_/L_, dx_/L_
+        c0, c1 = lerp(a, b, 0.53), lerp(a, b, 0.62); hw = (LEG_W + 6) / 2 - 0.4
+        g.append(path(poly([(c0[0]+nx_*hw, c0[1]+ny_*hw), (c1[0]+nx_*hw, c1[1]+ny_*hw),
+                            (c1[0]-nx_*hw, c1[1]-ny_*hw), (c0[0]-nx_*hw, c0[1]-ny_*hw)]), PURPLE, INK, 1.8))
+        g.append('</g>')
         g.append(ellipse(pawx, 203, 14.5, 8, FUR))
         for lx in toes:
             g.append(path(f"M{lx},210 L{lx},204.5", "none", INK, LD))
@@ -369,6 +399,31 @@ def build():
     g.append(spark("glintC", 100, 8, 10))
     g.append(spark("glintR", 120, 12, 7))
     g.append('</g></g></g></g>')
+
+    # witch hat (costume; hidden until worn). Lives in the head unit like the crown so every head
+    # movement carries it. Brim first, then the cone seated on it, so the band stays in view: the band
+    # is the cat's own collar (black, lavender studs) and the buckle carries a ruby like the crown.
+    # The ears poke up through the brim.
+    g.append(f'<g id="witchhat" display="none"><g {HEAD_T}>')
+    g.append('<g transform="rotate(-5 100 44)">')
+    g.append(path(smooth_closed([(36, 40), (50, 31), (74, 27), (100, 26), (126, 27), (150, 31), (164, 40),
+                                 (154, 50), (130, 55), (100, 57), (70, 55), (46, 50)], 0.5), HAIR, INK, LW))   # brim
+    g.append(path("M44,45 Q100,39 156,45", "none", STRAND, 1.8, 'opacity="0.65"'))
+    g.append(ellipse(100, 44, 34, 4.5, PUPIL, "none", 0, 'opacity="0.3"'))                    # cone seats on the brim
+    g.append(ellipse(56, 47, 5, 1.8, "#FFFFFF", "none", 0, 'opacity="0.18"'))
+    cone = [(62, 38), (67, 16), (76, -6), (90, -22), (106, -32), (122, -32), (136, -26), (146, -16), (150, -6),
+            (146, -8), (138, -18), (126, -20), (116, -12), (118, 0), (126, 22), (138, 38), (100, 44)]
+    g.append(path(smooth_closed(cone, 0.5), PUPIL, INK, LW))
+    g.append(path("M120,-20 Q128,-24 136,-23", "none", INK, 1.5, 'opacity="0.35"'))        # crease under the curl
+    g.append(path("M72,26 Q79,8 90,-8", "none", LAV, 2.0, 'opacity="0.2"'))                  # edge light
+    g.append(path(smooth_closed([(62, 38), (66, 25), (100, 31), (134, 25), (138, 38), (100, 44)], 0.45), INK, INK, 1.8))   # band
+    for sx, sy in ((74, 34), (82, 36), (118, 36), (126, 34)):
+        g.append(f'<circle cx="{sx}" cy="{sy}" r="2.2" fill="{LAV}" stroke="none"/>')
+    g.append(path("M94,32 L106,31.5 L106.5,43 L94.5,43.5 Z", "none", INK, 4.6))              # buckle, ink under
+    g.append(path("M94,32 L106,31.5 L106.5,43 L94.5,43.5 Z", "none", GOLD, 2.6))             # gold over
+    g.append(ellipse(100.3, 37.5, 2.8, 2.5, RUBY, INK, 1.2))
+    g.append(f'<circle cx="99.5" cy="36.7" r="0.8" fill="#FFFFFF" stroke="none"/>')
+    g.append('</g></g></g>')
     # halo (dead): a gold ring floating over the hair
     g.append('<g id="halo" display="none">')
     g.append(ellipse(100, 14, 24, 6.5, "none", INK, LW))

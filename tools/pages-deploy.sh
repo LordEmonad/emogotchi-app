@@ -9,12 +9,12 @@ cd "$HERE"
 node tools/index-named.mjs || echo "(index not refreshed: no HyperSync token; the site keeps the last one)"
 pnpm build
 cd "$PAGES"
-rm -rf assets nft index.html og.png favicon.svg brand claim anim faq
+rm -rf assets nft index.html og.png favicon.svg brand claim anim faq costume
 cp -R "$HERE/apps/web/dist/." .
 cp index.html 404.html                     # SPA fallback for /pet/<id>, which cannot be pre-generated
 # Every route people share gets a real page. Without this GitHub Pages answers 404 for them: the page
 # still renders through the fallback, but a 404 status breaks link previews and looks broken to crawlers.
-for route in claim cats collection leaderboard nft faq; do
+for route in claim cats collection leaderboard nft faq costume; do
   mkdir -p "$route" && cp index.html "$route/index.html"
 done
 git add -A
