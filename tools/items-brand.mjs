@@ -120,7 +120,7 @@ const shot = (name, { w, h, dpr = 1, use = '', ...opts }) => {
 const AR = { witchhat: 120 / 130, yarn: 72 / 74, bowl: 120 / 74, sponge: 64 / 40, coin: 1, moon: 1, sparkle: 1,
   locker: 100 / 202, lockeropen: 126 / 202, pricetag: 44 / 60, bag: 80 / 92, shelf: 200 / 34,
   partyhat: 80 / 100, bow: 90 / 62, shades: 100 / 40, bell: 50 / 58, fish: 90 / 50, potion: 60 / 80, wand: 60 / 110,
-  cushion: 120 / 62, crate: 110 / 82, beanie: 80 / 80, hook: 34 / 40, milk: 60 / 90 };
+  cushion: 120 / 62, crate: 110 / 82, beanie: 80 / 80, hook: 34 / 40, milk: 60 / 90, robehung: 200 / 248 };
 const it = (name, o = {}) => ({ name, ar: AR[name] ?? 1, ...o });
 
 /**
@@ -233,14 +233,41 @@ shot('items-og', { use: 'Link preview (Open Graph / X card) · 2400×1260 (1.91:
   w: 2400, h: 1260, floorAt: 0.9, unit: 0.5, items: [],
   extra: scene({ w: 2400, h: 1260, floorAt: 0.9, unit: 0.5 }) });
 
-// Item card, 1:1: the template every item token image uses. The witch hat is the first.
-shot('item-witchhat', { use: 'Item card · 1:1. The template every item token image uses; this one is the witch hat.',
-  w: 1024, h: 1024, floorAt: 0.99, unit: 0.05, items: [],
-  extra: [
-    { name: 'shelf', x: 0.14, y: 0.70, w: 0.72, z: 2 },
-    { name: 'witchhat', x: 0.235, y: 0.135, w: 0.53, z: 5 },
-    { name: 'pricetag', x: 0.71, y: 0.69, w: 0.075, z: 6, rot: 14 },
-  ] });
+// Item card, 1:1: the picture an item token carries. Just the costume, on a hanger, so it can be sold
+// for any character drawn later. Its own backdrop rather than the room: a spotlight from above, a
+// plinth glow below, sparkles, the way an in-game shop presents a piece of gear.
+const itemCard = (name, { w = 1024, h = 1024, extra = [] } = {}) => {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;background:#000}
+.card{position:relative;width:${w}px;height:${h}px;overflow:hidden;
+  background:radial-gradient(70% 55% at 50% 42%,#4a2a6e 0%,#2e1a4c 45%,#170b2a 100%)}
+.dots{position:absolute;inset:0;background-image:radial-gradient(rgba(234,198,234,.14) 2.6px,transparent 2.9px);background-size:44px 44px;
+  -webkit-mask-image:radial-gradient(60% 60% at 50% 45%,rgba(0,0,0,.9),transparent)}
+.beam{position:absolute;left:50%;top:-8%;width:64%;height:118%;transform:translateX(-50%);
+  background:linear-gradient(180deg,rgba(234,198,234,.16),rgba(234,198,234,.05) 55%,transparent 80%);
+  clip-path:polygon(38% 0,62% 0,100% 100%,0 100%)}
+.plinth{position:absolute;left:50%;top:${h*0.84}px;width:${w*0.62}px;height:${h*0.09}px;transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(closest-side,rgba(184,148,216,.34),rgba(184,148,216,.12) 55%,transparent 72%)}
+.it{position:absolute;display:block}
+</style></head><body><div class="card"><div class="dots"></div><div class="beam"></div><div class="plinth"></div>
+${extra.map((e) => { const ew = w * e.w, eh = ew / (AR[e.name] ?? 1); return `<img class="it" style="left:${w*e.x}px;top:${h*e.y}px;width:${ew}px;height:${eh}px;z-index:${e.z ?? 1};transform:rotate(${e.rot ?? 0}deg);opacity:${e.opacity ?? 1}" src="${prop(e.name)}">`; }).join('')}
+</div></body></html>`;
+  const file = `${OUT}${name}.png`, tmp = `/tmp/items-${name}.html`;
+  writeFileSync(tmp, html);
+  execFileSync(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', `--screenshot=${file}`, `--window-size=${w},${h}`, 'file://' + tmp], { stdio: 'ignore' });
+  written.push({ file: `../${name}.png`, name: `${name}.png`, use: 'Item card · 1:1. The witch outfit as its token image: the costume alone, on a hanger, no cat, so it fits any character later.', px: `${w}×${h}`, kb: Math.round(statSync(file).size / 1024) });
+  console.log(`  ${name.padEnd(22)} ${w}x${h}`);
+};
+itemCard('item-witch', { extra: [
+  // the robe at 52% of the frame, hem just above the plinth glow; the hat a quarter of the frame wide,
+  // its brim at the hanger's neck so it perches on the hook above the collar
+  { name: 'robehung', x: 0.24, y: 0.24, w: 0.52, z: 3 },
+  { name: 'witchhat', x: 0.385, y: 0.086, w: 0.24, z: 5, rot: -6 },
+  { name: 'sparkle', x: 0.17, y: 0.26, w: 0.045, z: 2, opacity: 0.9 },
+  { name: 'sparkle', x: 0.79, y: 0.20, w: 0.035, z: 2, opacity: 0.8 },
+  { name: 'sparkle', x: 0.78, y: 0.60, w: 0.05, z: 2, opacity: 0.85 },
+  { name: 'sparkle', x: 0.19, y: 0.68, w: 0.03, z: 2, opacity: 0.7 },
+] });
 
 // A page with everything on it, at /brand/items/. The header previews use object-fit: cover inside a
 // fixed aspect box, which is exactly how a marketplace crops it, so what is on this page is what they

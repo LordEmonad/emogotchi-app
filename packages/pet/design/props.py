@@ -7,7 +7,7 @@ for the rig (food layers in the bowl, stink lines on the poop, ...).
 import os, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cat import (INK, FUR, HAIR, STRAND, PURPLE, LAV, LAV2, PINK, GOLD, GOLD2, RUBY, GREEN, TEAL, PUPIL,
-                 LW, LD, smooth_closed, smooth_open, poly, path, ellipse)
+                 LW, LD, smooth_closed, smooth_open, poly, path, ellipse, tube)
 from wobble import bake
 
 OUT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
@@ -517,6 +517,45 @@ def milk():
     svg("milk", 60, 90, g)
 
 
+def robehung():
+    """The witch robe as a garment on a hanger, for the item's own picture: no cat in it, so it can be
+    sold for any character later. An A-line cloak with the front open in a V on the lining, sleeves in
+    front angled out with lining cuffs, a pointed stand-up collar, a clasp at the throat like the hat's
+    buckle, a wavy hem, stars. The hanger's wire is drawn last so it shows over the shoulders."""
+    g = []
+    cloak = [(38, 68), (30, 120), (24, 170), (20, 216), (30, 238), (56, 242), (80, 236), (100, 240), (120, 236),
+             (144, 242), (170, 238), (180, 216), (176, 170), (170, 120), (162, 68), (100, 60)]
+    g.append(path(smooth_closed(cloak, 0.45), PUPIL, INK, LW))
+    g.append(path(smooth_closed([(93, 74), (107, 74), (128, 236), (72, 236)], 0.25), PURPLE, "none", 0))     # the V of lining
+    g.append(path(smooth_open([(94, 76), (84, 150), (74, 234)]), "none", INK, 2.2, 'opacity="0.75"'))
+    g.append(path(smooth_open([(106, 76), (116, 150), (126, 234)]), "none", INK, 2.2, 'opacity="0.75"'))
+    g.append(path(smooth_open([(100, 90), (98, 160), (100, 228)]), "none", STRAND, 2.4, 'opacity="0.5"'))
+    g.append(path(smooth_open([(30, 226), (60, 234), (100, 230), (140, 234), (170, 226)]), "none", PURPLE, 3.2, 'opacity="0.6"'))
+    # sleeves, in front of the cloak, angled out, ending in lining cuffs
+    for sx, dx in ((48, -1), (152, 1)):
+        g += tube([(sx, 74), (sx + dx * 10, 122), (sx + dx * 18, 168)], 22, PUPIL)
+        g.append(f'<g transform="rotate({dx * 14} {sx + dx * 19} 171)">' + ellipse(sx + dx * 19, 171, 12, 6.5, PURPLE, INK, 1.8) + '</g>')
+    # a pointed stand-up collar with a thin lining stripe along its inner edge
+    for wing, lining in (([(66, 68), (58, 50), (70, 36), (92, 48), (94, 68)], [(63, 62), (62, 50), (72, 40), (88, 50)]),
+                         ([(134, 68), (142, 50), (130, 36), (108, 48), (106, 68)], [(137, 62), (138, 50), (128, 40), (112, 50)])):
+        g.append(path(smooth_closed(wing, 0.4), PUPIL, INK, LW))
+        g.append(path(smooth_open(lining, 0.4), "none", STRAND, 3.0, 'opacity="0.85"'))
+    # the hanger, over everything: hook, neck, shoulders
+    wire = "M100,4 Q88,4 88,14 Q88,22 100,24 L100,30 L34,70 L166,70 L100,30"
+    g.append(path(wire, "none", INK, 5.2))
+    g.append(path(wire, "none", GOLD2, 2.8))
+    # the clasp at the throat
+    g.append(ellipse(100, 82, 7.5, 7.5, "none", INK, 5.0))
+    g.append(ellipse(100, 82, 7.5, 7.5, "none", GOLD, 2.6))
+    g.append(ellipse(100, 82, 3.2, 3.0, RUBY, INK, 1.2))
+    g.append(_glint(99, 81, 0.9))
+    def star(cx, cy, r):
+        return path(f"M{cx},{cy-r} L{cx+r*0.28},{cy-r*0.28} L{cx+r},{cy} L{cx+r*0.28},{cy+r*0.28} L{cx},{cy+r} "
+                    f"L{cx-r*0.28},{cy+r*0.28} L{cx-r},{cy} L{cx-r*0.28},{cy-r*0.28} Z", LAV, "none", 0, 'opacity="0.85"')
+    g.append(star(56, 200, 3.4)); g.append(star(66, 140, 2.6)); g.append(star(144, 160, 3.2)); g.append(star(150, 214, 2.6))
+    svg("robehung", 200, 248, g)
+
+
 for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat, locker, lockeropen, pricetag, bag, shelf,
-           partyhat, bow, shades, bell, fish, potion, wand, cushion, crate, beanie, hook, milk):
+           partyhat, bow, shades, bell, fish, potion, wand, cushion, crate, beanie, hook, milk, robehung):
     fn()
