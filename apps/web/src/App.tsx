@@ -5,10 +5,12 @@ import type { PropName } from './scene/props';
 import { initial, isDirty, isSad, need, reduce, type Game, type PaidAction } from './game/state';
 import { CHAIN_MODE, chainCfg, chainClient, chainStore, toGame, type ChainSnapshot } from './game/chain';
 import type { CatView } from '@emo-pets/chain';
-import { EMPTY_WALLET, connectDemo, connectInjected, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState } from './wallet';
+import { EMPTY_WALLET, connectDemo, connectInjected, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState, connectWalletConnect, restoreWalletConnect } from './wallet';
 import { Header } from './ui/Header';
 import { ConnectModal } from './ui/ConnectModal';
 import { Landing } from './ui/Landing';
+import { Faq } from './ui/Faq';
+import { SiteFooter } from './ui/SiteFooter';
 import { PetView, type CatTab } from './ui/PetView';
 import { NoPet } from './ui/NoPet';
 import { NftPreview } from './ui/NftPreview';
@@ -38,11 +40,12 @@ export function App() {
   if (path === '/nft') {
     const card = params.get('card') as NftState | null;
     if (card && (NFT_STATES as readonly string[]).includes(card)) return <div className="card-only"><NftArt state={card} still crown={params.has('crown')} onReady={() => { (window as unknown as { __card_ready?: boolean }).__card_ready = true; }} /></div>;
-    return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><NftPreview /></div>;
+    return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><NftPreview /><SiteFooter /></div>;
   }
   if (path === '/claim') return <Claim />;
-  if (path === '/leaderboard') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Leaderboard /><footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/cats">All cats</a> · <a href="/nft">NFT preview</a></span></footer></div>;
-  if (path === '/cats' || path === '/collection') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Gallery /><footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/leaderboard">Leaderboard</a></span></footer></div>;
+  if (path === '/faq') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><main className="landing"><Faq /></main><SiteFooter /></div>;
+  if (path === '/leaderboard') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Leaderboard /><SiteFooter /></div>;
+  if (path === '/cats' || path === '/collection') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Gallery /><SiteFooter /></div>;
   const pet = /^\/pet\/(\d+)$/.exec(path);
   return <Home petId={pet ? Number(pet[1]) : null} />;
 }
@@ -101,6 +104,17 @@ function Home({ petId }: { petId: number | null }) {
         try { await ensureChain(chainCfg.chain.id, chainCfg.chain.name, chainCfg.rpcUrl, chainCfg.explorer); w.chainId = chainCfg.chain.id; } catch { /* the banner asks again */ }
       }
       setWallet(w); setModal(false);
+    } catch (e) { setWallet((w) => ({ ...w, status: 'idle', error: (e as Error).message || 'Connection was cancelled.' })); } finally { connecting.current = false; }
+  };
+  // WalletConnect: for a desktop with no extension, or a phone browser that is not a wallet's own.
+  const doWalletConnect = async () => {
+    if (connecting.current) return;
+    if (!chainCfg) { setWallet((w) => ({ ...w, error: 'This build is not pointed at a network.' })); return; }
+    connecting.current = true;
+    setWallet((w) => ({ ...w, status: 'connecting', error: null }));
+    try {
+      setWallet(await connectWalletConnect(chainCfg.chain.id, chainCfg.rpcUrl));
+      setModal(false);
     } catch (e) { setWallet((w) => ({ ...w, status: 'idle', error: (e as Error).message || 'Connection was cancelled.' })); } finally { connecting.current = false; }
   };
   const doDemo = () => { setWallet(connectDemo()); setModal(false); };
@@ -299,10 +313,10 @@ function Home({ petId }: { petId: number | null }) {
       {which === 'nopet' && <NoPet address={wallet.address ?? '0x0000…0000'} onDemo={() => { if (live) doDemo(); else setHasPet(true); }} />}
       {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onShare={live && activeCat ? () => void onShare() : undefined} shareNote={shareNote} onTab={(id) => { setAllMode(false); chainStore?.setActive(id); }} all={allCounts ? { on: allOn, counts: allCounts } : undefined} onAll={() => setAllMode(true)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} />}
       {which !== 'landing' && which !== 'nopet' && which !== 'loading' && (
-        <><BurnBar /><footer className="foot"><span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span><span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/cats">All cats</a> · <a href="/leaderboard">Leaderboard</a> · {catOnChain && <><a href={catOnChain} target="_blank" rel="noreferrer">This cat on chain</a> · </>}{explorer ? <a href={explorer} target="_blank" rel="noreferrer">Contract</a> : 'Contract: soon'}</span></footer></>
+        <><BurnBar /><SiteFooter extra={catOnChain ? <a href={catOnChain} target="_blank" rel="noreferrer">This cat on chain</a> : undefined} /></>
       )}
       {shareCard && <ShareModal cat={shareCard.cat} blob={shareCard.blob} onClose={() => setShareCard(null)} />}
-      <ConnectModal open={modal} onClose={() => setModal(false)} onInjected={() => void doInjected()} onDemo={doDemo} error={wallet.error} busy={wallet.status === 'connecting'} />
+      <ConnectModal open={modal} onClose={() => setModal(false)} onInjected={() => void doInjected()} onWalletConnect={() => void doWalletConnect()} onDemo={doDemo} error={wallet.error} busy={wallet.status === 'connecting'} />
       {DEV && <DevDrawer director={director} dispatch={dispatch} view={view} setView={setView} crown={crown} setCrown={setCrownOverride} speed={g.speed} onConnectDemo={doDemo} onDisconnect={doDisconnect} live={live} onCrank={() => void chainStore?.crank()} />}
     </div>
   );

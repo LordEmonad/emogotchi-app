@@ -10,10 +10,11 @@ import { Header } from './Header';
 import { ConnectModal } from './ConnectModal';
 import { Icon } from './Icon';
 import { marketplace } from '../links';
+import { SiteFooter } from './SiteFooter';
 import { Stage } from '../scene/Stage';
 import type { Director, DirectorState } from '../scene/director';
 import { chainCfg, chainClient } from '../game/chain';
-import { EMPTY_WALLET, connectInjected, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState } from '../wallet';
+import { EMPTY_WALLET, connectInjected, connectWalletConnect, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState } from '../wallet';
 
 const EMPTY_D: DirectorState = { x: 330, dir: 1, busy: null, poop: false, sleeping: false, inTub: false, dead: false };
 type Proof = `0x${string}`[];
@@ -64,6 +65,15 @@ export function Claim() {
   useEffect(() => onChainChanged((chainId) => setWallet((w) => ({ ...w, chainId }))), []);
   const connected = wallet.status === 'connected' && !!wallet.address;
   const wrongChain = connected && chainCfg !== null && wallet.chainId !== null && wallet.chainId !== chainCfg.chain.id;
+  const doWalletConnect = async () => {
+    if (connecting.current || !chainCfg) return;
+    connecting.current = true;
+    setWallet((w) => ({ ...w, status: 'connecting', error: null }));
+    try {
+      setWallet(await connectWalletConnect(chainCfg.chain.id, chainCfg.rpcUrl));
+      setModal(false);
+    } catch (e) { setWallet((w) => ({ ...w, status: 'idle', error: (e as Error).message || 'Connection was cancelled.' })); } finally { connecting.current = false; }
+  };
   const doInjected = async () => {
     if (connecting.current) return;
     connecting.current = true;
@@ -193,8 +203,8 @@ export function Claim() {
           <span><Icon name="flame" size={20} /> Open until they run out. Every Emogotchi left over is burned forever</span>
         </section>
       </main>
-      <footer className="foot"><a href="/">← Back to Emogotchi</a><span className="foot-right">{marketplace() && <><a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a> · </>}<a href="/leaderboard">Leaderboard</a> · <a href="/cats">All cats</a></span></footer>
-      <ConnectModal open={modal} onClose={() => setModal(false)} onInjected={() => void doInjected()} onDemo={() => { location.href = '/'; }} error={wallet.error} busy={wallet.status === 'connecting'} />
+      <SiteFooter />
+      <ConnectModal open={modal} onClose={() => setModal(false)} onInjected={() => void doInjected()} onWalletConnect={() => void doWalletConnect()} onDemo={() => { location.href = '/'; }} error={wallet.error} busy={wallet.status === 'connecting'} />
     </div>
   );
 }

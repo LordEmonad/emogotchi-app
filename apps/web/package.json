@@ -10,11 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@emo-pets/chain": "workspace:*",
     "@emo-pets/pet": "workspace:*",
     "@fontsource-variable/space-grotesk": "^5.3.0",
+    "@walletconnect/ethereum-provider": "^2.25.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "@emo-pets/chain": "workspace:*"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

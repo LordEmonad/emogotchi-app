@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { chainName, shortAddr, type WalletState } from '../wallet';
 import { chainCfg } from '../game/chain';
+import { navLinks } from '../links';
 
 type Props = {
   wallet: WalletState;
@@ -14,13 +15,27 @@ type Props = {
 
 export function Header({ wallet, onConnect, onDisconnect, spentMon, burnedEmo, compact }: Props) {
   const [open, setOpen] = useState(false);
+  const [nav, setNav] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
+  const navBox = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent) => { if (!menu.current?.contains(e.target as Node)) setOpen(false); };
     window.addEventListener('pointerdown', close);
     return () => window.removeEventListener('pointerdown', close);
   }, [open]);
+  // the same links as a sheet on a phone: below 640px the row of links is hidden, and until this
+  // existed there was no way at all to reach the FAQ or the claim page from a phone
+  useEffect(() => {
+    if (!nav) return;
+    const close = (e: PointerEvent) => { if (!navBox.current?.contains(e.target as Node)) setNav(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setNav(false); };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', esc);
+    return () => { window.removeEventListener('pointerdown', close); window.removeEventListener('keydown', esc); };
+  }, [nav]);
+  const here = typeof location !== 'undefined' ? location.pathname.replace(/\/+$/, '') || '/' : '/';
+  const links = navLinks();
   const connected = wallet.status === 'connected' && wallet.address;
   return (
     <header className="hdr">
@@ -28,8 +43,25 @@ export function Header({ wallet, onConnect, onDisconnect, spentMon, burnedEmo, c
         <span className="wordmark-heart" aria-hidden><Icon name="heart" size={22} /></span>
         <span className="wordmark">Emogotchi</span>
       </a>
-      <nav className="hdr-nav hide-sm">{chainCfg?.drop && <a className="nav-claim" href="/claim">Claim</a>}{chainCfg && <a href="/cats">Cats</a>}<a href="/leaderboard">Leaderboard</a><a href="/nft">NFT</a><a href="/#faq">FAQ</a></nav>
+      <nav className="hdr-nav hide-sm" aria-label="Site">
+        {links.map((l) => (
+          <a key={l.href} href={l.href} className={l.href === '/claim' ? 'nav-claim' : ''} aria-current={here === l.href ? 'page' : undefined}>{l.label}</a>
+        ))}
+      </nav>
       <div className="hdr-right">
+        <div className="nav-menu show-sm" ref={navBox}>
+          <button className={`nav-toggle ${nav ? 'is-open' : ''}`} onClick={() => setNav((o) => !o)} aria-haspopup="menu" aria-expanded={nav} aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden><path d="M3 6h14M3 10h14M3 14h14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+          </button>
+          {nav && (
+            <div className="nav-pop" role="menu">
+              <a href="/" role="menuitem" aria-current={here === '/' ? 'page' : undefined}>Home</a>
+              {links.map((l) => (
+                <a key={l.href} href={l.href} role="menuitem" aria-current={here === l.href ? 'page' : undefined}>{l.label}</a>
+              ))}
+            </div>
+          )}
+        </div>
         {connected && spentMon !== undefined && (
           <span className="chip tnum hide-sm"><Icon name="coin" size={16} /> {spentMon} MON</span>
         )}

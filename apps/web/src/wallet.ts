@@ -1,7 +1,9 @@
 /**
  * Wallet connection. Injected wallets (MetaMask, Rabby, Phantom, OKX, and any wallet's in-app
- * browser) work today through window.ethereum. WalletConnect comes with the operator's project id.
- * Until the contract exists, a "demo" connection lets anyone try the pet with a pretend address.
+ * browser) work through window.ethereum. WalletConnect covers everyone else: a phone wallet scanning
+ * a QR code from a desktop, or a phone wallet opened from mobile Safari, neither of which can inject
+ * anything. It only appears when VITE_WC_PROJECT_ID is set, because it cannot work without one.
+ * A "demo" connection lets anyone try the pet with a pretend address.
  */
 export type WalletState = {
   status: 'idle' | 'connecting' | 'connected';
@@ -15,10 +17,18 @@ export const EMPTY_WALLET: WalletState = { status: 'idle', address: null, chainI
 const KEY = 'emogotchi.wallet';
 
 type Eip1193 = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown>; on?: (ev: string, fn: (...a: unknown[]) => void) => void; removeListener?: (ev: string, fn: (...a: unknown[]) => void) => void; isMetaMask?: boolean; isRabby?: boolean; isPhantom?: boolean };
-const eth = () => (window as unknown as { ethereum?: Eip1193 }).ethereum;
+const injected = () => (window as unknown as { ethereum?: Eip1193 }).ethereum;
+/**
+ * The provider everything signs through. Normally the injected one; once a WalletConnect session is
+ * open it is that instead, so the rest of the app and the chain client need to know nothing about it.
+ */
+let active: Eip1193 | null = null;
+const eth = () => active ?? injected();
 
-export const hasInjected = () => typeof window !== 'undefined' && !!eth();
-/** The injected EIP-1193 provider, for signing. */
+export const WC_PROJECT_ID: string = (import.meta.env.VITE_WC_PROJECT_ID as string | undefined) ?? '';
+export const hasWalletConnect = () => WC_PROJECT_ID.length > 0;
+export const hasInjected = () => typeof window !== 'undefined' && !!injected();
+/** The EIP-1193 provider in use, for signing. */
 export const getProvider = () => eth() ?? null;
 /** Switch the wallet to `chainId`, adding the network if the wallet has never seen it. */
 export async function ensureChain(chainId: number, name: string, rpcUrl: string, explorer: string | null): Promise<void> {
@@ -63,11 +73,70 @@ export async function connectInjected(): Promise<WalletState> {
   try { localStorage.setItem(KEY, 'injected'); } catch { /* private mode */ }
   return { status: 'connected', address, chainId: parseInt(chainHex, 16), demo: false, error: null };
 }
+/**
+ * WalletConnect. The library is a few hundred kilobytes and most visitors never need it, so it is
+ * only fetched when somebody actually chooses it.
+ */
+async function wcProvider(chainId: number, rpcUrl: string) {
+  if (!hasWalletConnect()) throw new Error('WalletConnect is not configured on this site.');
+  const { EthereumProvider } = await import('@walletconnect/ethereum-provider');
+  return EthereumProvider.init({
+    projectId: WC_PROJECT_ID,
+    chains: [chainId],
+    optionalChains: [chainId],
+    rpcMap: { [chainId]: rpcUrl },
+    showQrModal: true,
+    metadata: {
+      name: 'Emogotchi',
+      description: 'A cat that lives in your wallet.',
+      url: 'https://emogotchi.emonad.lol',
+      icons: ['https://emogotchi.emonad.lol/brand/logo.png'],
+    },
+  });
+}
+
+export async function connectWalletConnect(chainId: number, rpcUrl: string): Promise<WalletState> {
+  const p = await wcProvider(chainId, rpcUrl);
+  try {
+    await p.connect();
+  } catch (e) {
+    const msg = String((e as Error)?.message ?? '');
+    if (/reject|close|cancel/i.test(msg)) throw new Error('Connection cancelled in your wallet.');
+    throw new Error('WalletConnect could not reach your wallet. Try again, or open this page in your wallet\'s own browser.');
+  }
+  const address = p.accounts?.[0];
+  if (!address) throw new Error('No account returned.');
+  active = p as unknown as Eip1193;
+  try { localStorage.setItem(KEY, 'walletconnect'); } catch { /* private mode */ }
+  return { status: 'connected', address, chainId: p.chainId ?? chainId, demo: false, error: null };
+}
+
+/** Re-open a WalletConnect session after a reload, without showing the QR code again. */
+export async function restoreWalletConnect(chainId: number, rpcUrl: string): Promise<WalletState | null> {
+  if (!hasWalletConnect()) return null;
+  try {
+    const p = await wcProvider(chainId, rpcUrl);
+    const address = p.accounts?.[0];
+    if (!address) return null;
+    active = p as unknown as Eip1193;
+    return { status: 'connected', address, chainId: p.chainId ?? chainId, demo: false, error: null };
+  } catch { return null; }
+}
+
+export async function endWalletConnect() {
+  const p = active as unknown as { disconnect?: () => Promise<void> } | null;
+  active = null;
+  try { await p?.disconnect?.(); } catch { /* the session may already be gone */ }
+}
+
 export function connectDemo(): WalletState {
   try { localStorage.setItem(KEY, 'demo'); } catch { /* private mode */ }
   return { status: 'connected', address: '0xE1110C47A7F0E1E0C47A7F0E1E0C47A7F0E1E0C4', chainId: MONAD.testnet, demo: true, error: null };
 }
-export function disconnect() { try { localStorage.removeItem(KEY); } catch { /* private mode */ } }
+export function disconnect() {
+  if (active) void endWalletConnect();
+  try { localStorage.removeItem(KEY); } catch { /* private mode */ }
+}
 /** Ask the wallet to drop this site's permission too (MetaMask and friends support wallet_revokePermissions), so a reload does not silently reconnect. */
 export async function revokeInjected(): Promise<void> {
   const p = eth(); if (!p) return;

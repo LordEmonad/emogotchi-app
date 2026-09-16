@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { Icon } from './Icon';
-import { hasInjected, isMobile, walletLinks } from '../wallet';
+import { hasInjected, hasWalletConnect, isMobile, walletLinks } from '../wallet';
 
-type Props = { open: boolean; onClose: () => void; onInjected: () => void; onDemo: () => void; error: string | null; busy: boolean };
+type Props = { open: boolean; onClose: () => void; onInjected: () => void; onWalletConnect: () => void; onDemo: () => void; error: string | null; busy: boolean };
 
 const SITE = 'https://emogotchi.emonad.lol';
 
-export function ConnectModal({ open, onClose, onInjected, onDemo, error, busy }: Props) {
+export function ConnectModal({ open, onClose, onInjected, onWalletConnect, onDemo, error, busy }: Props) {
   useEffect(() => {
     if (!open) return;
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -41,8 +41,20 @@ export function ConnectModal({ open, onClose, onInjected, onDemo, error, busy }:
               <a className="wallet-opt" href={links.trust}><span className="wallet-opt-ico">🔷</span><span className="wallet-opt-text"><b>Trust Wallet</b><small>Opens in Trust's browser</small></span><span className="wallet-opt-go">→</span></a>
               <a className="wallet-opt" href={links.okx}><span className="wallet-opt-ico">⭕️</span><span className="wallet-opt-text"><b>OKX Wallet</b><small>Opens in OKX's browser</small></span><span className="wallet-opt-go">→</span></a>
             </>
-          ) : (
+          ) : !hasWalletConnect() ? (
             <p className="wallet-hint">No wallet found in this browser. Install MetaMask, Rabby or Phantom, or open this page on your phone inside your wallet app's own browser.</p>
+          ) : null}
+          {hasWalletConnect() && (
+            <button className="wallet-opt" onClick={onWalletConnect} disabled={busy}>
+              <span className="wallet-opt-ico" aria-hidden>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  <path d="M14 14h3v3h-3zM19 19h2M19 14h2v2" />
+                </svg>
+              </span>
+              <span className="wallet-opt-text"><b>WalletConnect</b><small>{mobile ? 'Pick your wallet app from the list' : 'Scan a QR code with the wallet on your phone'}</small></span>
+              <span className="wallet-opt-go">{busy ? '…' : '→'}</span>
+            </button>
           )}
         </div>
         {error && <p className="modal-err">{error}</p>}
