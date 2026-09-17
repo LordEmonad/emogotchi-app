@@ -997,6 +997,29 @@ contract ItemsTest is Test {
         items.catalogue(0, 1);
     }
 
+    /// @dev Operator rule: only a living named cat qualifies; a dead one qualifies again once revived.
+    function test_namedGate_needsALivingCat() public {
+        uint256 witch = _witch();
+        vm.warp(vm.getBlockTimestamp() + 60 days); // long past the welcome week: unfed, it died
+        assertFalse(game.state(1).alive);
+        (bool ok, uint8 reason,,) = items.canClaim(witch, alice, 1, abi.encode(1));
+        assertFalse(ok);
+        assertEq(reason, 6);
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotEligible.selector);
+        items.claim(witch, 1, abi.encode(1));
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotEligible.selector); // the scan skips it too
+        items.claim(witch, 1, "");
+        uint256 revivePrice = game.REVIVE_PRICE(); // read before the prank, or the read consumes it
+        vm.prank(alice);
+        game.revive{value: revivePrice}(1);
+        assertTrue(game.state(1).alive);
+        vm.prank(alice);
+        items.claim(witch, 1, abi.encode(1));
+        assertEq(items.balanceOf(alice, witch), 1);
+    }
+
     function test_itemCreatedCarriesEveryRule() public {
         EmogotchiItems.CreateParams memory c = _params("Loud");
         c.price = 1 ether;

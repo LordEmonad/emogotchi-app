@@ -34,7 +34,7 @@ contract ItemsArtTest is Test {
         c.name = "Witch outfit";
         c.description = "d";
         c.svg = witch;
-        c.maxSupply = 1000;
+        c.maxSupply = 200;
         c.perKey = 1;
         c.kind = EmogotchiItems.Kind.Cosmetic;
         c.slot = 1;
