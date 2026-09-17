@@ -27,6 +27,26 @@ contract Sink {
 ///      mirrors the equip lists with the same swap-remove algorithm so `equipped()` can be checked
 ///      exactly, and keeps ghost totals of every wei in and out so conservation can be checked.
 ///      `fail_on_revert` is on: any revert that the model did not predict fails the run.
+contract ReceiverWallet {
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        returns (bytes4)
+    {
+        return this.onERC1155BatchReceived.selector;
+    }
+
+    receive() external payable {}
+}
+
+contract NonReceiver {
+    receive() external payable {}
+}
+
 contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     Emogotchi public game;
     EmogotchiItems public items;
@@ -39,7 +59,7 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     address[] public actors;
     uint256 public catCount;
     uint256 public constant START = 10_000 ether;
-    uint256 public constant MAX_ITEMS = 10;
+    uint256 public constant MAX_ITEMS = 13;
 
     // ghosts
     mapping(uint256 => EmogotchiItems.Item) public snap; // rules at creation
@@ -58,6 +78,12 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     uint256 public sweptT;
     uint256 public sweptM;
     mapping(bytes32 => uint256) public calls;
+    mapping(uint256 => mapping(bytes32 => uint256)) public claimedGhost; // (item, key) => copies claimed
+    uint256 public shareT; // sum of per-claim floor(due * TREASURY_BPS / BPS)
+    uint256 public shareM;
+    uint256 public shareB; // sum of per-claim remainder
+    address public receiverActor; // a contract wallet with the ERC-1155 hooks
+    address public nonReceiver; // a contract wallet without them
 
     constructor(
         Emogotchi g,
@@ -80,6 +106,8 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         actors = a;
         catCount = cats;
         sink = new Sink();
+        receiverActor = a[a.length - 1];
+        nonReceiver = address(new NonReceiver());
         for (uint256 id = 1; id <= items.itemCount(); id++) {
             snap[id] = items.item(id);
         }
@@ -139,13 +167,25 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         if (mode >= 240) {
             value = due + 1; // wrong value must always fail
             ok = false;
+        } else if (mode >= 225 && due > 0) {
+            value = due - 1; // underpaying must always fail
+            ok = false;
         }
         vm.prank(actor);
         try items.claim{value: value}(id, qty, data) {
             require(ok, "model: claim should have failed");
             _count("claimOk");
+            if (!_pathBroken()) {
+                require(items.brokenSince() == 0, "model: a claim on a working path must clear the clock");
+            }
             paid += due;
             spent[actor] += due;
+            claimedGhost[id][key] += qty;
+            uint256 t = (due * items.TREASURY_BPS()) / items.BPS();
+            uint256 m = (due * items.TEAM_BPS()) / items.BPS();
+            shareT += t;
+            shareM += m;
+            shareB += due - t - m;
         } catch {
             require(!ok, "model: claim should have succeeded");
         }
@@ -168,7 +208,12 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     }
 
     function seal(uint256 i, uint256 dice) external {
-        if (bound(dice, 0, 7) != 0) return; // rare, or every item is sealed within a few calls
+        if (bound(dice, 0, 3) != 0) return;
+        uint256 open;
+        for (uint256 id = 1; id <= items.itemCount(); id++) {
+            if (!items.item(id).isSealed) open++;
+        }
+        if (open <= 3) return; // keep the shop alive
         _count("seal");
         uint256 id = _id(i);
         bool was = items.item(id).isSealed;
@@ -179,6 +224,47 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         } catch {
             require(was, "model: seal should have worked");
         }
+        // one way means one way: a second seal must always revert
+        try items.seal(id) {
+            revert("model: seal reversed");
+        } catch {}
+        require(items.item(id).isSealed, "model: sealed item is open");
+    }
+
+    // nobody but the curator can add, seal, grant or allow; the curator is this handler
+    function strangerCurates(uint256 a, uint256 i, uint8 which) external {
+        _count("stranger");
+        address actor = _actor(a);
+        uint256 id = _id(i);
+        address[] memory to = new address[](1);
+        to[0] = actor;
+        EmogotchiItems.CreateParams memory c;
+        c.name = "x";
+        c.svg = "<svg/>";
+        c.kind = EmogotchiItems.Kind.Passive;
+        vm.startPrank(actor);
+        if (which % 5 == 0) {
+            try items.grant(id, to, 1) {
+                revert("model: stranger granted");
+            } catch {}
+        } else if (which % 5 == 1) {
+            try items.seal(id) {
+                revert("model: stranger sealed");
+            } catch {}
+        } else if (which % 5 == 2) {
+            try items.create(c) {
+                revert("model: stranger created");
+            } catch {}
+        } else if (which % 5 == 3) {
+            try items.allowCollection(address(named)) {
+                revert("model: stranger allowed");
+            } catch {}
+        } else {
+            try items.setCurator(actor) {
+                revert("model: stranger took the role");
+            } catch {}
+        }
+        vm.stopPrank();
     }
 
     function createItem(
@@ -198,7 +284,8 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         c.name = "Fuzz item";
         c.description = "made by the fuzzer";
         c.svg = bytes('<svg xmlns="http://www.w3.org/2000/svg"/>');
-        c.price = uint128([uint256(0), 0.25 ether, 1 ether, 3 ether][bound(price, 0, 3)]);
+        c.price =
+            uint128([uint256(0), 0.25 ether, 1 ether, 3 ether, 1, 7, 0.333333333333333333 ether][bound(price, 0, 6)]);
         c.maxSupply = uint32(bound(maxSupply, 0, 20));
         c.perKey = uint32(bound(perKey, 0, 3));
         uint256 ts = vm.getBlockTimestamp();
@@ -213,19 +300,36 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     }
 
     // ---------------------------------------------------------------- tokens
-    function transfer(uint256 a, uint256 b, uint256 i, uint256 qty) external {
+    function transfer(uint256 s, uint256 a, uint256 b, uint256 i, uint256 qty) external {
         _count("transfer");
+        address sender = _actor(s);
         address from = _actor(a);
         address to = _actor(b);
         uint256 id = _id(i);
         uint256 bal = items.balanceOf(from, id);
         qty = bound(qty, 0, bal + 1);
-        bool ok = !items.item(id).soulbound && qty <= bal;
-        vm.prank(from);
+        bool ok = (sender == from || approved[from][sender]) && !items.item(id).soulbound && qty <= bal;
+        vm.prank(sender);
         try items.safeTransferFrom(from, to, id, qty, "") {
             require(ok, "model: transfer should have failed");
         } catch {
             require(!ok, "model: transfer should have succeeded");
+        }
+    }
+
+    function transferToContract(uint256 a, uint256 i, uint256 qty, bool good) external {
+        _count("toContract");
+        address from = _actor(a);
+        address to = good ? receiverActor : nonReceiver;
+        uint256 id = _id(i);
+        uint256 bal = items.balanceOf(from, id);
+        qty = bound(qty, 0, bal + 1);
+        bool ok = good && !items.item(id).soulbound && qty <= bal;
+        vm.prank(from);
+        try items.safeTransferFrom(from, to, id, qty, "") {
+            require(ok, "model: transfer to contract should have failed");
+        } catch {
+            require(!ok, "model: transfer to contract should have succeeded");
         }
     }
 
@@ -306,11 +410,46 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     }
 
     // ---------------------------------------------------------------- equipping
-    function equip(uint256 a, uint256 c, uint256 i) external {
+    /// @dev Give `actor` one copy of a free, open, ungated equippable they do not hold yet, through the
+    ///      modelled claim, so aimed equips have stock and lists grow past one entry.
+    function _stock(address actor, uint256 seed) internal {
+        uint256 total = items.itemCount();
+        uint256 ts = vm.getBlockTimestamp();
+        seed = seed % total;
+        for (uint256 k = 0; k < total; k++) {
+            uint256 id = ((seed + k) % total) + 1;
+            EmogotchiItems.Item memory it = items.item(id);
+            if (
+                it.price != 0 || it.gate != address(0) || it.isSealed || it.maxSupply != 0 || it.opens > ts
+                    || it.closes != 0 || it.kind == EmogotchiItems.Kind.Consumable || items.balanceOf(actor, id) > 0
+            ) continue;
+            vm.prank(actor);
+            items.claim(id, 1, ""); // must succeed: fail_on_revert says so if not
+            _count("stockOk");
+            claimedGhost[id][bytes32(uint256(uint160(actor)))] += 1;
+            return;
+        }
+    }
+
+    function equip(uint256 a, uint256 c, uint256 i, uint8 aim) external {
         _count("equip");
         address actor = _actor(a);
         uint256 cat = _cat(c);
         uint256 id = _id(i);
+        if (aim % 4 != 0) {
+            // point at a cat this actor owns and an item they hold, so the list machinery gets traffic
+            _stock(actor, i);
+            uint256 n = game.balanceOf(actor);
+            if (n > 0) cat = game.tokenOfOwnerByIndex(actor, c % n);
+            uint256 total = items.itemCount();
+            for (uint256 k = 0; k < total; k++) {
+                uint256 cand = ((id - 1 + k) % total) + 1;
+                if (items.balanceOf(actor, cand) > 0) {
+                    id = cand;
+                    break;
+                }
+            }
+        }
         EmogotchiItems.Item memory it = items.item(id);
         bytes32 k = gk(cat, actor);
         bool on = ghostOn[k][id];
@@ -337,15 +476,22 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         } catch {}
     }
 
-    function unequip(uint256 a, uint256 c, uint256 i) external {
+    function unequip(uint256 a, uint256 c, uint256 i, uint8 aim) external {
         _count("unequip");
         address actor = _actor(a);
         uint256 cat = _cat(c);
         uint256 id = _id(i);
+        if (aim % 4 != 0) {
+            uint256 n = game.balanceOf(actor);
+            if (n > 0) cat = game.tokenOfOwnerByIndex(actor, c % n);
+            uint256[] storage l = ghostList[gk(cat, actor)];
+            if (l.length > 0) id = l[i % l.length];
+        }
         bool ok = game.ownerOf(cat) == actor && ghostOn[gk(cat, actor)][id];
         vm.prank(actor);
         try items.unequip(address(game), cat, id) {
             require(ok, "model: unequip should have failed");
+            _count("unequipOk");
             _ghostRemove(gk(cat, actor), id);
         } catch {
             require(!ok, "model: unequip should have succeeded");
@@ -380,6 +526,139 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         ghostOn[key][id] = false;
     }
 
+    /// @dev The whole swap-remove dance on one (cat, owner), checked against the mirror after every step:
+    ///      three on, take a non-last off (the last moves into its slot), put it back, take the moved
+    ///      one off, sell the last-listed one and prune. This is where index bookkeeping bugs live.
+    function wardrobe(uint256 a, uint256 c, uint256 s) external {
+        _count("wardrobe");
+        address actor = _actor(a);
+        uint256 n = game.balanceOf(actor);
+        if (n == 0) return;
+        uint256 cat = game.tokenOfOwnerByIndex(actor, c % n);
+        bytes32 k = gk(cat, actor);
+        s = bound(s, 0, 1e9);
+        _stock(actor, s);
+        _stock(actor, s + 1);
+        _stock(actor, s + 2);
+        uint256[] memory held = _heldEquippables(actor, 3);
+        if (held.length < 3) return;
+        for (uint256 j = 0; j < 3; j++) {
+            if (ghostOn[k][held[j]]) return; // start from a clean slate for these three
+        }
+        if (ghostList[k].length + 3 > items.MAX_EQUIPPED()) return;
+        _count("wardrobeOk");
+        vm.startPrank(actor);
+        for (uint256 j = 0; j < 3; j++) {
+            items.equip(address(game), cat, held[j]);
+            _ghostPush(k, held[j]);
+            _check(cat, actor);
+        }
+        items.unequip(address(game), cat, held[0]);
+        _ghostRemove(k, held[0]);
+        _check(cat, actor); // the last entry moved into slot 0
+        items.equip(address(game), cat, held[0]);
+        _ghostPush(k, held[0]);
+        _check(cat, actor); // back on after removal
+        items.unequip(address(game), cat, held[2]);
+        _ghostRemove(k, held[2]);
+        _check(cat, actor); // the moved one comes off
+        uint256 bal = items.balanceOf(actor, held[0]);
+        items.safeTransferFrom(actor, _actor(s), held[0], bal, ""); // sell every copy of a non-last entry
+        vm.stopPrank();
+        items.prune(address(game), cat); // the last entry moves into its slot
+        _ghostPrune(k, actor);
+        _check(cat, actor);
+        vm.prank(actor);
+        items.unequip(address(game), cat, held[1]); // the moved entry must still be findable by index
+        _ghostRemove(k, held[1]);
+        _check(cat, actor);
+    }
+
+    /// @dev A former owner cannot touch the list they left behind while someone else owns the cat.
+    function formerOwnerUnequips(uint256 a, uint256 c, uint256 s, uint256 b) external {
+        _count("formerOwner");
+        address actor = _actor(a);
+        uint256 n = game.balanceOf(actor);
+        if (n == 0) return;
+        uint256 cat = game.tokenOfOwnerByIndex(actor, c % n);
+        bytes32 k = gk(cat, actor);
+        _stock(actor, s);
+        uint256[] memory held = _heldEquippables(actor, 1);
+        if (held.length == 0) return;
+        address buyer = _actor(b);
+        if (buyer == actor) return;
+        vm.startPrank(actor);
+        items.equip(address(game), cat, held[0]);
+        if (!ghostOn[k][held[0]]) _ghostPush(k, held[0]);
+        game.transferFrom(actor, buyer, cat);
+        try items.unequip(address(game), cat, held[0]) {
+            revert("model: former owner unequipped");
+        } catch {}
+        try items.equip(address(game), cat, held[0]) {
+            revert("model: former owner equipped");
+        } catch {}
+        vm.stopPrank();
+        require(
+            items.equipped(address(game), cat).length == ghostVisible(cat, buyer), "model: buyer sees a stranger's list"
+        );
+    }
+
+    function ghostVisible(uint256 cat, address owner) public view returns (uint256 n) {
+        uint256[] storage l = ghostList[gk(cat, owner)];
+        for (uint256 i = 0; i < l.length; i++) {
+            if (items.balanceOf(owner, l[i]) > 0) n++;
+        }
+    }
+
+    function _heldEquippables(address actor, uint256 want) internal view returns (uint256[] memory out) {
+        uint256 total = items.itemCount();
+        uint256[] memory tmp = new uint256[](total);
+        uint256 k;
+        for (uint256 id = 1; id <= total && k < want; id++) {
+            if (items.balanceOf(actor, id) > 0 && items.item(id).kind != EmogotchiItems.Kind.Consumable) tmp[k++] = id;
+        }
+        out = new uint256[](k);
+        for (uint256 i = 0; i < k; i++) {
+            out[i] = tmp[i];
+        }
+    }
+
+    function _ghostPush(bytes32 k, uint256 id) internal {
+        ghostList[k].push(id);
+        ghostOn[k][id] = true;
+    }
+
+    function _ghostPrune(bytes32 key, address owner) internal {
+        uint256[] storage list = ghostList[key];
+        for (uint256 k = list.length; k > 0; k--) {
+            uint256 id = list[k - 1];
+            if (items.balanceOf(owner, id) > 0) continue;
+            list[k - 1] = list[list.length - 1];
+            list.pop();
+            ghostOn[key][id] = false;
+        }
+    }
+
+    /// @dev equipped() must equal the mirror filtered by what the owner holds, in order.
+    function _check(uint256 cat, address owner) internal view {
+        uint256[] memory out = items.equipped(address(game), cat);
+        uint256[] storage l = ghostList[gk(cat, owner)];
+        uint256 j;
+        for (uint256 i = 0; i < l.length; i++) {
+            if (items.balanceOf(owner, l[i]) == 0) continue;
+            require(j < out.length && out[j] == l[i], "model: equipped() differs from the mirror");
+            j++;
+        }
+        require(j == out.length, "model: equipped() longer than the mirror");
+    }
+
+    /// @dev The pool's WMON balance goes to zero while the quote still works: the depth guard alone
+    ///      must call the path broken.
+    function poolDrain(bool drained) external {
+        _count("poolDrain");
+        nad.setPoolBalance(drained ? 0 : nad.monReserve());
+    }
+
     // ---------------------------------------------------------------- the cats
     function catTransfer(uint256 c, uint256 b) external {
         _count("catTransfer");
@@ -400,22 +679,36 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     }
 
     // ---------------------------------------------------------------- money
+    /// @dev What the mock says about the path, computed without asking the contract.
+    function _pathBroken() internal view returns (bool) {
+        return nad.lensRouter() != address(nad) || nad.monReserve() == 0 || nad.emoReserve() == 0
+            || nad.wmon().balanceOf(nad.pool()) == 0;
+    }
+
     function crank(uint256 maxMon, uint256 minOut) external {
         _count("crank");
         maxMon = bound(maxMon, 1, 100 ether);
         minOut = bound(minOut, 0, 1);
+        require(items.swapPathBroken() == _pathBroken(), "model: swapPathBroken disagrees with the mock");
         uint256 pb = items.pendingBurnMon();
         uint256 nb = address(nad).balance;
         uint256 tb = items.totalMonBurned();
         uint256 amt = pb < maxMon ? pb : maxMon;
         uint256 cap = (nad.wmon().balanceOf(nad.pool()) * items.MAX_IMPACT_BPS()) / items.BPS();
         if (amt > cap) amt = cap;
+        bool expectBurn = amt > 0 && !nad.failNext() && !_pathBroken();
+        uint256 quoted = nad.quoteOut(amt);
+        uint256 floor = (quoted * (items.BPS() - items.MAX_IMPACT_BPS())) / items.BPS();
         try items.crankBurn(maxMon, minOut) {
             require(amt > 0, "model: crank of nothing");
             uint256 d = address(nad).balance - nb;
             if (d > 0) _count("crankBurned");
             else _count("crankQueued");
-            require(d == 0 || d == amt, "model: partial burn");
+            require(d == (expectBurn ? amt : 0), "model: burned when it should queue, or queued when it should burn");
+            if (d > 0) {
+                require(nad.lastMinOut() >= floor && nad.lastMinOut() >= minOut, "model: slippage floor too low");
+                require(items.brokenSince() == 0, "model: a burn must clear brokenSince");
+            }
             require(items.pendingBurnMon() == pb - d, "model: pending after crank");
             require(items.totalMonBurned() == tb + d, "model: totalMonBurned after crank");
             burnedRouter += d;
@@ -430,14 +723,16 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         uint256 pb = items.pendingBurnMon();
         uint256 amt = pb < maxMon ? pb : maxMon;
         uint256 since = items.brokenSince();
-        bool ok =
-            items.swapPathBroken() && amt > 0 && since != 0 && vm.getBlockTimestamp() >= since + items.FALLBACK_DELAY();
+        uint256 tb = items.totalMonBurned();
+        require(items.swapPathBroken() == _pathBroken(), "model: swapPathBroken disagrees with the mock");
+        bool ok = _pathBroken() && amt > 0 && since != 0 && vm.getBlockTimestamp() >= since + items.FALLBACK_DELAY();
         uint256 dead = items.BURN_ADDRESS().balance;
         try items.crankFallback(maxMon) {
             require(ok, "model: fallback should have failed");
             _count("fallbackOk");
             require(items.BURN_ADDRESS().balance == dead + amt, "model: fallback amount");
             require(items.pendingBurnMon() == pb - amt, "model: pending after fallback");
+            require(items.totalMonBurned() == tb + amt, "model: totalMonBurned after fallback");
             burnedFallback += amt;
         } catch {
             require(!ok, "model: fallback should have worked");
@@ -448,6 +743,7 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         _count("notePath");
         uint256 since = items.brokenSince();
         bool broken = items.swapPathBroken();
+        require(broken == _pathBroken(), "model: swapPathBroken disagrees with the mock");
         items.noteSwapPath();
         if (!broken) {
             require(items.brokenSince() == 0, "model: note should clear");
@@ -495,7 +791,15 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     // ---------------------------------------------------------------- the world
     function warp(uint256 d) external {
         _count("warp");
-        vm.warp(vm.getBlockTimestamp() + bound(d, 0, 3 days));
+        vm.warp(vm.getBlockTimestamp() + (d % 8 == 0 ? 7 days + 1 : bound(d, 0, 3 days)));
+    }
+
+    /// @dev The full fallback story in one call: the pool empties, someone notes it, a week passes.
+    function outage() external {
+        _count("outage");
+        nad.setReserves(0, 42_000_000 ether);
+        items.noteSwapPath();
+        vm.warp(vm.getBlockTimestamp() + 7 days + 1);
     }
 
     function flipLens(bool sane) external {
@@ -528,7 +832,7 @@ contract ItemsInvariant is Test {
     address treasury = makeAddr("treasury");
     address team = makeAddr("team");
     address[] actors;
-    uint256 constant CATS = 12;
+    uint256 constant CATS = 14; // 12 across the four EOAs, 2 for the contract wallet
     bytes svg = bytes('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle r="4"/></svg>');
 
     function setUp() public {
@@ -577,8 +881,12 @@ contract ItemsInvariant is Test {
             address a = makeAddr(string.concat("actor", vm.toString(i)));
             actors.push(a);
             vm.deal(a, 10_000 ether);
-            game.mintMany(a, CATS / 4);
+            game.mintMany(a, 3);
         }
+        address rw = address(new ReceiverWallet());
+        actors.push(rw);
+        vm.deal(rw, 10_000 ether);
+        game.mintMany(rw, 2);
         vm.prank(actors[0]);
         game.setName{value: 10 ether}(1, "Salem");
         vm.deal(actors[0], 10_000 ether); // the model counts from here
@@ -623,6 +931,19 @@ contract ItemsInvariant is Test {
         c.gate = address(holds);
         items.create(c);
 
+        c = _blank("Bow");
+        c.kind = EmogotchiItems.Kind.Cosmetic;
+        c.slot = 2;
+        items.create(c);
+        c = _blank("Scarf");
+        c.kind = EmogotchiItems.Kind.Cosmetic;
+        c.slot = 2;
+        items.create(c);
+        c = _blank("Lamp");
+        c.kind = EmogotchiItems.Kind.Scene;
+        c.slot = 4;
+        items.create(c);
+
         h = new ItemsHandler(game, items, named, holds, nad, treasury, team, actors, CATS);
         items.setCurator(address(h));
         targetContract(address(h));
@@ -642,6 +963,7 @@ contract ItemsInvariant is Test {
             for (uint256 a = 0; a < actors.length; a++) {
                 sum += items.balanceOf(actors[a], id);
             }
+            assertEq(items.balanceOf(h.nonReceiver(), id), 0, "a wallet without the hook got items");
             assertEq(sum + h.consumed(id), it.minted, "balances vs minted");
             assertEq(items.burned(id), h.consumed(id), "burned counter");
             assertEq(items.totalSupply(id), sum, "totalSupply");
@@ -653,6 +975,7 @@ contract ItemsInvariant is Test {
             uint256 rem = items.remaining(id);
             if (it.isSealed) assertEq(rem, 0, "remaining of sealed");
             else if (it.maxSupply != 0) assertEq(rem, it.maxSupply - it.minted, "remaining");
+            else assertEq(rem, type(uint256).max, "remaining of unlimited");
         }
     }
 
@@ -693,12 +1016,14 @@ contract ItemsInvariant is Test {
     function invariant_perKey() public view {
         for (uint256 id = 1; id <= items.itemCount(); id++) {
             uint32 cap = items.item(id).perKey;
-            if (cap == 0) continue;
             for (uint256 a = 0; a < actors.length; a++) {
-                assertLe(items.claimedBy(id, bytes32(uint256(uint160(actors[a])))), cap, "per-wallet cap");
+                bytes32 k = bytes32(uint256(uint160(actors[a])));
+                assertEq(items.claimedBy(id, k), h.claimedGhost(id, k), "claimedBy drifts from the claims made");
+                if (cap != 0) assertLe(h.claimedGhost(id, k), cap, "per-wallet cap");
             }
             for (uint256 cat = 1; cat <= CATS; cat++) {
-                assertLe(items.claimedBy(id, bytes32(cat)), cap, "per-cat cap");
+                assertEq(items.claimedBy(id, bytes32(cat)), h.claimedGhost(id, bytes32(cat)), "claimedBy drifts (cat)");
+                if (cap != 0) assertLe(h.claimedGhost(id, bytes32(cat)), cap, "per-cat cap");
             }
         }
     }
@@ -717,8 +1042,10 @@ contract ItemsInvariant is Test {
         assertEq(treasury.balance, h.sweptT(), "treasury got exactly what was swept");
         assertEq(team.balance, h.sweptM(), "team got exactly what was swept");
         // the split itself: what is owed is 10/10 of the paid MON that is not yet swept
-        assertEq(items.treasuryOwed() + h.sweptT(), h.paid() / 10, "treasury share");
-        assertEq(items.teamOwed() + h.sweptM(), h.paid() / 10, "team share");
+        assertEq(items.treasuryOwed() + h.sweptT(), h.shareT(), "treasury share");
+        assertEq(items.teamOwed() + h.sweptM(), h.shareM(), "team share");
+        assertEq(items.pendingBurnMon() + burned, h.shareB() + h.skimmed(), "burn share");
+        assertEq(h.shareT() + h.shareM() + h.shareB(), h.paid(), "split sums to what was paid");
     }
 
     // the shop never pays a player
@@ -772,7 +1099,7 @@ contract ItemsInvariant is Test {
 
     // what the fuzzer actually exercised, shown with -vv
     function afterInvariant() public view {
-        string[27] memory names = [
+        string[36] memory names = [
             "claim",
             "claimOk",
             "grant",
@@ -799,7 +1126,16 @@ contract ItemsInvariant is Test {
             "sweep",
             "skim",
             "donate",
-            "warp"
+            "warp",
+            "unequipOk",
+            "toContract",
+            "stranger",
+            "outage",
+            "stockOk",
+            "wardrobe",
+            "wardrobeOk",
+            "formerOwner",
+            "poolDrain"
         ];
         for (uint256 i = 0; i < names.length; i++) {
             console2.log(names[i], h.calls(bytes32(bytes(names[i]))));

@@ -14,7 +14,7 @@ runs = 512
 
 [invariant]
 runs = 48
-depth = 120
+depth = 200
 fail_on_revert = true
 
 [lint]

@@ -52,6 +52,11 @@ contract MockNad {
         lensRouter = r;
     }
 
+    /// @dev The pool's WMON balance apart from the curve, for tests of the depth guard alone.
+    function setPoolBalance(uint256 amount) external {
+        wmon.setBalance(pool, amount);
+    }
+
     function setReserves(uint256 mon, uint256 emoAmt) external {
         monReserve = mon;
         emoReserve = emoAmt;
@@ -114,6 +119,8 @@ contract MockArt {
     function image(uint8 mood, bool crowned) external pure returns (string memory) {
         bytes memory m = new bytes(1);
         m[0] = bytes1(uint8(48 + mood));
-        return string.concat("<svg xmlns=\"http://www.w3.org/2000/svg\"><text>", string(m), crowned ? "c" : "", "</text></svg>");
+        return string.concat(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"><text>", string(m), crowned ? "c" : "", "</text></svg>"
+        );
     }
 }
