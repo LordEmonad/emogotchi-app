@@ -377,6 +377,10 @@ export class ChainClient {
   private humanise(e: unknown): ChainError {
     const msg = e instanceof Error ? e.message : String(e);
     if (/user (rejected|denied)|rejected the request/i.test(msg)) return new ChainError('You cancelled the transaction.', 'rejected');
+    // Monad keeps 10 MON in reserve on every account; a MetaMask "smart account" (EIP-7702) cannot dip
+    // below it even once, so a 1 MON feed from a wallet holding 10.5 MON is refused while a gas-only pet
+    // goes through. MetaMask reports it as "missing or invalid parameters", which helps nobody.
+    if (/reserve balance/i.test(msg)) return new ChainError('Monad keeps 10 MON in reserve on this account (a smart account cannot go below it). Top it up past 10 MON + the cost, or switch MetaMask back to a regular account.', 'reverted');
     if (e instanceof BaseError) {
       const rev = e.walk((x) => x instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError | null;
       const name = rev?.data?.errorName;
