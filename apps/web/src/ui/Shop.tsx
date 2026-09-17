@@ -13,7 +13,7 @@ import { SiteFooter } from './SiteFooter';
 import { BurnBar } from './BurnBar';
 import { Icon } from './Icon';
 import { chainCfg, chainClient } from '../game/chain';
-import { COSTUME_ITEMS, SCENE_ITEMS, REQUIREMENT, priceLabel } from '../items';
+import { CAT_GATED, COSTUME_ITEMS, SCENE_ITEMS, REQUIREMENT, priceLabel } from '../items';
 import { EMPTY_WALLET, connectInjected, connectWalletConnect, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState } from '../wallet';
 
 const KIND_LABEL: Record<ItemView['kind'], string> = { cosmetic: 'Costume', scene: 'Room', passive: 'Ticket', consumable: 'One use' };
@@ -128,7 +128,7 @@ type CardProps = { item: ItemView; svg: string | null; now: number; connected: b
 function ItemCard({ item, svg, now, connected, onConnect, mine, refresh }: CardProps) {
   const client = chainClient!;
   const gated = item.gate !== '0x0000000000000000000000000000000000000000';
-  const catKeyed = item.id in REQUIREMENT; // the witch's gate keys on the cat: the claim names a cat
+  const catKeyed = gated && CAT_GATED.has(item.id); // the witch's gate keys on the cat: the claim names a cat
   const wearable = item.kind === 'cosmetic' || item.kind === 'scene' || item.kind === 'passive';
   const drawn = item.id in COSTUME_ITEMS || item.id in SCENE_ITEMS; // the site knows how to show it on the cat or in the room
   const isRoom = item.id in SCENE_ITEMS;

@@ -24,6 +24,8 @@ export const costumeOf = (worn: readonly number[] | undefined): 'witch' | null =
 };
 
 /** The claim rule in words, per item; the contract only knows the gate's address. */
+/** Items whose gate keys on a cat (NamedCatGate): the claim names the cat and the cap is per cat. */
+export const CAT_GATED = new Set<number>([1]);
 export const REQUIREMENT: Record<number, string> = { 1: 'A living, named Emogotchi · one per cat', 2: 'Anyone · no limit' };
 
 export const priceLabel = (wei: bigint) => (wei === 0n ? 'Free' : `${formatEther(wei)} MON`);
