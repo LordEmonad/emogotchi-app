@@ -263,8 +263,25 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
             try items.setCurator(actor) {
                 revert("model: stranger took the role");
             } catch {}
+            try items.acceptCurator() {
+                revert("model: stranger accepted a role never offered");
+            } catch {}
         }
         vm.stopPrank();
+    }
+
+    /// @dev Offer the role and withdraw it, or offer it to nobody: the curator must stay this handler.
+    function curatorOffer(uint256 a, bool toNobody) external {
+        _count("curatorOffer");
+        address actor = _actor(a);
+        items.setCurator(toNobody ? address(0) : actor);
+        require(items.curator() == address(this), "model: offer changed the curator");
+        require(items.pendingCurator() == (toNobody ? address(0) : actor), "model: offer not recorded");
+        items.setCurator(address(0)); // withdrawn before anyone can take it
+        vm.prank(actor);
+        try items.acceptCurator() {
+            revert("model: withdrawn offer accepted");
+        } catch {}
     }
 
     function createItem(
@@ -685,8 +702,10 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
             || nad.wmon().balanceOf(nad.pool()) == 0;
     }
 
-    function crank(uint256 maxMon, uint256 minOut) external {
+    function crank(uint256 maxMon, uint256 minOut, bool newBlock) external {
         _count("crank");
+        if (newBlock) vm.roll(block.number + 1);
+        bool blocked = items.lastBurnBlock() == block.number;
         maxMon = bound(maxMon, 1, 100 ether);
         minOut = bound(minOut, 0, 1);
         require(items.swapPathBroken() == _pathBroken(), "model: swapPathBroken disagrees with the mock");
@@ -696,6 +715,7 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         uint256 amt = pb < maxMon ? pb : maxMon;
         uint256 cap = (nad.wmon().balanceOf(nad.pool()) * items.MAX_IMPACT_BPS()) / items.BPS();
         if (amt > cap) amt = cap;
+        if (blocked) amt = 0; // a second crank in the same block does nothing
         bool expectBurn = amt > 0 && !nad.failNext() && !_pathBroken();
         uint256 quoted = nad.quoteOut(amt);
         uint256 floor = (quoted * (items.BPS() - items.MAX_IMPACT_BPS())) / items.BPS();
@@ -945,7 +965,9 @@ contract ItemsInvariant is Test {
         items.create(c);
 
         h = new ItemsHandler(game, items, named, holds, nad, treasury, team, actors, CATS);
-        items.setCurator(address(h));
+        items.setCurator(address(h)); // an offer; the handler takes it
+        vm.prank(address(h));
+        items.acceptCurator();
         targetContract(address(h));
     }
 
@@ -1099,7 +1121,7 @@ contract ItemsInvariant is Test {
 
     // what the fuzzer actually exercised, shown with -vv
     function afterInvariant() public view {
-        string[36] memory names = [
+        string[37] memory names = [
             "claim",
             "claimOk",
             "grant",
@@ -1130,6 +1152,7 @@ contract ItemsInvariant is Test {
             "unequipOk",
             "toContract",
             "stranger",
+            "curatorOffer",
             "outage",
             "stockOk",
             "wardrobe",

@@ -118,6 +118,7 @@ contract EmogotchiItems {
 
     // ---------------------------------------------------------------- state
     address public curator;
+    address public pendingCurator; // two-step handover: a typo cannot freeze the shop
     uint256 public itemCount;
     mapping(uint256 => Item) internal _items;
     mapping(uint256 => mapping(bytes32 => uint64)) public claimedBy; // item => key (wallet or what the gate keys on)
@@ -136,6 +137,7 @@ contract EmogotchiItems {
     uint256 public totalMonBurned;
     uint256 public totalEmoBurned;
     uint256 public brokenSince; // when `swapPathBroken()` was first noted true, 0 while the path works
+    uint256 public lastBurnBlock; // one burn per block, so the impact guard bounds volume per block too
 
     uint256 private _lock = 1;
 
@@ -174,6 +176,7 @@ contract EmogotchiItems {
     event Swept(uint256 treasury, uint256 team);
     event SwapPathNoted(bool broken, uint256 since);
     event CuratorChanged(address indexed from, address indexed to);
+    event CuratorProposed(address indexed from, address indexed to);
 
     // ---------------------------------------------------------------- errors
     error NotCurator();
@@ -322,16 +325,26 @@ contract EmogotchiItems {
         emit CollectionAllowed(collection, true);
     }
 
+    /// @notice Offer the role to `to`; nothing changes until they accept, and the offer can be withdrawn
+    ///         by offering to someone else or to nobody (address 0).
     function setCurator(address to) external onlyCurator {
-        if (to == address(0)) revert ZeroAddress();
-        emit CuratorChanged(curator, to);
-        curator = to;
+        pendingCurator = to;
+        emit CuratorProposed(curator, to);
+    }
+
+    /// @notice Take the role that was offered to you.
+    function acceptCurator() external {
+        if (msg.sender != pendingCurator || msg.sender == address(0)) revert NotCurator();
+        emit CuratorChanged(curator, msg.sender);
+        curator = msg.sender;
+        pendingCurator = address(0);
     }
 
     /// @notice Give the role up. Nothing can ever be added, sealed, granted or allowed again.
     function renounceCurator() external onlyCurator {
         emit CuratorChanged(curator, address(0));
         curator = address(0);
+        pendingCurator = address(0);
     }
 
     // ---------------------------------------------------------------- claiming
@@ -355,7 +368,10 @@ contract EmogotchiItems {
         if (due > 0) _split(due);
         // while a fallback clock runs, every claim re-checks the path, so a recovery nobody cranked
         // through still stops the clock
-        if (brokenSince != 0 && !swapPathBroken()) brokenSince = 0;
+        if (brokenSince != 0 && !swapPathBroken()) {
+            brokenSince = 0;
+            emit SwapPathNoted(false, 0);
+        }
         _balances[id][msg.sender] += qty;
         emit TransferSingle(msg.sender, address(0), msg.sender, id, qty);
         emit Claimed(id, msg.sender, qty, due);
@@ -587,10 +603,12 @@ contract EmogotchiItems {
     ///         impact guard allows in one go, so `crankBurn(type(uint256).max, 0)` always burns a slice
     ///         of a backlog instead of nothing.
     function crankBurn(uint256 maxMon, uint256 minEmoOut) external nonReentrant {
+        if (lastBurnBlock == block.number) revert NothingToDo(); // the guard is per block, not per call
         uint256 amount = pendingBurnMon < maxMon ? pendingBurnMon : maxMon;
         uint256 cap = _maxIn();
         if (amount > cap) amount = cap;
         if (amount == 0) revert NothingToDo();
+        lastBurnBlock = block.number;
         pendingBurnMon -= amount;
         _burn(amount, minEmoOut);
     }
@@ -700,7 +718,10 @@ contract EmogotchiItems {
             emoOut = amountOut;
             totalEmoBurned += emoOut;
             totalMonBurned += monIn;
-            if (brokenSince != 0) brokenSince = 0; // the path works
+            if (brokenSince != 0) {
+                brokenSince = 0; // the path works
+                emit SwapPathNoted(false, 0);
+            }
             emit Burn(monIn, emoOut);
         } catch {
             return _queue(monIn);

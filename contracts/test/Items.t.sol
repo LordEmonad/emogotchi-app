@@ -552,7 +552,22 @@ contract ItemsTest is Test {
 
     // ---------------------------------------------------------------- the curator
     function test_curatorTransferAndRenounce() public {
+        items.setCurator(alice); // an offer: nothing changes yet
+        assertEq(items.curator(), address(this));
+        assertEq(items.pendingCurator(), alice);
+        items.create(_params("still mine"));
+        vm.prank(bob);
+        vm.expectRevert(EmogotchiItems.NotCurator.selector); // only the offered address can accept
+        items.acceptCurator();
+        items.setCurator(address(0)); // withdrawn
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotCurator.selector);
+        items.acceptCurator();
         items.setCurator(alice);
+        vm.prank(alice);
+        items.acceptCurator();
+        assertEq(items.curator(), alice);
+        assertEq(items.pendingCurator(), address(0));
         vm.expectRevert(EmogotchiItems.NotCurator.selector);
         items.create(_params("x"));
         vm.prank(alice);
@@ -725,6 +740,24 @@ contract ItemsTest is Test {
         vm.warp(vm.getBlockTimestamp() + items.FALLBACK_DELAY());
         items.crankFallback(type(uint256).max);
         assertEq(items.pendingBurnMon(), 0);
+    }
+
+    /// @dev Ultrafuzz: repeated same-block cranks bypassed the per-burn impact guard; one burn per block now.
+    function test_crankBurn_oncePerBlock() public {
+        EmogotchiItems.CreateParams memory c = _params("Paid");
+        c.price = 100 ether;
+        uint256 id = items.create(c);
+        vm.prank(alice);
+        items.claim{value: 100 ether}(id, 1, "");
+        nad.setReserves(1000 ether, 42_000_000 ether); // guard: 5 MON per burn
+        items.crankBurn(type(uint256).max, 0);
+        assertEq(items.pendingBurnMon(), 75 ether);
+        vm.expectRevert(EmogotchiItems.NothingToDo.selector);
+        items.crankBurn(type(uint256).max, 0); // same block
+        vm.roll(block.number + 1);
+        uint256 cap = (wmon.balanceOf(pool) * items.MAX_IMPACT_BPS()) / items.BPS(); // the pool grew by the first slice
+        items.crankBurn(type(uint256).max, 0);
+        assertEq(items.pendingBurnMon(), 75 ether - cap);
     }
 
     /// @dev Audit: a backlog above the impact guard burned nothing with maxMon = max; now it burns a slice.
