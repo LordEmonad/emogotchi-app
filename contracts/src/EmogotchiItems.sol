@@ -22,6 +22,12 @@ interface IOwnerOf {
     function ownerOf(uint256 id) external view returns (address);
 }
 
+/// @notice What a mechanics contract implements to be handed a spent item by `use`: the holder burns
+///         the copies and the sink is told, in the same transaction, with no operator approval involved.
+interface IItemSink {
+    function onItemUsed(address from, uint256 id, uint256 qty, bytes calldata data) external returns (bytes4);
+}
+
 /**
  * @title  EmogotchiItems
  * @notice The item shop: costumes, accessories, room themes, tools. One ERC-1155, many item types, added
@@ -115,6 +121,7 @@ contract EmogotchiItems {
     uint256 public itemCount;
     mapping(uint256 => Item) internal _items;
     mapping(uint256 => mapping(bytes32 => uint64)) public claimedBy; // item => key (wallet or what the gate keys on)
+    mapping(uint256 => uint256) public burned; // copies consumed or used, per item
     mapping(address => bool) public collectionAllowed;
 
     mapping(uint256 => mapping(address => uint256)) private _balances;
@@ -161,6 +168,7 @@ contract EmogotchiItems {
     event Equipped(address indexed collection, uint256 indexed tokenId, uint256 indexed itemId, address owner);
     event Unequipped(address indexed collection, uint256 indexed tokenId, uint256 indexed itemId, address owner);
     event Consumed(address indexed from, uint256 indexed id, uint256 qty);
+    event Used(address indexed from, uint256 indexed id, uint256 qty, address indexed target);
     event Burn(uint256 monIn, uint256 emoOut);
     event BurnQueued(uint256 monIn, uint256 pending);
     event Swept(uint256 treasury, uint256 team);
@@ -193,6 +201,7 @@ contract EmogotchiItems {
     error Reentrancy();
     error ZeroAddress();
     error FallbackNotReady();
+    error BadSink();
 
     // ---------------------------------------------------------------- modifiers
     modifier onlyCurator() {
@@ -251,11 +260,10 @@ contract EmogotchiItems {
         if (c.closes != 0 && c.closes <= c.opens) revert BadParams();
         if (c.gate != address(0)) {
             if (c.gate.code.length == 0) revert BadParams();
-            // a gate that cannot answer would make every claim revert with nothing, for life
-            try IGate(c.gate).eligible(msg.sender, "") returns (bool, bytes32) {}
-            catch {
-                revert BadParams();
-            }
+            // a gate that cannot answer would make every claim fail with nothing, for life; so it must
+            // answer the empty hint in shape, whatever the answer. Gates must not revert on "".
+            (bool answered,,) = _ask(c.gate, msg.sender, "", 2_000_000);
+            if (!answered) revert BadParams();
         }
         id = ++itemCount;
         Item storage it = _items[id];
@@ -337,17 +345,7 @@ contract EmogotchiItems {
         if (block.timestamp < it.opens) revert NotOpenYet();
         if (it.closes != 0 && block.timestamp >= it.closes) revert Closed();
         if (it.maxSupply != 0 && it.minted + qty > it.maxSupply) revert SoldOut();
-        bytes32 key = bytes32(uint256(uint160(msg.sender)));
-        if (it.gate != address(0)) {
-            bool ok;
-            try IGate(it.gate).eligible(msg.sender, gateData) returns (bool o, bytes32 k) {
-                ok = o;
-                key = k;
-            } catch {
-                ok = false;
-            }
-            if (!ok) revert NotEligible();
-        }
+        bytes32 key = _gateKey(it.gate, msg.sender, gateData);
         if (it.perKey != 0 && claimedBy[id][key] + qty > it.perKey) revert CapReached();
         uint256 due = uint256(it.price) * qty;
         if (msg.value != due) revert WrongValue(due, msg.value);
@@ -355,10 +353,61 @@ contract EmogotchiItems {
         claimedBy[id][key] += qty;
         it.minted += qty;
         if (due > 0) _split(due);
+        // while a fallback clock runs, every claim re-checks the path, so a recovery nobody cranked
+        // through still stops the clock
+        if (brokenSince != 0 && !swapPathBroken()) brokenSince = 0;
         _balances[id][msg.sender] += qty;
         emit TransferSingle(msg.sender, address(0), msg.sender, id, qty);
         emit Claimed(id, msg.sender, qty, due);
         _checkReceiver(msg.sender, address(0), msg.sender, id, qty, "");
+    }
+
+    /// @dev The key the per-key cap counts against: the wallet, or what the gate says. Reverts
+    ///      NotEligible for a gate that says no, reverts, answers in the wrong shape, or returns key 0.
+    function _gateKey(address gate, address who, bytes calldata data) private view returns (bytes32 key) {
+        if (gate == address(0)) return bytes32(uint256(uint160(who)));
+        (bool answered, bool ok, bytes32 k) = _ask(gate, who, data, gasleft());
+        if (!answered || !ok || k == 0) revert NotEligible();
+        return k;
+    }
+
+    /// @dev Ask a gate without trusting its ABI: `try` only catches a revert, not a malformed answer.
+    function _ask(address gate, address who, bytes memory data, uint256 gas)
+        private
+        view
+        returns (bool answered, bool ok, bytes32 key)
+    {
+        (bool success, bytes memory ret) =
+            gate.staticcall{gas: gas}(abi.encodeWithSelector(IGate.eligible.selector, who, data));
+        if (!success || ret.length < 64) return (false, false, 0);
+        (ok, key) = abi.decode(ret, (bool, bytes32));
+        answered = true;
+    }
+
+    /// @notice Why a claim would fail, without sending it: `reason` 0 = it would go through, 1 no such
+    ///         item, 2 sealed, 3 not open yet, 4 closed, 5 sold out, 6 not eligible, 7 cap reached.
+    ///         `key` is what the cap counts against and `due` the exact value to send.
+    function canClaim(uint256 id, address who, uint32 qty, bytes calldata data)
+        external
+        view
+        returns (bool ok, uint8 reason, bytes32 key, uint256 due)
+    {
+        if (id == 0 || id > itemCount || qty == 0) return (false, 1, 0, 0);
+        Item storage it = _items[id];
+        due = uint256(it.price) * qty;
+        if (it.isSealed) return (false, 2, 0, due);
+        if (block.timestamp < it.opens) return (false, 3, 0, due);
+        if (it.closes != 0 && block.timestamp >= it.closes) return (false, 4, 0, due);
+        if (it.maxSupply != 0 && it.minted + qty > it.maxSupply) return (false, 5, 0, due);
+        if (it.gate == address(0)) {
+            key = bytes32(uint256(uint160(who)));
+        } else {
+            (bool answered, bool eligible, bytes32 k) = _ask(it.gate, who, data, gasleft());
+            if (!answered || !eligible || k == 0) return (false, 6, 0, due);
+            key = k;
+        }
+        if (it.perKey != 0 && claimedBy[id][key] + qty > it.perKey) return (false, 7, key, due);
+        return (true, 0, key, due);
     }
 
     /// @notice How many more copies an item can still mint; type(uint256).max if unlimited.
@@ -378,12 +427,25 @@ contract EmogotchiItems {
 
     /// @notice Put an item on a pet you own. You must hold at least one copy. A pet carries a set, so an
     ///         outfit, a room theme and a companion can all be on at once; the site decides how they show.
+    ///         Cosmetic, scene and passive items go on (a passive one is how a ticket binds to a pet);
+    ///         consumables do not.
     function equip(address collection, uint256 tokenId, uint256 itemId) external {
+        _equip(collection, tokenId, itemId);
+    }
+
+    /// @notice The same item on many pets you own, in one transaction: one copy dresses the whole wallet.
+    function equipMany(address collection, uint256[] calldata tokenIds, uint256 itemId) external {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            _equip(collection, tokenIds[i], itemId);
+        }
+    }
+
+    function _equip(address collection, uint256 tokenId, uint256 itemId) private {
         Item storage it = _item(itemId);
         if (!collectionAllowed[collection]) revert CollectionNotAllowed();
         if (IOwnerOf(collection).ownerOf(tokenId) != msg.sender) revert NotOwner();
         if (_balances[itemId][msg.sender] == 0) revert NotHolder();
-        if (it.kind != Kind.Cosmetic && it.kind != Kind.Scene) revert NotEquippable();
+        if (it.kind == Kind.Consumable) revert NotEquippable();
         bytes32 k = _key(collection, tokenId, msg.sender);
         if (_equippedAt[k][itemId] != 0) return; // already on
         uint256[] storage list = _equipped[k];
@@ -444,6 +506,18 @@ contract EmogotchiItems {
         }
     }
 
+    /// @notice `equipped` for a page of pets in one call.
+    function equippedMany(address collection, uint256[] calldata tokenIds)
+        external
+        view
+        returns (uint256[][] memory out)
+    {
+        out = new uint256[][](tokenIds.length);
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            out[i] = this.equipped(collection, tokenIds[i]);
+        }
+    }
+
     /// @dev `ownerOf` that never reverts: zero for no code, a revert, or malformed return data.
     function _ownerOf(address collection, uint256 tokenId) private view returns (address) {
         if (collection.code.length == 0) return address(0);
@@ -459,12 +533,42 @@ contract EmogotchiItems {
     ///         is spent: a mechanics contract you have approved consumes it.
     function consume(address from, uint256 id, uint256 qty) external {
         if (from != msg.sender && !_operators[from][msg.sender]) revert NotApproved();
+        _burnCopies(from, id, qty);
+        emit Consumed(from, id, qty);
+    }
+
+    /// @notice Spend copies you hold on a mechanics contract, with no operator approval: the copies are
+    ///         burned first, then `target.onItemUsed(you, id, qty, data)` runs and must acknowledge.
+    ///         This is how a one-time-use item reaches a future contract that cannot be trusted with
+    ///         `setApprovalForAll` over everything you own.
+    function use(uint256 id, uint256 qty, address target, bytes calldata data) external nonReentrant {
+        if (target.code.length == 0) revert BadSink();
+        _burnCopies(msg.sender, id, qty);
+        emit Used(msg.sender, id, qty, target);
+        try IItemSink(target).onItemUsed(msg.sender, id, qty, data) returns (bytes4 r) {
+            if (r != IItemSink.onItemUsed.selector) revert BadSink();
+        } catch {
+            revert BadSink();
+        }
+    }
+
+    function _burnCopies(address from, uint256 id, uint256 qty) private {
         if (qty == 0) revert BadParams();
         uint256 bal = _balances[id][from];
         if (bal < qty) revert Insufficient();
         _balances[id][from] = bal - qty;
+        burned[id] += qty;
         emit TransferSingle(msg.sender, from, address(0), id, qty);
-        emit Consumed(from, id, qty);
+    }
+
+    /// @notice ERC-5615: copies in circulation, minted less consumed.
+    function totalSupply(uint256 id) external view returns (uint256) {
+        return _items[id].minted - burned[id];
+    }
+
+    /// @notice ERC-5615: whether the id is an item.
+    function exists(uint256 id) external view returns (bool) {
+        return id != 0 && id <= itemCount;
     }
 
     // ---------------------------------------------------------------- money, exactly as the game does it
@@ -543,8 +647,10 @@ contract EmogotchiItems {
     }
 
     /// @notice Record whether the swap path works. Anyone. The first note of a broken path starts the
-    ///         `FALLBACK_DELAY` clock; a note of a working path clears it, as does any successful burn.
-    ///         A one-block outage can therefore never divert the queue from EMO to raw MON.
+    ///         `FALLBACK_DELAY` clock; a note of a working path clears it, as does any successful burn
+    ///         and any claim made while the path works. The fallback therefore needs the path seen
+    ///         broken at two moments at least `FALLBACK_DELAY` apart with no working observation in
+    ///         between; a one-block outage never diverts the queue from EMO to raw MON.
     function noteSwapPath() external {
         bool broken = swapPathBroken();
         if (broken && brokenSince == 0) brokenSince = block.timestamp;
@@ -552,9 +658,9 @@ contract EmogotchiItems {
         emit SwapPathNoted(broken, brokenSince);
     }
 
-    /// @notice If the swap path has been broken for `FALLBACK_DELAY` without a break, burn the queued MON
-    ///         itself rather than let it sit locked forever. Anyone. The promise was that this MON is
-    ///         burned; EMO was the preferred form.
+    /// @notice If the swap path has been seen broken for `FALLBACK_DELAY` with nothing working in between,
+    ///         burn the queued MON itself rather than let it sit locked forever. Anyone. The promise was
+    ///         that this MON is burned; EMO was the preferred form.
     function crankFallback(uint256 maxMon) external nonReentrant {
         if (!swapPathBroken()) revert NothingToDo();
         if (brokenSince == 0 || block.timestamp < brokenSince + FALLBACK_DELAY) revert FallbackNotReady();
@@ -628,6 +734,31 @@ contract EmogotchiItems {
         out = new uint256[](ids.length);
         for (uint256 i = 0; i < ids.length; i++) {
             out[i] = _balances[ids[i]][accounts[i]];
+        }
+    }
+
+    /// @notice Everything a wallet holds, ids and counts, zero balances left out.
+    function holdings(address who) external view returns (uint256[] memory ids, uint256[] memory balances) {
+        uint256 n = itemCount;
+        uint256[] memory tmp = new uint256[](n);
+        uint256 k;
+        for (uint256 id = 1; id <= n; id++) {
+            if (_balances[id][who] > 0) tmp[k++] = id;
+        }
+        ids = new uint256[](k);
+        balances = new uint256[](k);
+        for (uint256 i = 0; i < k; i++) {
+            ids[i] = tmp[i];
+            balances[i] = _balances[tmp[i]][who];
+        }
+    }
+
+    /// @notice Items `from` to `to` inclusive, for the shop page in one call.
+    function catalogue(uint256 from, uint256 to) external view returns (Item[] memory out) {
+        if (from == 0 || to > itemCount || from > to) revert NoItem();
+        out = new Item[](to - from + 1);
+        for (uint256 id = from; id <= to; id++) {
+            out[id - from] = _items[id];
         }
     }
 
@@ -737,7 +868,7 @@ contract EmogotchiItems {
             '},{"trait_type":"max supply","value":',
             _u(it.maxSupply),
             '},{"trait_type":"soulbound","value":',
-            it.soulbound ? "true" : "false",
+            it.soulbound ? '"yes"' : '"no"',
             "}]}"
         );
         return string(json);

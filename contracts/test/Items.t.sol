@@ -24,6 +24,51 @@ contract Receiver {
 
 contract NotAReceiver {}
 
+/// @dev A gate with the old one-value ABI: answers, but in the wrong shape.
+contract OldShapeGate {
+    function eligible(address, bytes calldata) external pure returns (bool) {
+        return true;
+    }
+}
+
+/// @dev Well-formed on the empty probe, wrong shape once real data arrives.
+contract ShapeShiftGate {
+    function eligible(address, bytes calldata data) external pure returns (bool, bytes32) {
+        if (data.length == 0) return (true, bytes32(uint256(1)));
+        assembly {
+            mstore(0, 1)
+            return(0, 32)
+        }
+    }
+}
+
+contract ZeroKeyGate {
+    function eligible(address, bytes calldata) external pure returns (bool, bytes32) {
+        return (true, 0);
+    }
+}
+
+contract Sink {
+    address public lastFrom;
+    uint256 public lastId;
+    uint256 public lastQty;
+    bytes public lastData;
+
+    function onItemUsed(address from, uint256 id, uint256 qty, bytes calldata data) external returns (bytes4) {
+        lastFrom = from;
+        lastId = id;
+        lastQty = qty;
+        lastData = data;
+        return this.onItemUsed.selector;
+    }
+}
+
+contract BadSink {
+    function onItemUsed(address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
+        return 0xdeadbeef;
+    }
+}
+
 /// @dev Re-enters claim from the receive hook; the guard must stop it.
 contract Reenterer {
     EmogotchiItems items;
@@ -288,18 +333,18 @@ contract ItemsTest is Test {
     // ---------------------------------------------------------------- equipping
     function test_equipRules() public {
         uint256 witch = _witch();
-        EmogotchiItems.CreateParams memory c = _params("Ticket");
-        c.kind = EmogotchiItems.Kind.Passive;
-        uint256 ticket = items.create(c);
+        EmogotchiItems.CreateParams memory c = _params("Snack");
+        c.kind = EmogotchiItems.Kind.Consumable;
+        uint256 snack = items.create(c);
         vm.startPrank(alice);
         items.claim(witch, 1, "");
-        items.claim(ticket, 1, "");
+        items.claim(snack, 1, "");
         vm.expectRevert(EmogotchiItems.CollectionNotAllowed.selector);
         items.equip(address(0xBEEF), 1, witch);
         vm.expectRevert(EmogotchiItems.NotOwner.selector);
         items.equip(address(game), 4, witch); // bob's cat
         vm.expectRevert(EmogotchiItems.NotEquippable.selector);
-        items.equip(address(game), 1, ticket);
+        items.equip(address(game), 1, snack); // consumables are spent, not worn
         items.equip(address(game), 1, witch);
         items.equip(address(game), 1, witch); // twice is fine
         items.equip(address(game), 2, witch); // any cat in the wallet can wear it
@@ -781,6 +826,175 @@ contract ItemsTest is Test {
         vm.prank(carol);
         game.transferFrom(carol, alice, 1); // alice buys the cat back: her outfit is still on
         assertEq(items.equipped(address(game), 1)[0], witch);
+    }
+
+    /// @dev Round 3: try/catch does not catch a malformed answer, so a gate with the wrong ABI shape
+    ///      used to revert with nothing at create and at claim.
+    function test_gateShapeIsChecked_atCreateAndAtClaim() public {
+        EmogotchiItems.CreateParams memory c = _params("x");
+        c.gate = address(new OldShapeGate());
+        vm.expectRevert(EmogotchiItems.BadParams.selector);
+        items.create(c);
+        c.gate = address(new ShapeShiftGate());
+        uint256 id = items.create(c); // passes the probe
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotEligible.selector); // but never an empty revert
+        items.claim(id, 1, abi.encode(1));
+        vm.prank(alice);
+        items.claim(id, 1, ""); // the empty hint still answers in shape
+        assertEq(items.balanceOf(alice, id), 1);
+    }
+
+    /// @dev Round 3: a gate returning key 0 would have collapsed the per-key cap into one global cap.
+    function test_zeroKeyIsNotEligible() public {
+        EmogotchiItems.CreateParams memory c = _params("x");
+        c.gate = address(new ZeroKeyGate());
+        c.perKey = 1;
+        uint256 id = items.create(c);
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotEligible.selector);
+        items.claim(id, 1, "");
+        (bool ok, uint8 reason,,) = items.canClaim(id, alice, 1, "");
+        assertFalse(ok);
+        assertEq(reason, 6);
+    }
+
+    /// @dev Round 3: a recovery nobody cranked through did not stop the fallback clock; claims do now.
+    function test_claimStopsTheFallbackClock() public {
+        uint256 id = _paid8();
+        vm.mockCallRevert(address(nad), abi.encodeWithSelector(nad.getAmountOut.selector), "down");
+        items.noteSwapPath();
+        assertGt(items.brokenSince(), 0);
+        vm.clearMockedCalls();
+        vm.prank(bob);
+        items.claim{value: 10 ether}(id, 1, ""); // any claim while the path works
+        assertEq(items.brokenSince(), 0);
+        vm.warp(vm.getBlockTimestamp() + items.FALLBACK_DELAY());
+        vm.mockCallRevert(address(nad), abi.encodeWithSelector(nad.getAmountOut.selector), "down");
+        vm.expectRevert(EmogotchiItems.FallbackNotReady.selector);
+        items.crankFallback(type(uint256).max);
+    }
+
+    function test_canClaimExplains() public {
+        uint256 witch = _witch();
+        (bool ok, uint8 reason, bytes32 key, uint256 due) = items.canClaim(witch, alice, 1, abi.encode(1));
+        assertTrue(ok);
+        assertEq(reason, 0);
+        assertEq(key, bytes32(uint256(1)));
+        assertEq(due, 0);
+        (ok, reason,,) = items.canClaim(witch, bob, 1, abi.encode(4)); // unnamed
+        assertEq(reason, 6);
+        (ok, reason,,) = items.canClaim(99, alice, 1, "");
+        assertEq(reason, 1);
+        vm.prank(alice);
+        items.claim(witch, 1, abi.encode(1));
+        (ok, reason, key,) = items.canClaim(witch, alice, 1, abi.encode(1));
+        assertEq(reason, 7);
+        assertEq(key, bytes32(uint256(1)));
+        items.seal(witch);
+        (ok, reason,,) = items.canClaim(witch, alice, 1, abi.encode(1));
+        assertEq(reason, 2);
+        EmogotchiItems.CreateParams memory c = _params("Later");
+        c.opens = uint64(vm.getBlockTimestamp() + 1 days);
+        c.closes = uint64(vm.getBlockTimestamp() + 2 days);
+        c.price = 1 ether;
+        c.maxSupply = 1;
+        uint256 later = items.create(c);
+        (ok, reason,, due) = items.canClaim(later, alice, 1, "");
+        assertEq(reason, 3);
+        assertEq(due, 1 ether);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
+        (ok, reason,,) = items.canClaim(later, alice, 2, "");
+        assertEq(reason, 5);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
+        (ok, reason,,) = items.canClaim(later, alice, 1, "");
+        assertEq(reason, 4);
+    }
+
+    function test_equipMany_andPassiveBinds() public {
+        EmogotchiItems.CreateParams memory c = _params("Autofeeder ticket");
+        c.kind = EmogotchiItems.Kind.Passive;
+        uint256 ticket = items.create(c);
+        uint256 witch = _witch();
+        vm.startPrank(alice);
+        items.claim(witch, 1, abi.encode(1));
+        items.claim(ticket, 1, "");
+        uint256[] memory cats = new uint256[](3);
+        cats[0] = 1;
+        cats[1] = 2;
+        cats[2] = 3;
+        items.equipMany(address(game), cats, witch); // one copy, every cat
+        items.equip(address(game), 1, ticket); // a passive item binds to a pet
+        vm.stopPrank();
+        uint256[][] memory many = items.equippedMany(address(game), cats);
+        assertEq(many[0].length, 2);
+        assertEq(many[1].length, 1);
+        assertEq(many[2][0], witch);
+        cats[2] = 4; // bob's cat in the list
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotOwner.selector);
+        items.equipMany(address(game), cats, witch);
+        c = _params("Snack");
+        c.kind = EmogotchiItems.Kind.Consumable;
+        uint256 snack = items.create(c);
+        vm.startPrank(alice);
+        items.claim(snack, 1, "");
+        vm.expectRevert(EmogotchiItems.NotEquippable.selector);
+        items.equip(address(game), 1, snack);
+        vm.stopPrank();
+    }
+
+    function test_use_spendsOnASink_withoutApproval() public {
+        EmogotchiItems.CreateParams memory c = _params("Snack");
+        c.kind = EmogotchiItems.Kind.Consumable;
+        c.soulbound = true;
+        uint256 snack = items.create(c);
+        Sink sink = new Sink();
+        BadSink bad = new BadSink();
+        vm.startPrank(alice);
+        items.claim(snack, 3, "");
+        items.use(snack, 2, address(sink), hex"c0ffee");
+        assertEq(sink.lastFrom(), alice);
+        assertEq(sink.lastId(), snack);
+        assertEq(sink.lastQty(), 2);
+        assertEq(sink.lastData(), hex"c0ffee");
+        assertEq(items.balanceOf(alice, snack), 1);
+        assertEq(items.burned(snack), 2);
+        assertEq(items.totalSupply(snack), 1);
+        assertTrue(items.exists(snack));
+        assertFalse(items.exists(snack + 1));
+        vm.expectRevert(EmogotchiItems.BadSink.selector);
+        items.use(snack, 1, address(bad), "");
+        vm.expectRevert(EmogotchiItems.BadSink.selector);
+        items.use(snack, 1, bob, ""); // no code
+        vm.expectRevert(EmogotchiItems.Insufficient.selector);
+        items.use(snack, 2, address(sink), "");
+        items.consume(alice, snack, 1);
+        assertEq(items.totalSupply(snack), 0);
+        vm.stopPrank();
+    }
+
+    function test_holdingsAndCatalogue() public {
+        uint256 witch = _witch();
+        EmogotchiItems.CreateParams memory c = _params("Badge");
+        uint256 badge = items.create(c);
+        vm.startPrank(alice);
+        items.claim(witch, 1, abi.encode(1));
+        items.claim(badge, 4, "");
+        vm.stopPrank();
+        (uint256[] memory ids, uint256[] memory bals) = items.holdings(alice);
+        assertEq(ids.length, 2);
+        assertEq(ids[0], witch);
+        assertEq(bals[1], 4);
+        (ids,) = items.holdings(bob);
+        assertEq(ids.length, 0);
+        EmogotchiItems.Item[] memory cat = items.catalogue(1, 2);
+        assertEq(cat[0].name, "Witch outfit");
+        assertEq(cat[1].minted, 4);
+        vm.expectRevert(EmogotchiItems.NoItem.selector);
+        items.catalogue(1, 3);
+        vm.expectRevert(EmogotchiItems.NoItem.selector);
+        items.catalogue(0, 1);
     }
 
     function test_itemCreatedCarriesEveryRule() public {

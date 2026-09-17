@@ -12,6 +12,16 @@ import {NamedCatGate} from "../src/gates/NamedCatGate.sol";
 import {HoldsGate} from "../src/gates/HoldsGate.sol";
 import {MockEMO, MockWMON, MockNad, MockArt} from "./mocks/Mocks.sol";
 
+/// @dev A mechanics contract that accepts used items and counts them.
+contract Sink {
+    uint256 public got;
+
+    function onItemUsed(address, uint256, uint256 qty, bytes calldata) external returns (bytes4) {
+        got += qty;
+        return this.onItemUsed.selector;
+    }
+}
+
 /// @dev Stateful fuzz of the item shop. The handler is a model: before every call it works out from
 ///      the item's rules whether the call must succeed, then insists the contract agreed. It also
 ///      mirrors the equip lists with the same swap-remove algorithm so `equipped()` can be checked
@@ -23,6 +33,7 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     NamedCatGate public named;
     HoldsGate public holds;
     MockNad public nad;
+    Sink public sink;
     address public treasury;
     address public team;
     address[] public actors;
@@ -68,6 +79,7 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         team = m;
         actors = a;
         catCount = cats;
+        sink = new Sink();
         for (uint256 id = 1; id <= items.itemCount(); id++) {
             snap[id] = items.item(id);
         }
@@ -265,6 +277,25 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         }
     }
 
+    function useItem(uint256 a, uint256 i, uint256 qty, bool badTarget) external {
+        _count("use");
+        address actor = _actor(a);
+        uint256 id = _id(i);
+        uint256 bal = items.balanceOf(actor, id);
+        qty = bound(qty, 0, bal + 1);
+        address target = badTarget ? address(nad) : address(sink); // nad has no onItemUsed
+        bool ok = !badTarget && qty > 0 && qty <= bal;
+        uint256 got = sink.got();
+        vm.prank(actor);
+        try items.use(id, qty, target, "") {
+            require(ok, "model: use should have failed");
+            require(sink.got() == got + qty, "model: sink not told");
+            consumed[id] += qty;
+        } catch {
+            require(!ok, "model: use should have succeeded");
+        }
+    }
+
     function approve(uint256 a, uint256 b, bool flag) external {
         _count("approve");
         address owner = _actor(a);
@@ -284,8 +315,7 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         bytes32 k = gk(cat, actor);
         bool on = ghostOn[k][id];
         bool ok = game.ownerOf(cat) == actor && items.balanceOf(actor, id) > 0
-            && (it.kind == EmogotchiItems.Kind.Cosmetic || it.kind == EmogotchiItems.Kind.Scene)
-            && (on || ghostList[k].length < items.MAX_EQUIPPED());
+            && it.kind != EmogotchiItems.Kind.Consumable && (on || ghostList[k].length < items.MAX_EQUIPPED());
         vm.prank(actor);
         try items.equip(address(game), cat, id) {
             require(ok, "model: equip should have failed");
@@ -613,6 +643,8 @@ contract ItemsInvariant is Test {
                 sum += items.balanceOf(actors[a], id);
             }
             assertEq(sum + h.consumed(id), it.minted, "balances vs minted");
+            assertEq(items.burned(id), h.consumed(id), "burned counter");
+            assertEq(items.totalSupply(id), sum, "totalSupply");
             if (it.maxSupply != 0) assertLe(it.minted, it.maxSupply, "over max supply");
             if (h.sealedGhost(id)) {
                 assertTrue(it.isSealed, "seal lost");
@@ -724,8 +756,7 @@ contract ItemsInvariant is Test {
             }
             assertEq(out.length, expect, "equipped length");
             for (uint256 i = 0; i < out.length; i++) {
-                EmogotchiItems.Kind kind = items.item(out[i]).kind;
-                assertTrue(kind == EmogotchiItems.Kind.Cosmetic || kind == EmogotchiItems.Kind.Scene, "kind");
+                assertTrue(items.item(out[i]).kind != EmogotchiItems.Kind.Consumable, "kind");
                 assertGt(items.balanceOf(owner, out[i]), 0, "owner holds it");
                 for (uint256 j = i + 1; j < out.length; j++) {
                     assertTrue(out[i] != out[j], "duplicate");
@@ -741,7 +772,7 @@ contract ItemsInvariant is Test {
 
     // what the fuzzer actually exercised, shown with -vv
     function afterInvariant() public view {
-        string[26] memory names = [
+        string[27] memory names = [
             "claim",
             "claimOk",
             "grant",
@@ -750,6 +781,7 @@ contract ItemsInvariant is Test {
             "transfer",
             "batch",
             "consume",
+            "use",
             "approve",
             "equip",
             "equipOk",

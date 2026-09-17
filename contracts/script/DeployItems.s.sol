@@ -76,7 +76,7 @@ contract DeployItems is Script {
         EmogotchiItems.CreateParams memory c;
         c.name = "Witch outfit";
         c.description =
-            "A witch hat with the cat's own studded band and a ruby buckle, and a robe with a lining and stars. Any cat in the wallet that holds it can wear it. One per named Emogotchi, claimed by the cat's owner. 1,000 exist.";
+            "A witch hat with the cat's own studded band and a ruby buckle; worn, it comes with a robe with a lining and stars. Any cat in the wallet that holds it can wear it. One per named Emogotchi, claimed by the cat's owner. At most 1,000 will ever exist.";
         c.svg = witch;
         c.price = 0;
         c.maxSupply = 1000;
