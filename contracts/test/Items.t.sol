@@ -1012,6 +1012,7 @@ contract ItemsTest is Test {
         vm.expectRevert(EmogotchiItems.NotEligible.selector); // the scan skips it too
         items.claim(witch, 1, "");
         uint256 revivePrice = game.REVIVE_PRICE(); // read before the prank, or the read consumes it
+        vm.deal(alice, revivePrice); // 1,000 MON, more than the test wallet holds
         vm.prank(alice);
         game.revive{value: revivePrice}(1);
         assertTrue(game.state(1).alive);
