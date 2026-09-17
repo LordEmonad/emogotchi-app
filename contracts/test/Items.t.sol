@@ -742,22 +742,42 @@ contract ItemsTest is Test {
         assertEq(items.pendingBurnMon(), 0);
     }
 
-    /// @dev Ultrafuzz: repeated same-block cranks bypassed the per-burn impact guard; one burn per block now.
-    function test_crankBurn_oncePerBlock() public {
+    /// @dev Ultrafuzz: repeated same-block cranks bypassed the per-burn impact guard. The guard is a budget
+    ///      per block now: many small cranks share it, and a tiny crank cannot hog it (a boolean lock could
+    ///      be griefed for the gas of one call per block).
+    function test_crankBurn_budgetPerBlock() public {
         EmogotchiItems.CreateParams memory c = _params("Paid");
         c.price = 100 ether;
         uint256 id = items.create(c);
         vm.prank(alice);
         items.claim{value: 100 ether}(id, 1, "");
-        nad.setReserves(1000 ether, 42_000_000 ether); // guard: 5 MON per burn
-        items.crankBurn(type(uint256).max, 0);
-        assertEq(items.pendingBurnMon(), 75 ether);
+        nad.setReserves(1000 ether, 42_000_000 ether); // guard: 5 MON per block
+        items.crankBurn(1 ether, 0); // a small crank
+        assertEq(items.pendingBurnMon(), 79 ether);
+        uint256 cap = (wmon.balanceOf(pool) * items.MAX_IMPACT_BPS()) / items.BPS();
+        items.crankBurn(type(uint256).max, 0); // the rest of this block's budget, not a full slice
+        assertEq(items.pendingBurnMon(), 80 ether - cap);
+        assertEq(items.burnedInBlock(), cap);
+        // each burn deepens the pool by what it pushed in, so the budget re-read from depth grows by 0.5% of
+        // the slice (a converging sliver); hold depth still to show the budget itself is spent
+        nad.setPoolBalance(1000 ether);
         vm.expectRevert(EmogotchiItems.NothingToDo.selector);
-        items.crankBurn(type(uint256).max, 0); // same block
+        items.crankBurn(type(uint256).max, 0); // budget spent
         vm.roll(block.number + 1);
-        uint256 cap = (wmon.balanceOf(pool) * items.MAX_IMPACT_BPS()) / items.BPS(); // the pool grew by the first slice
+        uint256 cap2 = (wmon.balanceOf(pool) * items.MAX_IMPACT_BPS()) / items.BPS(); // pool grew by the slices
         items.crankBurn(type(uint256).max, 0);
-        assertEq(items.pendingBurnMon(), 75 ether - cap);
+        assertEq(items.burnedInBlock(), cap2);
+        assertEq(items.pendingBurnMon(), 80 ether - cap - cap2);
+    }
+
+    function test_renounceClearsAPendingOffer() public {
+        items.setCurator(alice);
+        items.renounceCurator();
+        assertEq(items.pendingCurator(), address(0));
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotCurator.selector);
+        items.acceptCurator();
+        assertEq(items.curator(), address(0));
     }
 
     /// @dev Audit: a backlog above the impact guard burned nothing with maxMon = max; now it burns a slice.

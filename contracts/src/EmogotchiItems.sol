@@ -137,7 +137,8 @@ contract EmogotchiItems {
     uint256 public totalMonBurned;
     uint256 public totalEmoBurned;
     uint256 public brokenSince; // when `swapPathBroken()` was first noted true, 0 while the path works
-    uint256 public lastBurnBlock; // one burn per block, so the impact guard bounds volume per block too
+    uint256 public lastBurnBlock; // the impact guard is a budget per block, not per call
+    uint256 public burnedInBlock; // MON pushed through the pool in `lastBurnBlock`
 
     uint256 private _lock = 1;
 
@@ -603,12 +604,18 @@ contract EmogotchiItems {
     ///         impact guard allows in one go, so `crankBurn(type(uint256).max, 0)` always burns a slice
     ///         of a backlog instead of nothing.
     function crankBurn(uint256 maxMon, uint256 minEmoOut) external nonReentrant {
-        if (lastBurnBlock == block.number) revert NothingToDo(); // the guard is per block, not per call
         uint256 amount = pendingBurnMon < maxMon ? pendingBurnMon : maxMon;
         uint256 cap = _maxIn();
+        if (lastBurnBlock == block.number) {
+            // the guard bounds what one block may push through the pool, however many calls share it
+            cap = cap > burnedInBlock ? cap - burnedInBlock : 0;
+        } else {
+            lastBurnBlock = block.number;
+            burnedInBlock = 0;
+        }
         if (amount > cap) amount = cap;
         if (amount == 0) revert NothingToDo();
-        lastBurnBlock = block.number;
+        burnedInBlock += amount;
         pendingBurnMon -= amount;
         _burn(amount, minEmoOut);
     }

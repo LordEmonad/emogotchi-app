@@ -7,13 +7,16 @@ import {NamedCatGate} from "../src/gates/NamedCatGate.sol";
 
 interface IName {
     function name() external view returns (string memory);
+    function TREASURY() external view returns (address);
+    function TEAM() external view returns (address);
 }
 
 /**
  * Deploys the item shop and creates the first item, the witch outfit.
  *
  *   GAME=0x… TREASURY=0x… TEAM=0x… forge script script/DeployItems.s.sol \
- *     --rpc-url https://rpc.monad.xyz --broadcast --verify --account emogotchi --sender 0x…
+ *     --rpc-url https://rpc.monad.xyz --broadcast --verify --verifier sourcify --account emogotchi \
+ *     --sender 0x… --disable-code-size-limit
  *
  * The broadcaster becomes the curator (create() is curator-only and happens in this same run); hand the
  * role on afterwards with setCurator if it should live elsewhere. On Monad mainnet (chain 143) the nad.fun
@@ -31,6 +34,11 @@ contract DeployItems is Script {
         require(game.code.length > 0, "GAME has no code");
         require(keccak256(bytes(IName(game).name())) == keccak256("Emogotchi"), "GAME is not the Emogotchi game");
         require(treasury != address(0) && team != address(0) && treasury != team, "TREASURY/TEAM");
+        if (block.chainid == 143) {
+            // the shop pays the same wallets as the game; refuse anything else on mainnet
+            require(IName(game).TREASURY() == treasury, "TREASURY differs from the game's");
+            require(IName(game).TEAM() == team, "TEAM differs from the game's");
+        }
         EmogotchiItems.Params memory p;
         p.curator = msg.sender;
         p.treasury = treasury;

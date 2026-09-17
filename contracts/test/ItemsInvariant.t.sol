@@ -705,7 +705,7 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
     function crank(uint256 maxMon, uint256 minOut, bool newBlock) external {
         _count("crank");
         if (newBlock) vm.roll(block.number + 1);
-        bool blocked = items.lastBurnBlock() == block.number;
+        uint256 spent = items.lastBurnBlock() == block.number ? items.burnedInBlock() : 0;
         maxMon = bound(maxMon, 1, 100 ether);
         minOut = bound(minOut, 0, 1);
         require(items.swapPathBroken() == _pathBroken(), "model: swapPathBroken disagrees with the mock");
@@ -715,7 +715,7 @@ contract ItemsHandler is CommonBase, StdCheats, StdUtils {
         uint256 amt = pb < maxMon ? pb : maxMon;
         uint256 cap = (nad.wmon().balanceOf(nad.pool()) * items.MAX_IMPACT_BPS()) / items.BPS();
         if (amt > cap) amt = cap;
-        if (blocked) amt = 0; // a second crank in the same block does nothing
+        if (amt > (cap > spent ? cap - spent : 0)) amt = cap > spent ? cap - spent : 0; // this block's budget
         bool expectBurn = amt > 0 && !nad.failNext() && !_pathBroken();
         uint256 quoted = nad.quoteOut(amt);
         uint256 floor = (quoted * (items.BPS() - items.MAX_IMPACT_BPS())) / items.BPS();
