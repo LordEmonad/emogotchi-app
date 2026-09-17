@@ -580,7 +580,7 @@ PUMPKIN2 = "#C9651A"
 FLAME    = "#FFD36B"
 MOSS     = "#3E6B2E"
 
-def tapered_big(pts, w0, w1, t=0.5, fill=FUR, sample=7.0):
+def tapered_big(pts, w0, w1, t=0.5, fill=FUR, sample=7.0, stroke=INK):
     """`tapered` for room-sized silhouettes: the same shape, sampled every `sample` units instead of
     every 2, so a tree is a few kilobytes and not two hundred."""
     from wobble import parse, _samples
@@ -598,7 +598,7 @@ def tapered_big(pts, w0, w1, t=0.5, fill=FUR, sample=7.0):
     tipx, tipy = c[-1]; x0, y0 = c[-2]; tx, ty = tipx-x0, tipy-y0; L = math.hypot(tx, ty) or 1
     r = w1/2; ang0 = math.atan2(-ty/L, -tx/L) + math.pi/2
     tip = [(tipx + r*math.cos(ang0 + math.pi*k/4), tipy + r*math.sin(ang0 + math.pi*k/4)) for k in range(3, 0, -1)]
-    return [path(smooth_closed(left + tip + right[::-1], 0.4), fill)]
+    return [path(smooth_closed(left + tip + right[::-1], 0.4), fill, stroke)]
 
 def _cobweb_lines(cx, cy, r, n=7, spirals=4, sweep=(0, 90)):
     """A corner web: spokes from the corner and arcs between them."""
@@ -680,44 +680,50 @@ def tombstone():
     svg("tombstone", 104, 116, g)
 
 def deadtree():
-    """A bare, gnarled tree in silhouette, leaning into the room: a thick twisted trunk, heavy low
-    boughs and thin twigs, a hollow knot. A spider hangs from the low branch; #spider swings."""
+    """A bare, gnarled tree in silhouette, leaning into the room. Drawn flat, all one dark, with no ink
+    between the pieces (the joins showed as seams); the site gives it its edge with a shadow. One fat
+    trunk, a low hooked bough toward the cat, a high bough curling back over the room, a crooked
+    spire; a hollow knot; the spider on a short thread from the low bough (#spider swings)."""
     g = []
-    g.append(ellipse(120, 328, 70, 8, PUPIL, "none", 0, 'opacity="0.4"'))
     P = PUPIL
-    # roots flaring out, then the trunk: wide at the base, twisting as it rises
-    g.extend(tapered_big([(112, 320), (72, 318), (40, 328)], 22, 5, 0.5, P))
-    g.extend(tapered_big([(128, 320), (168, 316), (196, 326)], 22, 5, 0.5, P))
-    g.extend(tapered_big([(120, 332), (116, 290), (106, 250), (108, 210), (118, 170), (124, 130), (120, 96), (126, 66), (134, 44)], 58, 10, 0.55, P))
-    # the low left bough (the spider's), thick, reaching toward the cat
-    g.extend(tapered_big([(110, 232), (80, 216), (52, 196), (28, 168), (18, 140)], 24, 5, 0.5, P))
-    g.extend(tapered_big([(52, 196), (34, 200), (14, 196)], 9, 3, 0.5, P))
-    g.extend(tapered_big([(28, 168), (10, 160), (2, 146)], 6, 2, 0.5, P))
-    # the right bough, higher, sweeping up
-    g.extend(tapered_big([(122, 160), (150, 148), (176, 128), (196, 100), (200, 72)], 22, 5, 0.5, P))
-    g.extend(tapered_big([(176, 128), (192, 136), (208, 132)], 8, 3, 0.5, P))
-    g.extend(tapered_big([(196, 100), (206, 108), (210, 92)], 6, 2, 0.5, P))
-    # the crown: two forks with twigs
-    g.extend(tapered_big([(122, 100), (100, 76), (86, 48), (88, 20)], 16, 4, 0.5, P))
-    g.extend(tapered_big([(100, 76), (78, 70), (60, 74)], 7, 2.5, 0.5, P))
-    g.extend(tapered_big([(86, 48), (70, 40), (62, 26)], 5, 2, 0.5, P))
-    g.extend(tapered_big([(134, 44), (146, 28), (150, 8)], 12, 3, 0.5, P))
-    g.extend(tapered_big([(146, 28), (164, 22), (176, 6)], 6, 2, 0.5, P))
-    g.extend(tapered_big([(128, 66), (144, 60), (158, 64)], 6, 2, 0.5, P))
-    # bark light on the lit side, and a hollow knot
-    g.append(path("M132,300 Q122,250 124,200 Q128,160 130,120", "none", LAV, 2.2, 'opacity="0.16"'))
-    g.append(path(smooth_closed([(104, 262), (110, 246), (122, 244), (128, 258), (122, 276), (108, 278)], 0.5), INK, LAV, 1.6, 'opacity="0.95"'))
-    g.append(path(smooth_closed([(110, 262), (114, 252), (120, 252), (122, 262), (118, 270), (112, 270)], 0.5), HAIR, "none", 0))
-    # the spider on a thread from the low left bough
+    T = lambda pts, w0, w1: tapered_big(pts, w0, w1, 0.5, P, 6.0, P)
+    g.append(ellipse(112, 330, 74, 8, P, "none", 0, 'opacity="0.4"'))
+    # roots and the base
+    g.extend(T([(104, 320), (66, 318), (30, 330)], 30, 6))
+    g.extend(T([(122, 320), (160, 318), (194, 328)], 30, 6))
+    # the trunk: one smooth S, fat at the foot, slimming as it rises
+    g.extend(T([(112, 336), (108, 300), (98, 262), (98, 226), (108, 194), (118, 162), (118, 132), (124, 104), (120, 76)], 66, 18))
+    # the low bough toward the cat: thick elbow, hooking down, a claw of twigs at the end
+    g.extend(T([(104, 240), (74, 232), (48, 214), (30, 188), (28, 156)], 30, 7))
+    g.extend(T([(30, 188), (14, 186), (4, 172)], 9, 3))
+    g.extend(T([(28, 156), (16, 142), (14, 126)], 6, 2.5))
+    g.extend(T([(28, 156), (38, 140), (38, 122)], 6, 2.5))
+    g.extend(T([(48, 214), (42, 232), (28, 240)], 8, 3))
+    # the high bough: up and back over the room, ending in a hook
+    g.extend(T([(116, 172), (146, 160), (170, 138), (184, 110), (178, 80)], 28, 7))
+    g.extend(T([(184, 110), (200, 114), (208, 102)], 8, 3))
+    g.extend(T([(178, 80), (166, 66), (170, 50)], 6, 2.5))
+    g.extend(T([(178, 80), (192, 66), (206, 62)], 6, 2.5))
+    g.extend(T([(170, 138), (186, 148), (204, 146)], 7, 3))
+    # the spire and its fork
+    g.extend(T([(120, 76), (108, 52), (106, 26), (114, 4)], 18, 5))
+    g.extend(T([(106, 26), (92, 20), (84, 6)], 6, 2.5))
+    g.extend(T([(112, 60), (132, 50), (150, 54)], 8, 3))
+    g.extend(T([(150, 54), (160, 42), (158, 28)], 4.5, 2))
+    g.extend(T([(98, 262), (80, 266), (70, 280)], 9, 3))
+    # the hollow knot: dark hole with a soft lighter rim inside the silhouette
+    g.append(path(smooth_closed([(98, 254), (104, 240), (116, 238), (124, 252), (118, 270), (104, 272)], 0.5), "#3a2440", "none", 0))
+    g.append(path(smooth_closed([(104, 254), (108, 244), (116, 244), (119, 254), (115, 264), (107, 264)], 0.5), INK, "none", 0))
+    # the spider
     g.append('<g id="spider">')
-    g.append(path("M60,200 L60,252", "none", LAV, 1.0, 'opacity="0.7"'))
-    for (x0, y0, x1, y1) in ((60, 260, 46, 252), (60, 262, 44, 264), (60, 264, 48, 276), (60, 260, 74, 252), (60, 262, 76, 264), (60, 264, 72, 276)):
+    g.append(path("M66,226 L66,258", "none", LAV, 1.0, 'opacity="0.7"'))
+    for (x0, y0, x1, y1) in ((66, 266, 52, 258), (66, 268, 50, 270), (66, 270, 54, 282), (66, 266, 80, 258), (66, 268, 82, 270), (66, 270, 78, 282)):
         g.append(path(f"M{x0},{y0} Q{(x0+x1)/2},{y1-6} {x1},{y1}", "none", INK, 1.8))
-    g.append(ellipse(60, 264, 7, 8, PUPIL, INK, 1.6))
-    g.append(ellipse(60, 255, 4.2, 4, PUPIL, INK, 1.4))
-    g.append(f'<circle cx="58.4" cy="254.6" r="1.1" fill="{LAV}"/><circle cx="61.6" cy="254.6" r="1.1" fill="{LAV}"/>')
+    g.append(ellipse(66, 270, 7, 8, P, INK, 1.6))
+    g.append(ellipse(66, 261, 4.2, 4, P, INK, 1.4))
+    g.append(f'<circle cx="64.4" cy="260.6" r="1.1" fill="{LAV}"/><circle cx="67.6" cy="260.6" r="1.1" fill="{LAV}"/>')
     g.append('</g>')
-    svg("deadtree", 212, 336, g, amp=0.9, step=8.0, decimals=1)
+    svg("deadtree", 212, 336, g, amp=0.8, step=8.0, decimals=1)
 
 def fence():
     """A wonky graveyard fence in silhouette, for the back of the room. Wide and low."""

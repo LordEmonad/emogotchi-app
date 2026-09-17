@@ -24,12 +24,14 @@ export function SceneryBack({ scene }: { scene: SceneName }) {
       <Piece name="cobweb" x={50} bottom={100} w={100} ar={1} className="scn-web" />
       <Piece name="cobweb" x={556} bottom={76} w={76} ar={1} className="scn-web scn-web-r" />
       {[0, 1, 2].map((i) => <Piece key={i} name="bat" x={0} bottom={0} w={[54, 40, 32][i]!} ar={90 / 46} className={`scn-bat scn-bat-${i}`} />)}
-      <Piece name="fence" x={300} bottom={F - 6} w={330} ar={350 / 62} className="scn-fence" />
-      <Piece name="deadtree" x={540} bottom={F + 8} w={222} ar={212 / 336} className="scn-tree" />
-      <span className="pumpkin-light" style={{ left: 20, top: F - 30 }} />
-      <Piece name="tombstone" x={70} bottom={F + 4} w={112} ar={104 / 116} className="scn-stone" />
-      <Piece name="pumpkin" x={136} bottom={F + 8} w={86} ar={112 / 100} className="scn-pumpkin scn-pumpkin-a" />
-      <Piece name="pumpkin" x={28} bottom={F + 6} w={56} ar={112 / 100} className="scn-pumpkin scn-pumpkin-b" style={{ transform: 'scaleX(-1)' }} />
+      {/* the back of the room: everything stands on the far edge of the floor (its curved rim), a step up
+          from where the cat walks, so the cat passes in front of it and never seems to tread on it */}
+      <Piece name="fence" x={300} bottom={F - 30} w={300} ar={350 / 62} className="scn-fence" />
+      <Piece name="deadtree" x={546} bottom={F - 22} w={200} ar={212 / 336} className="scn-tree" />
+      <span className="pumpkin-light" style={{ left: 10, top: F - 56 }} />
+      <Piece name="tombstone" x={64} bottom={F - 26} w={100} ar={104 / 116} className="scn-stone" />
+      <Piece name="pumpkin" x={128} bottom={F - 24} w={74} ar={112 / 100} className="scn-pumpkin scn-pumpkin-a" />
+      <Piece name="pumpkin" x={24} bottom={F - 26} w={48} ar={112 / 100} className="scn-pumpkin scn-pumpkin-b" style={{ transform: 'scaleX(-1)' }} />
     </div>
   );
 }

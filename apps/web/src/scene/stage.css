@@ -44,9 +44,9 @@
 .stage[data-scene="halloween"] .dots { opacity: 0.18; }
 .stage[data-scene="halloween"] .stars { opacity: 1; }
 .stage[data-scene="halloween"] .moon { display: none; }
-.stage[data-scene="halloween"] .floor { background: linear-gradient(180deg, #1c1226 0%, #120a1a 55%, #09050f 100%); box-shadow: inset 0 3px 0 rgba(107, 184, 74, 0.3); }
+.stage[data-scene="halloween"] .floor { background: linear-gradient(180deg, #22162e 0%, #130a1c 50%, #09050f 100%); box-shadow: inset 0 3px 0 rgba(107, 184, 74, 0.34), inset 0 14px 18px -10px rgba(0,0,0,0.55); }
 .stage .scn-fence { opacity: 0.9; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4)); }
-.stage .pumpkin-light { position: absolute; width: 230px; height: 70px; border-radius: 50%; background: radial-gradient(ellipse at 50% 60%, rgba(255, 190, 80, 0.30), rgba(240, 138, 36, 0.10) 50%, transparent 74%); mix-blend-mode: screen; animation: pumpkin-flicker 3.2s ease-in-out infinite; }
+.stage .pumpkin-light { position: absolute; width: 210px; height: 56px; border-radius: 50%; background: radial-gradient(ellipse at 50% 60%, rgba(255, 190, 80, 0.30), rgba(240, 138, 36, 0.10) 50%, transparent 74%); mix-blend-mode: screen; animation: pumpkin-flicker 3.2s ease-in-out infinite; }
 .stage[data-scene="halloween"] .rug { background: radial-gradient(ellipse at 50% 50%, rgba(240, 138, 36, 0.16), rgba(240, 138, 36, 0.05) 55%, transparent 72%); }
 .stage[data-scene="halloween"][data-night="on"] .wall, .stage[data-scene="halloween"][data-night="on"] .floor { filter: brightness(0.78) saturate(0.9); }
 .stage[data-scene="halloween"][data-night="on"] .rug { filter: none; }
@@ -54,7 +54,7 @@
 .stage .scn-moon { filter: drop-shadow(0 0 22px rgba(242, 177, 74, 0.45)) drop-shadow(0 0 60px rgba(242, 177, 74, 0.18)); }
 .stage .scn-web { opacity: 0.85; }
 .stage .scn-web-r { transform: scaleX(-1); }
-.stage .scn-tree { filter: drop-shadow(0 6px 4px rgba(0,0,0,0.35)); }
+.stage .scn-tree { filter: drop-shadow(0 0 1.2px rgba(0,0,0,0.95)) drop-shadow(-1px 0 0 rgba(184,148,216,0.35)) drop-shadow(0 8px 6px rgba(0,0,0,0.4)); }
 .stage .scn-tree #spider { transform-box: fill-box; transform-origin: 50% 0%; animation: spider-swing 4.6s ease-in-out infinite; }
 @keyframes spider-swing { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
 .stage .scn-pumpkin { filter: drop-shadow(0 0 14px rgba(255, 211, 107, 0.35)); }

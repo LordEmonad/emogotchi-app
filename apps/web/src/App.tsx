@@ -36,6 +36,7 @@ const params = new URLSearchParams(location.search);
 const DEV = params.has('dev');
 const COSTUME = params.get('costume');   // ?costume=witch dresses the cat, for the costume lab and portraits
 const SCENE = params.get('scene');       // ?scene=halloween themes the room the same way
+const DEMO = params.has('demo');         // ?demo opens the room on the demo wallet, no connection needed
 const EMPTY: DirectorState = { x: 300, dir: 1, busy: null, poop: false, sleeping: false, inTub: false, dead: false };
 const EMPTY_SNAP: ChainSnapshot = { owner: null, cats: [], activeId: null, spectator: null, totals: null, worn: {}, held: {}, loaded: false, pending: null, pendingLabel: '', error: null, log: [] };
 
@@ -101,7 +102,7 @@ function Home({ petId }: { petId: number | null }) {
   const scene = (SCENE === 'halloween' ? 'halloween' : null) ?? sceneOf(worn);
 
   // ---- wallet ----
-  useEffect(() => { void restore().then((w) => { if (w) setWallet(w); }); }, []);
+  useEffect(() => { if (DEMO) { setWallet(connectDemo()); return; } void restore().then((w) => { if (w) setWallet(w); }); }, []);
   useEffect(() => onAccountsChanged((accs) => { if (!accs.length) { disconnect(); setWallet(EMPTY_WALLET); } else setWallet((w) => ({ ...w, address: accs[0]! })); }), []);
   useEffect(() => onChainChanged((chainId) => setWallet((w) => (w.demo ? w : { ...w, chainId }))), []);
   const connecting = useRef(false); // one wallet request at a time, whatever the buttons do meanwhile
