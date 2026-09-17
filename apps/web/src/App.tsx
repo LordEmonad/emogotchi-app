@@ -25,7 +25,7 @@ import { marketplace } from './links';
 import { Claim } from './ui/Claim';
 import { Gallery } from './ui/Gallery';
 import { Shop } from './ui/Shop';
-import { WITCH, COSTUME_ITEMS, costumeOf, costumePortrait } from './items';
+import { WITCH, COSTUME_ITEMS, costumeOf, costumePortrait, sceneOf } from './items';
 import { Icon } from './ui/Icon';
 
 const NEED_ICON: Record<NonNullable<ReturnType<typeof need>>, PropName> = { food: 'bowl', clean: 'sponge', fun: 'yarn', energy: 'moon', poop: 'poop' };
@@ -35,6 +35,7 @@ const readName = () => { try { return localStorage.getItem(NAME_KEY) ?? ''; } ca
 const params = new URLSearchParams(location.search);
 const DEV = params.has('dev');
 const COSTUME = params.get('costume');   // ?costume=witch dresses the cat, for the costume lab and portraits
+const SCENE = params.get('scene');       // ?scene=halloween themes the room the same way
 const EMPTY: DirectorState = { x: 300, dir: 1, busy: null, poop: false, sleeping: false, inTub: false, dead: false };
 const EMPTY_SNAP: ChainSnapshot = { owner: null, cats: [], activeId: null, spectator: null, totals: null, worn: {}, held: {}, loaded: false, pending: null, pendingLabel: '', error: null, log: [] };
 
@@ -97,6 +98,7 @@ function Home({ petId }: { petId: number | null }) {
   // the outfit: what the shop says this cat is wearing (its owner still holds the item), or the lab's ?costume=
   const worn = live && activeCat ? snap.worn[activeCat.id] ?? [] : [];
   const costume = (COSTUME as 'witch' | null) ?? costumeOf(worn);
+  const scene = (SCENE === 'halloween' ? 'halloween' : null) ?? sceneOf(worn);
 
   // ---- wallet ----
   useEffect(() => { void restore().then((w) => { if (w) setWallet(w); }); }, []);
@@ -318,7 +320,7 @@ function Home({ petId }: { petId: number | null }) {
   } : null;
   const pending = live ? (snap.pending ? snap.pendingLabel : !owns && activeCat ? 'Someone else\'s cat · look but don\'t touch' : wrongChain ? `Switch your wallet to ${chainCfg?.chain.name ?? 'Monad'}` : allOn && allCounts ? `Every button acts on all ${allCounts.total} cats${allCounts.asleep ? ` · ${allCounts.asleep} asleep wake up when fed, washed or played with` : ''} · the room shows ${name || `#${activeCat?.id ?? ''}`}` : null) : null;
   const stage = (
-    <Stage onDirector={setDirector} night={g.sleeping} thought={thought} thoughtSide={dState.x > 330 ? -1 : 1} onPet={onPet}>
+    <Stage onDirector={setDirector} night={g.sleeping} thought={thought} thoughtSide={dState.x > 330 ? -1 : 1} onPet={onPet} scene={scene}>
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => <div key={t.id} className="toast"><span className="toast-mon">{t.text}</span>{t.emo && <span className="toast-emo"><Icon name="flame" size={14} /> {t.emo}</span>}</div>)}
       </div>

@@ -3,6 +3,7 @@ import { Pet, type PetRig } from '../pet/Pet';
 import { Director } from './director';
 import { PROPS, type PropName } from './props';
 import { CAT, CAT_PAD, HOST_H, HOST_TOP, HOST_W, WORLD } from './world';
+import { SceneryBack, SceneryFront, type SceneName } from './Scenery';
 import './stage.css';
 
 type Props = {
@@ -14,11 +15,13 @@ type Props = {
   thought: PropName | null;
   /** Which side of the head the bubble hangs on (away from the nearest wall). */
   thoughtSide?: 1 | -1;
+  /** A room theme from the item shop, or null for the plain room. */
+  scene?: SceneName | null;
   children?: ReactNode;
 };
 
 /** The room: a fixed world box scaled to the container. Props are placed imperatively by the director. */
-export function Stage({ onDirector, night, thought, thoughtSide = 1, onPet: onPetCb, children }: Props) {
+export function Stage({ onDirector, night, thought, thoughtSide = 1, scene = null, onPet: onPetCb, children }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const back = useRef<HTMLDivElement>(null);
   const front = useRef<HTMLDivElement>(null);
@@ -53,7 +56,7 @@ export function Stage({ onDirector, night, thought, thoughtSide = 1, onPet: onPe
   };
 
   return (
-    <div ref={box} className="stage" data-night={night ? 'on' : 'off'} style={{ aspectRatio: `${WORLD.w} / ${WORLD.h}` }}>
+    <div ref={box} className="stage" data-night={night ? 'on' : 'off'} data-scene={scene ?? 'plain'} style={{ aspectRatio: `${WORLD.w} / ${WORLD.h}` }}>
       <div className="world" style={{ width: WORLD.w, height: WORLD.h, transform: `scale(${k})` }}>
         <div className="wall" />
         <div className="dots" />
@@ -61,6 +64,7 @@ export function Stage({ onDirector, night, thought, thoughtSide = 1, onPet: onPe
         <div className="floor" style={{ top: WORLD.floor - 34 }} />
         <div className="rug" style={{ top: WORLD.floor - 4 }} />
         <div className="moon" dangerouslySetInnerHTML={{ __html: PROPS.moon }} />
+        {scene && <SceneryBack scene={scene} />}
         <div ref={back} className="layer" />
         <div ref={catHost} className="cathost" style={{ width: HOST_W, height: HOST_H, top: HOST_TOP, left: WORLD.w / 2 - CAT.w / 2 - CAT_PAD.side }}>
           <div className="catbody" style={{ width: CAT.w, height: CAT.h, top: CAT_PAD.top, left: CAT_PAD.side }} onPointerDown={onPet}>
@@ -69,6 +73,7 @@ export function Stage({ onDirector, night, thought, thoughtSide = 1, onPet: onPe
           </div>
         </div>
         <div ref={front} className="layer" />
+        {scene && <SceneryFront scene={scene} />}
         {children}
       </div>
     </div>

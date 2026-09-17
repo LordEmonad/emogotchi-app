@@ -34,6 +34,8 @@ export function CostumeLab() {
   const [d, setD] = useState<Director | null>(null);
   const [on, setOn] = useState(true);
   const [crown, setCrown] = useState(false);
+  const [room, setRoom] = useState(new URLSearchParams(location.search).get('scene') === 'halloween');
+  const [night, setNight] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   useEffect(() => { d?.setCostume(on); }, [d, on]);
   useEffect(() => { d?.setCrown(crown); }, [d, crown]);
@@ -67,8 +69,10 @@ export function CostumeLab() {
         <div className="lab-controls">
           <button className={`chip-btn ${on ? 'is-on' : ''}`} onClick={() => setOn((v) => !v)}>{on ? 'Outfit on' : 'Outfit off'}</button>
           <button className={`chip-btn ${crown ? 'is-on' : ''}`} onClick={() => setCrown((v) => !v)}>{crown ? 'Crown on' : 'Crown off'}</button>
+          <button className={`chip-btn ${room ? 'is-on' : ''}`} onClick={() => setRoom((v) => !v)}>{room ? 'Haunted room' : 'Plain room'}</button>
+          <button className={`chip-btn ${night ? 'is-on' : ''}`} onClick={() => setNight((v) => !v)}>{night ? 'Night' : 'Day'}</button>
         </div>
-        <div className="shell"><Stage onDirector={setD} night={false} thought={null} /></div>
+        <div className="shell"><Stage onDirector={setD} night={night} thought={null} scene={room ? 'halloween' : null} /></div>
         <div className="lab-actions">
           {ACTS.map((a) => (
             <button key={a.label} className={`btn btn-sm ${busy === a.label ? 'btn-pink' : 'btn-ghost'}`} disabled={!!busy} onClick={() => void run(a.label, a.run)}>{a.label}</button>

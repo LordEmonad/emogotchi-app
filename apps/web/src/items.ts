@@ -9,6 +9,13 @@ import { formatEther } from 'viem';
 export const COSTUME_ITEMS: Record<number, 'witch'> = { 1: 'witch' };
 export const WITCH = 1;
 
+/** Item id → room theme the stage can draw. The haunted room is not on chain yet (id to come). */
+export const SCENE_ITEMS: Record<number, 'halloween'> = {};
+export const sceneOf = (worn: readonly number[] | undefined): 'halloween' | null => {
+  for (const id of worn ?? []) { const s = SCENE_ITEMS[id]; if (s) return s; }
+  return null;
+};
+
 /** The first costume among what a cat is wearing, or null. */
 export const costumeOf = (worn: readonly number[] | undefined): 'witch' | null => {
   for (const id of worn ?? []) { const c = COSTUME_ITEMS[id]; if (c) return c; }

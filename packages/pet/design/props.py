@@ -4,7 +4,7 @@ Everything the cat interacts with, drawn in the same flat-fill wobbly-ink style
 and Emonad palette as the cat. Each prop is its own small SVG with named groups
 for the rig (food layers in the bowl, stink lines on the poop, ...).
 """
-import os, sys, math
+import os, re, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cat import (INK, FUR, HAIR, STRAND, PURPLE, LAV, LAV2, PINK, GOLD, GOLD2, RUBY, GREEN, TEAL, PUPIL,
                  LW, LD, smooth_closed, smooth_open, poly, path, ellipse, tube, tapered)
@@ -13,8 +13,10 @@ from wobble import bake
 OUT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
 os.makedirs(OUT, exist_ok=True)
 
-def svg(name, w, h, body, amp=1.0):
-    body = bake("\n".join(body), amp=amp, freq=0.09, step=4.0)
+def svg(name, w, h, body, amp=1.0, step=4.0, decimals=None):
+    body = bake("\n".join(body), amp=amp, freq=0.09, step=step)
+    if decimals is not None:  # big silhouettes: fewer digits, a fraction of the bytes, no visible change
+        body = re.sub(r"-?\d+\.\d+", lambda m: f"{float(m.group(0)):.{decimals}f}".rstrip("0").rstrip("."), body)
     src = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">\n<g id="{name}">\n{body}\n</g>\n</svg>'
     open(os.path.join(OUT, name + ".svg"), "w").write(src)
     print("wrote", name)
@@ -568,7 +570,195 @@ def robehung():
     g.append(star(36, 246, 3.2)); g.append(star(58, 160, 2.4)); g.append(star(156, 176, 3.2)); g.append(star(170, 250, 2.6)); g.append(star(146, 236, 2))
     svg("robehung", 200, 300, g)
 
+# ================================================================ the haunted room (a Scene item)
+# A room theme swaps the wall, the floor and the light and adds fixed scenery around the cat. These
+# are the pieces: everything on the floor sits at the edges, behind the cat, so the bowl, the tub and
+# the yarn keep their places in front. Two new accents join the palette for this one theme: pumpkin
+# orange and its flame; everything else is the house purple and lavender.
+PUMPKIN  = "#F08A24"
+PUMPKIN2 = "#C9651A"
+FLAME    = "#FFD36B"
+MOSS     = "#3E6B2E"
+
+def tapered_big(pts, w0, w1, t=0.5, fill=FUR, sample=7.0):
+    """`tapered` for room-sized silhouettes: the same shape, sampled every `sample` units instead of
+    every 2, so a tree is a few kilobytes and not two hundred."""
+    from wobble import parse, _samples
+    segs = parse(smooth_open(pts, t))[0][1]
+    c = []
+    for seg in segs:
+        smp = _samples(seg, sample)
+        c += smp if not c else smp[1:]
+    n = len(c); left = []; right = []
+    for i, (x, y) in enumerate(c):
+        x0, y0 = c[max(i-1, 0)]; x1, y1 = c[min(i+1, n-1)]
+        tx, ty = x1-x0, y1-y0; L = math.hypot(tx, ty) or 1; nx, ny = -ty/L, tx/L
+        w = (w0 + (w1-w0)*i/(n-1))/2
+        left.append((x+nx*w, y+ny*w)); right.append((x-nx*w, y-ny*w))
+    tipx, tipy = c[-1]; x0, y0 = c[-2]; tx, ty = tipx-x0, tipy-y0; L = math.hypot(tx, ty) or 1
+    r = w1/2; ang0 = math.atan2(-ty/L, -tx/L) + math.pi/2
+    tip = [(tipx + r*math.cos(ang0 + math.pi*k/4), tipy + r*math.sin(ang0 + math.pi*k/4)) for k in range(3, 0, -1)]
+    return [path(smooth_closed(left + tip + right[::-1], 0.4), fill)]
+
+def _cobweb_lines(cx, cy, r, n=7, spirals=4, sweep=(0, 90)):
+    """A corner web: spokes from the corner and arcs between them."""
+    out = []
+    a0, a1 = math.radians(sweep[0]), math.radians(sweep[1])
+    angs = [a0 + (a1 - a0) * i / (n - 1) for i in range(n)]
+    for a in angs:
+        out.append(path(f"M{cx},{cy} L{cx + r*math.cos(a):.1f},{cy + r*math.sin(a):.1f}", "none", LAV, 1.1, 'opacity="0.55"'))
+    for k in range(1, spirals + 1):
+        rr = r * k / (spirals + 0.6)
+        pts = []
+        for i, a in enumerate(angs):
+            sag = rr * (0.94 if i not in (0, n - 1) else 1.0)
+            pts.append((cx + sag*math.cos(a), cy + sag*math.sin(a)))
+        d = f"M{pts[0][0]:.1f},{pts[0][1]:.1f}"
+        for i in range(1, len(pts)):
+            mx = (pts[i-1][0] + pts[i][0]) / 2; my = (pts[i-1][1] + pts[i][1]) / 2
+            # sag the strand toward the corner
+            mx += (cx - mx) * 0.10; my += (cy - my) * 0.10
+            d += f" Q{mx:.1f},{my:.1f} {pts[i][0]:.1f},{pts[i][1]:.1f}"
+        out.append(path(d, "none", LAV, 1.0, 'opacity="0.5"'))
+    return out
+
+def cobweb():
+    g = _cobweb_lines(2, 2, 96)
+    g.append(f'<circle cx="60" cy="41" r="1.6" fill="{FUR}" opacity="0.7"/>')
+    g.append(f'<circle cx="34" cy="68" r="1.3" fill="{FUR}" opacity="0.6"/>')
+    svg("cobweb", 100, 100, g, amp=0.4, decimals=1)
+
+def pumpkin():
+    """A carved jack-o'-lantern, lit from inside. #glow is the light; the site makes it flicker."""
+    g = []
+    g.append(ellipse(56, 96, 44, 6, PUPIL, "none", 0, 'opacity="0.35"'))
+    body = [(12, 60), (14, 44), (24, 30), (40, 24), (56, 22), (72, 24), (88, 30), (98, 44), (100, 60), (96, 78), (84, 90), (56, 94), (28, 90), (16, 78)]
+    g.append(path(smooth_closed(body, 0.55), PUMPKIN, INK, LW))
+    # ribs: darker segments as soft strokes, the middle one lit
+    for x0, x1, x2 in ((30, 26, 30), (44, 42, 44), (68, 70, 68), (82, 86, 82)):
+        g.append(path(f"M{x0},27 Q{x1},58 {x2},91", "none", PUMPKIN2, 3.0, 'opacity="0.55"'))
+    g.append(path("M56,24 Q52,58 56,93", "none", FLAME, 2.2, 'opacity="0.18"'))
+    # the face: two triangle eyes, a small nose, a jagged grin; the glow group is the fill
+    g.append('<g id="glow">')
+    g.append(path("M30,52 L44,42 L46,58 Z", FLAME, INK, 1.8))
+    g.append(path("M82,52 L68,42 L66,58 Z", FLAME, INK, 1.8))
+    g.append(path("M53,62 L59,62 L56,68 Z", FLAME, INK, 1.6))
+    g.append(path("M26,70 L36,74 L40,68 L46,76 L52,70 L58,78 L64,70 L70,76 L74,68 L80,74 L86,70 L80,84 L56,88 L32,84 Z", FLAME, INK, 1.8))
+    # teeth cut into the grin
+    g.append(path("M46,76 L46,82 L52,82 L52,72", INK, "none", 0, 'opacity="0.85"'))
+    g.append(path("M64,70 L64,81 L70,81 L70,76", INK, "none", 0, 'opacity="0.85"'))
+    g.append('</g>')
+    # stem and leaf
+    g.append(path(smooth_closed([(50, 24), (49, 12), (54, 4), (62, 6), (61, 14), (60, 24)], 0.45), MOSS, INK, LW))
+    g.append(path("M60,14 Q76,6 84,14 Q74,18 62,18 Z", GREEN, INK, 1.6))
+    g.append(path("M62,17 Q72,12 80,13", "none", INK, 1.0, 'opacity="0.5"'))
+    g.append(ellipse(30, 40, 6, 2.6, "#FFFFFF", "none", 0, 'opacity="0.18" transform="rotate(-30 30 40)"'))
+    svg("pumpkin", 112, 100, g)
+
+def tombstone():
+    """A tall stone, a smaller one leaning behind it, grass at the foot and a crack. The heart is the
+    same one the grave prop carries."""
+    g = []
+    g.append(ellipse(50, 112, 42, 6, PUPIL, "none", 0, 'opacity="0.4"'))
+    # the small stone behind, leaning
+    g.append('<g transform="rotate(-9 82 100)">')
+    g.append(path(smooth_closed([(66, 108), (66, 66), (72, 54), (86, 50), (98, 58), (100, 68), (100, 108)], 0.45), HAIR, INK, LW))
+    g.append(path("M76,72 L90,72 M78,80 L88,80", "none", STRAND, 2.0))
+    g.append('</g>')
+    # the main stone
+    g.append(path(smooth_closed([(12, 110), (12, 40), (18, 22), (40, 12), (62, 22), (68, 40), (68, 110)], 0.45), STRAND, INK, LW))
+    g.append(path("M20,36 Q30,24 40,20", "none", "#FFFFFF", 2.2, 'opacity="0.3"'))
+    g.append(path("M22,102 L58,102", "none", HAIR, 2.6, 'opacity="0.55"'))
+    g.append(path("M64,46 L58,58 L63,66 L56,80", "none", INK, 1.5, 'opacity="0.7"'))      # crack
+    g.append(path("M40,60 C32,54 30,48 34,44 C37,41 40,43 40,46 C40,43 43,41 46,44 C50,48 48,54 40,60 Z", PINK, INK, 1.6))
+    g.append(path("M28,72 L52,72", "none", HAIR, 2.2))
+    g.append(path("M32,80 L48,80", "none", HAIR, 2.2))
+    # grass tufts
+    for x, h, lean in ((8, 12, -3), (14, 16, -1), (66, 14, 3), (74, 10, 4), (92, 12, 2)):
+        g.append(path(f"M{x},110 Q{x+lean},{110-h*0.6} {x+lean*1.6},{110-h}", "none", MOSS, 2.2))
+        g.append(path(f"M{x+3},110 Q{x+3+lean*0.4},{110-h*0.5} {x+2+lean},{110-h*0.75}", "none", GREEN, 1.8))
+    svg("tombstone", 104, 116, g)
+
+def deadtree():
+    """A bare, gnarled tree in silhouette, leaning into the room: a thick twisted trunk, heavy low
+    boughs and thin twigs, a hollow knot. A spider hangs from the low branch; #spider swings."""
+    g = []
+    g.append(ellipse(120, 328, 70, 8, PUPIL, "none", 0, 'opacity="0.4"'))
+    P = PUPIL
+    # roots flaring out, then the trunk: wide at the base, twisting as it rises
+    g.extend(tapered_big([(112, 320), (72, 318), (40, 328)], 22, 5, 0.5, P))
+    g.extend(tapered_big([(128, 320), (168, 316), (196, 326)], 22, 5, 0.5, P))
+    g.extend(tapered_big([(120, 332), (116, 290), (106, 250), (108, 210), (118, 170), (124, 130), (120, 96), (126, 66), (134, 44)], 58, 10, 0.55, P))
+    # the low left bough (the spider's), thick, reaching toward the cat
+    g.extend(tapered_big([(110, 232), (80, 216), (52, 196), (28, 168), (18, 140)], 24, 5, 0.5, P))
+    g.extend(tapered_big([(52, 196), (34, 200), (14, 196)], 9, 3, 0.5, P))
+    g.extend(tapered_big([(28, 168), (10, 160), (2, 146)], 6, 2, 0.5, P))
+    # the right bough, higher, sweeping up
+    g.extend(tapered_big([(122, 160), (150, 148), (176, 128), (196, 100), (200, 72)], 22, 5, 0.5, P))
+    g.extend(tapered_big([(176, 128), (192, 136), (208, 132)], 8, 3, 0.5, P))
+    g.extend(tapered_big([(196, 100), (206, 108), (210, 92)], 6, 2, 0.5, P))
+    # the crown: two forks with twigs
+    g.extend(tapered_big([(122, 100), (100, 76), (86, 48), (88, 20)], 16, 4, 0.5, P))
+    g.extend(tapered_big([(100, 76), (78, 70), (60, 74)], 7, 2.5, 0.5, P))
+    g.extend(tapered_big([(86, 48), (70, 40), (62, 26)], 5, 2, 0.5, P))
+    g.extend(tapered_big([(134, 44), (146, 28), (150, 8)], 12, 3, 0.5, P))
+    g.extend(tapered_big([(146, 28), (164, 22), (176, 6)], 6, 2, 0.5, P))
+    g.extend(tapered_big([(128, 66), (144, 60), (158, 64)], 6, 2, 0.5, P))
+    # bark light on the lit side, and a hollow knot
+    g.append(path("M132,300 Q122,250 124,200 Q128,160 130,120", "none", LAV, 2.2, 'opacity="0.16"'))
+    g.append(path(smooth_closed([(104, 262), (110, 246), (122, 244), (128, 258), (122, 276), (108, 278)], 0.5), INK, LAV, 1.6, 'opacity="0.95"'))
+    g.append(path(smooth_closed([(110, 262), (114, 252), (120, 252), (122, 262), (118, 270), (112, 270)], 0.5), HAIR, "none", 0))
+    # the spider on a thread from the low left bough
+    g.append('<g id="spider">')
+    g.append(path("M60,200 L60,252", "none", LAV, 1.0, 'opacity="0.7"'))
+    for (x0, y0, x1, y1) in ((60, 260, 46, 252), (60, 262, 44, 264), (60, 264, 48, 276), (60, 260, 74, 252), (60, 262, 76, 264), (60, 264, 72, 276)):
+        g.append(path(f"M{x0},{y0} Q{(x0+x1)/2},{y1-6} {x1},{y1}", "none", INK, 1.8))
+    g.append(ellipse(60, 264, 7, 8, PUPIL, INK, 1.6))
+    g.append(ellipse(60, 255, 4.2, 4, PUPIL, INK, 1.4))
+    g.append(f'<circle cx="58.4" cy="254.6" r="1.1" fill="{LAV}"/><circle cx="61.6" cy="254.6" r="1.1" fill="{LAV}"/>')
+    g.append('</g>')
+    svg("deadtree", 212, 336, g, amp=0.9, step=8.0, decimals=1)
+
+def fence():
+    """A wonky graveyard fence in silhouette, for the back of the room. Wide and low."""
+    g = []
+    for i, (x, h, lean) in enumerate(((10, 44, -2), (46, 52, 1), (84, 46, -1), (120, 56, 2), (158, 48, 0), (194, 54, -2), (232, 46, 1), (268, 52, 0), (304, 45, -1), (340, 55, 2))):
+        top = 60 - h
+        g.append(path(f"M{x-4},60 L{x-3+lean},{top+6} L{x+lean},{top} L{x+3+lean},{top+6} L{x+4},60 Z", PUPIL, INK, 1.4))
+    g.append(path("M0,30 Q175,26 350,32", "none", PUPIL, 5.0))
+    g.append(path("M0,30 Q175,26 350,32", "none", INK, 1.2, 'opacity="0.6"'))
+    g.append(path("M0,48 Q175,52 350,46", "none", PUPIL, 5.0))
+    g.append(path("M0,48 Q175,52 350,46", "none", INK, 1.2, 'opacity="0.6"'))
+    svg("fence", 350, 62, g, amp=0.8, step=8.0, decimals=1)
+
+def bat():
+    """A bat in flight. #wl and #wr flap in the site (transform-box: fill-box, pivot at the body)."""
+    g = []
+    wing_l = "M40,26 C30,10 14,6 2,12 C8,16 10,20 8,26 C14,24 20,26 22,32 C26,28 34,30 40,34 Z"
+    wing_r = "M50,26 C60,10 76,6 88,12 C82,16 80,20 82,26 C76,24 70,26 68,32 C64,28 56,30 50,34 Z"
+    g.append(f'<g id="wl">{path(wing_l, PUPIL, INK, 1.6)}</g>')
+    g.append(f'<g id="wr">{path(wing_r, PUPIL, INK, 1.6)}</g>')
+    g.append(path(smooth_closed([(38, 22), (40, 14), (45, 10), (50, 14), (52, 22), (52, 34), (45, 40), (38, 34)], 0.5), PUPIL, INK, 1.6))
+    g.append(path("M39,15 L36,6 L42,12 Z", PUPIL, INK, 1.3))
+    g.append(path("M51,15 L54,6 L48,12 Z", PUPIL, INK, 1.3))
+    g.append(f'<circle cx="42.5" cy="19" r="1.5" fill="{LAV}"/><circle cx="47.5" cy="19" r="1.5" fill="{LAV}"/>')
+    g.append(path("M43,26 L44,29 M47,26 L46,29", "none", FUR, 1.2))
+    svg("bat", 90, 46, g, amp=0.6)
+
+def harvestmoon():
+    """A big low moon in pumpkin gold with three craters; the site gives it the glow."""
+    g = []
+    g.append(ellipse(70, 70, 60, 60, "#F2B14A", INK, LW))
+    g.append(ellipse(70, 70, 60, 60, "none", "#FFE3A0", 3.0, 'opacity="0.35"'))
+    for cx, cy, r in ((46, 50, 9), (84, 42, 6), (78, 88, 11), (50, 96, 5)):
+        g.append(ellipse(cx, cy, r, r * 0.85, "#D98A24", "none", 0, 'opacity="0.8"'))
+        g.append(ellipse(cx - r*0.25, cy - r*0.25, r*0.6, r*0.5, "#E9A23A", "none", 0, 'opacity="0.9"'))
+        g.append(path(f"M{cx-r:.0f},{cy+r*0.6:.0f} Q{cx},{cy+r*1.1:.0f} {cx+r:.0f},{cy+r*0.5:.0f}", "none", "#C4761A", 1.4, 'opacity="0.5"'))
+    g.append(path("M28,46 Q40,26 62,18", "none", "#FFFFFF", 2.6, 'opacity="0.35"'))
+    svg("harvestmoon", 140, 140, g, amp=0.5, decimals=1)
+
 
 for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat, locker, lockeropen, pricetag, bag, shelf,
-           partyhat, bow, shades, bell, fish, potion, wand, cushion, crate, beanie, hook, milk, robehung):
+           partyhat, bow, shades, bell, fish, potion, wand, cushion, crate, beanie, hook, milk, robehung,
+           cobweb, pumpkin, tombstone, deadtree, bat, harvestmoon, fence):
     fn()
