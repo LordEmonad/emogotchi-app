@@ -25,7 +25,7 @@ import { marketplace } from './links';
 import { Claim } from './ui/Claim';
 import { Gallery } from './ui/Gallery';
 import { Shop } from './ui/Shop';
-import { WITCH, COSTUME_ITEMS, costumeOf, costumePortrait, sceneOf } from './items';
+import { WITCH, SPOOKY, COSTUME_ITEMS, SCENE_ITEMS, costumeOf, costumePortrait, sceneOf } from './items';
 import { Icon } from './ui/Icon';
 
 const NEED_ICON: Record<NonNullable<ReturnType<typeof need>>, PropName> = { food: 'bowl', clean: 'sponge', fun: 'yarn', energy: 'moon', poop: 'poop' };
@@ -319,6 +319,16 @@ function Home({ petId }: { petId: number | null }) {
       await chainStore.refresh();
     },
   } : null;
+  const roomItem = live && owns && activeCat ? Object.keys(SCENE_ITEMS).map(Number).find((id) => (snap.held[id] ?? 0) > 0 || worn.includes(id)) ?? null : null;
+  const room = roomItem !== null && activeCat ? {
+    on: worn.includes(roomItem),
+    label: roomItem === SPOOKY ? 'Spooky theme' : 'Room theme',
+    toggle: async () => {
+      if (!chainStore || !activeCat) return;
+      try { if (worn.includes(roomItem)) await chainStore.undress(activeCat.id, roomItem, 'Spooky theme'); else await chainStore.wear([activeCat.id], roomItem, 'Spooky theme'); } catch { return; }
+      await chainStore.refresh();
+    },
+  } : null;
   const pending = live ? (snap.pending ? snap.pendingLabel : !owns && activeCat ? 'Someone else\'s cat · look but don\'t touch' : wrongChain ? `Switch your wallet to ${chainCfg?.chain.name ?? 'Monad'}` : allOn && allCounts ? `Every button acts on all ${allCounts.total} cats${allCounts.asleep ? ` · ${allCounts.asleep} asleep wake up when fed, washed or played with` : ''} · the room shows ${name || `#${activeCat?.id ?? ''}`}` : null) : null;
   const stage = (
     <Stage onDirector={setDirector} night={g.sleeping} thought={thought} thoughtSide={dState.x > 330 ? -1 : 1} onPet={onPet} scene={scene}>
@@ -337,7 +347,7 @@ function Home({ petId }: { petId: number | null }) {
       {which === 'landing' && <Landing stage={stage} onConnect={() => setModal(true)} connecting={wallet.status === 'connecting'} claimHref={chainCfg?.drop ? '/claim' : null} />}
       {which === 'loading' && <main className="nopet"><div className="shell"><div className="empty-room"><div className="empty-dots" /><div className="empty-floor" /><div className="empty-card"><h2>Looking in your wallet…</h2>{snap.error && <p className="tnum">{snap.error}</p>}</div></div></div></main>}
       {which === 'nopet' && <NoPet address={wallet.address ?? '0x0000…0000'} onDemo={() => { if (live) doDemo(); else setHasPet(true); }} />}
-      {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onShare={live && activeCat ? () => void onShare() : undefined} shareNote={shareNote} onTab={(id) => { setAllMode(false); chainStore?.setActive(id); }} all={allCounts ? { on: allOn, counts: allCounts } : undefined} onAll={() => setAllMode(true)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} outfit={outfit ?? undefined} shopHref={live && chainCfg?.items ? '/shop' : undefined} />}
+      {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onShare={live && activeCat ? () => void onShare() : undefined} shareNote={shareNote} onTab={(id) => { setAllMode(false); chainStore?.setActive(id); }} all={allCounts ? { on: allOn, counts: allCounts } : undefined} onAll={() => setAllMode(true)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} outfit={outfit ?? undefined} room={room ?? undefined} shopHref={live && chainCfg?.items ? '/shop' : undefined} />}
       {which !== 'landing' && which !== 'nopet' && which !== 'loading' && (
         <><BurnBar /><SiteFooter extra={catOnChain ? <a href={catOnChain} target="_blank" rel="noreferrer">This cat on chain</a> : undefined} /></>
       )}

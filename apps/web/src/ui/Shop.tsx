@@ -13,7 +13,7 @@ import { SiteFooter } from './SiteFooter';
 import { BurnBar } from './BurnBar';
 import { Icon } from './Icon';
 import { chainCfg, chainClient } from '../game/chain';
-import { COSTUME_ITEMS, REQUIREMENT, priceLabel } from '../items';
+import { COSTUME_ITEMS, SCENE_ITEMS, REQUIREMENT, priceLabel } from '../items';
 import { EMPTY_WALLET, connectInjected, connectWalletConnect, disconnect, ensureChain, getProvider, onAccountsChanged, onChainChanged, restore, revokeInjected, type WalletState } from '../wallet';
 
 const KIND_LABEL: Record<ItemView['kind'], string> = { cosmetic: 'Costume', scene: 'Room', passive: 'Ticket', consumable: 'One use' };
@@ -130,7 +130,8 @@ function ItemCard({ item, svg, now, connected, onConnect, mine, refresh }: CardP
   const gated = item.gate !== '0x0000000000000000000000000000000000000000';
   const catKeyed = item.id in REQUIREMENT; // the witch's gate keys on the cat: the claim names a cat
   const wearable = item.kind === 'cosmetic' || item.kind === 'scene' || item.kind === 'passive';
-  const drawn = item.id in COSTUME_ITEMS;
+  const drawn = item.id in COSTUME_ITEMS || item.id in SCENE_ITEMS; // the site knows how to show it on the cat or in the room
+  const isRoom = item.id in SCENE_ITEMS;
   const soon = item.opens > now ? item.opens - now : 0;
   const closing = item.closes && item.closes > now ? item.closes - now : 0;
   const closed = item.closes !== 0 && item.closes <= now;
@@ -168,7 +169,7 @@ function ItemCard({ item, svg, now, connected, onConnect, mine, refresh }: CardP
     setBusy('claim'); setNote(null);
     try {
       await client.claimItem(item.id, 1, catKeyed && cat !== null ? ChainClient.catHint(cat) : '0x', check.due);
-      setNote(`Claimed. ${wearable && drawn ? 'Now put it on.' : ''}`);
+      setNote(`Claimed. ${wearable && drawn ? (isRoom ? 'Now pick the cats whose room it is.' : 'Now put it on.') : ''}`);
       if (cat !== null) setPicked(new Set([cat]));
       refresh();
     } catch (e) { setNote((e as Error).message); } finally { setBusy(null); }
@@ -235,7 +236,7 @@ function ItemCard({ item, svg, now, connected, onConnect, mine, refresh }: CardP
 
             {wearable && drawn && held > 0 && mine.cats.length > 0 && (
               <div className="item-wear">
-                <span className="item-wear-title">Put it on</span>
+                <span className="item-wear-title">{isRoom ? 'Use this room' : 'Put it on'}</span>
                 <div className="item-cats">
                   {mine.cats.filter((c) => c.alive).map((c) => {
                     const on = (mine.worn[c.id] ?? []).includes(item.id);
@@ -243,15 +244,15 @@ function ItemCard({ item, svg, now, connected, onConnect, mine, refresh }: CardP
                       <label key={c.id} className={`item-cat ${on ? 'is-on' : ''}`}>
                         {on ? <button type="button" className="item-cat-off" disabled={!!busy} onClick={() => void takeOff(c.id)} title="Take it off">✕</button>
                           : <input type="checkbox" checked={picked.has(c.id)} onChange={(e) => setPicked((p) => { const n = new Set(p); if (e.target.checked) n.add(c.id); else n.delete(c.id); return n; })} />}
-                        <span className="tnum">#{c.id}</span>{c.name && <span className="item-cat-name">{c.name}</span>}{on && <span className="item-cat-wearing">wearing</span>}
+                        <span className="tnum">#{c.id}</span>{c.name && <span className="item-cat-name">{c.name}</span>}{on && <span className="item-cat-wearing">{isRoom ? 'on' : 'wearing'}</span>}
                       </label>
                     );
                   })}
                 </div>
                 <button className="btn btn-sm btn-ghost" disabled={!!busy || [...picked].every((id) => (mine.worn[id] ?? []).includes(item.id))} onClick={() => void wear()}>
-                  {busy === 'wear' ? 'Dressing…' : `Dress ${picked.size || ''}${picked.size === 1 ? ' cat' : ' cats'} · gas only`}
+                  {busy === 'wear' ? (isRoom ? 'Decorating…' : 'Dressing…') : isRoom ? `Give ${picked.size || ''}${picked.size === 1 ? ' cat' : ' cats'} this room · gas only` : `Dress ${picked.size || ''}${picked.size === 1 ? ' cat' : ' cats'} · gas only`}
                 </button>
-                {wearing.length > 0 && <p className="item-note">One copy dresses every cat in your wallet. Sell it and they undress by themselves.</p>}
+                {wearing.length > 0 && <p className="item-note">{isRoom ? 'One copy is a room for every cat in your wallet. Sell it and the rooms go plain by themselves.' : 'One copy dresses every cat in your wallet. Sell it and they undress by themselves.'}</p>}
               </div>
             )}
             {note && <p className="item-note" aria-live="polite">{note}</p>}

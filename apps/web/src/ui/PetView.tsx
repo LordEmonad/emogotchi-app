@@ -17,6 +17,8 @@ type Props = {
   tabs?: CatTab[];
   /** our cat wears a costume, or could: one tap puts it on or takes it off (a transaction) */
   outfit?: { on: boolean; label: string; toggle: () => void | Promise<void> };
+  /** the same for a room theme the wallet holds */
+  room?: { on: boolean; label: string; toggle: () => void | Promise<void> };
   /** the item shop, when this build has one */
   shopHref?: string;
   activeId?: number | null;
@@ -37,7 +39,7 @@ type Props = {
 const BUSY_MOOD: Record<string, string> = { feed: 'eating', wash: 'bathing', play: 'playing', poop: 'busy…', clean: 'relieved', pet: 'purring', wake: 'waking up', walk: 'wandering', wander: 'wandering', rumble: 'hungry', sleep: 'dozing off', tour: 'showing off', die: 'fading…', revive: 'coming back' };
 const NEED_MOOD: Record<NonNullable<ReturnType<typeof need>>, string> = { food: 'hungry', clean: 'grubby', fun: 'bored', energy: 'sleepy', poop: 'grossed out' };
 
-export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, all, onAll, onShare, shareNote = null, pending = null, locked = false, live = false, outfit, shopHref }: Props) {
+export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, all, onAll, onShare, shareNote = null, pending = null, locked = false, live = false, outfit, room, shopHref }: Props) {
   const busy = d.busy !== null || locked;
   const every = all?.on ? all.counts : null;
   const dead = !g.alive;
@@ -90,7 +92,13 @@ export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = 
             <Icon name="heart" size={12} /> {outfit.on ? `${outfit.label} on` : `Wear ${outfit.label.toLowerCase()}`}
           </button>
         </>)}
-        {!outfit && shopHref && live && !dead && (<>
+        {room && !dead && (<>
+          <span className="name-sep">·</span>
+          <button className={`outfit-btn ${room.on ? 'is-on' : ''}`} onClick={() => void room.toggle()} disabled={busy} title={room.on ? `Back to the plain room · gas only` : `Use the ${room.label.toLowerCase()} · gas only`}>
+            <Icon name="moon" size={12} /> {room.on ? `${room.label} on` : `Use ${room.label.toLowerCase()}`}
+          </button>
+        </>)}
+        {!outfit && !room && shopHref && live && !dead && (<>
           <span className="name-sep">·</span>
           <a className="outfit-link" href={shopHref}>Items</a>
         </>)}
