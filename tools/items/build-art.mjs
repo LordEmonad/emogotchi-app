@@ -40,6 +40,48 @@ ${place('witchhat', 0.19 * S, 0.164 * S, 0.62 * S, 120, 130, 'rotate(-4 60 65)')
 </svg>`;
 writeFileSync(OUT + 'witch.svg', witch);
 
+// ---- the spooky theme's card: the haunted room itself, as a picture. A bank of ground with the stones
+// and the pumpkins, the fence, the tree, the moon, bats, a cobweb: the same pieces the site draws.
+{
+  const ground = 0.80 * S;                       // the bank's top edge
+  const PUMPKIN = '#F08A24';
+  const spooky = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}">
+<defs>
+<radialGradient id="sky" cx="50%" cy="12%" r="90%"><stop offset="0" stop-color="#22163e"/><stop offset=".5" stop-color="#110a22"/><stop offset="1" stop-color="#06030c"/></radialGradient>
+<linearGradient id="mist" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6BB84A" stop-opacity="0"/><stop offset="1" stop-color="#6BB84A" stop-opacity=".22"/></linearGradient>
+<linearGradient id="bank" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d2038"/><stop offset=".4" stop-color="#221630"/><stop offset="1" stop-color="#170d22"/></linearGradient>
+<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22162e"/><stop offset=".5" stop-color="#130a1c"/><stop offset="1" stop-color="#09050f"/></linearGradient>
+<radialGradient id="moonglow"><stop offset="0" stop-color="#F2B14A" stop-opacity=".45"/><stop offset=".5" stop-color="#F2B14A" stop-opacity=".12"/><stop offset="1" stop-color="#F2B14A" stop-opacity="0"/></radialGradient>
+<radialGradient id="pglow"><stop offset="0" stop-color="#FFBE50" stop-opacity=".38"/><stop offset=".5" stop-color="${PUMPKIN}" stop-opacity=".12"/><stop offset="1" stop-color="${PUMPKIN}" stop-opacity="0"/></radialGradient>
+<radialGradient id="fog"><stop offset="0" stop-color="#EAC6EA" stop-opacity=".30"/><stop offset=".5" stop-color="#EAC6EA" stop-opacity=".10"/><stop offset="1" stop-color="#EAC6EA" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="${S}" height="${S}" fill="url(#sky)"/>
+${Array.from({ length: 26 }, (_, i) => { const x = ((i * 137.5) % 980) + 22, y = ((i * 89.3) % 560) + 18, r = 2 + (i % 3); return `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r}" fill="#EAC6EA" fill-opacity="${(0.35 + (i % 4) * 0.15).toFixed(2)}"/>`; }).join('')}
+<rect x="0" y="${ground - 260}" width="${S}" height="260" fill="url(#mist)"/>
+<circle cx="700" cy="250" r="230" fill="url(#moonglow)"/>
+${place('harvestmoon', 700 - 110, 250 - 110, 220, 140, 140)}
+<path d="M-60,${ground + 40} Q512,${ground - 44} ${S + 60},${ground + 40} L${S + 60},${S} L-60,${S} Z" fill="url(#bank)"/>
+<path d="M-60,${ground + 40} Q512,${ground - 44} ${S + 60},${ground + 40}" fill="none" stroke="#6BB84A" stroke-opacity=".34" stroke-width="5"/>
+<path d="M-60,${S - 90} Q512,${S - 170} ${S + 60},${S - 90} L${S + 60},${S} L-60,${S} Z" fill="url(#floor)"/>
+<path d="M-60,${S - 90} Q512,${S - 170} ${S + 60},${S - 90}" fill="none" stroke="#6BB84A" stroke-opacity=".28" stroke-width="5"/>
+<ellipse cx="200" cy="${ground + 8}" rx="250" ry="60" fill="url(#pglow)"/>
+${place('fence', 220, ground - 96, 560, 350, 62)}
+${place('deadtree-item', 640, ground - 470, 400, 212, 336)}
+${place('tombstone', 60, ground - 244, 230, 104, 116)}
+${place('pumpkin', 250, ground - 180, 190, 112, 100)}
+${place('cobweb', 0, 0, 260, 100, 100)}
+${place('bat', 150, 170, 120, 90, 46)}
+${place('bat', 420, 90, 84, 90, 46, 'rotate(-8)')}
+<ellipse cx="300" cy="${S - 120}" rx="420" ry="70" fill="url(#fog)"/>
+<ellipse cx="760" cy="${S - 100}" rx="380" ry="60" fill="url(#fog)"/>
+</svg>`;
+  // Monad caps a contract (so an SSTORE2 pointer) at 128 KB. Prop coordinates are in native units and
+  // drawn up to twice their size here, so whole numbers cost under a pixel and save a third of the bytes.
+  const compact = spooky.replace(/-?\d+\.\d+/g, (m) => String(Math.round(Number(m))));
+  writeFileSync(OUT + 'spooky.svg', compact);
+  console.log('  spooky.svg ', (compact.length / 1024).toFixed(1), 'KB (before rounding', (spooky.length / 1024).toFixed(1), 'KB)');
+}
+
 // ---- the collection's picture: the locker standing on the floor of the room
 const floorY = 0.9 * S, U = 0.72 * S, edge = floorY - U * 0.14;
 const lockerH = 0.72 * S, lockerW = lockerH * (100 / 202);

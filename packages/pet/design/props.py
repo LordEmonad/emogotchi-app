@@ -16,7 +16,10 @@ os.makedirs(OUT, exist_ok=True)
 def svg(name, w, h, body, amp=1.0, step=4.0, decimals=None):
     body = bake("\n".join(body), amp=amp, freq=0.09, step=step)
     if decimals is not None:  # big silhouettes: fewer digits, a fraction of the bytes, no visible change
-        body = re.sub(r"-?\d+\.\d+", lambda m: f"{float(m.group(0)):.{decimals}f}".rstrip("0").rstrip("."), body)
+        def rnd(m):
+            v = f"{float(m.group(0)):.{decimals}f}"
+            return v.rstrip("0").rstrip(".") if decimals > 0 else v   # never strip the zeros of a whole number (100 -> 1)
+        body = re.sub(r"-?\d+\.\d+", rnd, body)
     src = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">\n<g id="{name}">\n{body}\n</g>\n</svg>'
     open(os.path.join(OUT, name + ".svg"), "w").write(src)
     print("wrote", name)
@@ -676,7 +679,7 @@ def tombstone():
         g.append(path(f"M{x+3},110 Q{x+3+lean*0.4},{110-h*0.5} {x+2+lean},{110-h*0.75}", "none", GREEN, 1.8))
     svg("tombstone", 104, 116, g)
 
-def deadtree():
+def deadtree(coarse=False):
     """A bare, gnarled tree in silhouette, leaning into the room. Drawn flat, all one dark, with no ink
     between the pieces (the joins showed as seams); the site gives it its edge with a shadow. One fat
     trunk, a low hooked bough toward the cat, a high bough curling back over the room, a crooked
@@ -722,7 +725,8 @@ def deadtree():
     g.append(ellipse(X, 255, 4.2, 4, P, INK, 1.4))
     g.append(f'<circle cx="{X-1.6}" cy="254.6" r="1.1" fill="{LAV}"/><circle cx="{X+1.6}" cy="254.6" r="1.1" fill="{LAV}"/>')
     g.append('</g>')
-    svg("deadtree", 212, 336, g, amp=0.8, step=8.0, decimals=1)
+    if coarse: svg("deadtree-item", 212, 336, g, amp=0.8, step=8.0, decimals=0)   # the on-chain item picture: whole numbers, same shape
+    else: svg("deadtree", 212, 336, g, amp=0.8, step=8.0, decimals=1)
 
 def fence():
     """A wonky graveyard fence in silhouette, for the back of the room. Wide and low."""
@@ -767,3 +771,4 @@ for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, 
            partyhat, bow, shades, bell, fish, potion, wand, cushion, crate, beanie, hook, milk, robehung,
            cobweb, pumpkin, tombstone, deadtree, bat, harvestmoon, fence):
     fn()
+deadtree(coarse=True)
