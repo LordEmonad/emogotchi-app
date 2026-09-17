@@ -7,7 +7,7 @@ optimizer = true
 optimizer_runs = 800
 evm_version = "cancun"
 via_ir = true
-fs_permissions = [{ access = "read", path = "./art" }]
+fs_permissions = [{ access = "read", path = "./items" }, { access = "read", path = "./art" }]
 
 [fuzz]
 runs = 512
