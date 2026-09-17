@@ -117,7 +117,7 @@ contract ItemsTest is Test {
     function _witch() internal returns (uint256 id) {
         EmogotchiItems.CreateParams memory c = _params("Witch outfit");
         c.maxSupply = 1000;
-        c.perWallet = 1;
+        c.perKey = 1;
         c.gate = address(named);
         id = items.create(c);
     }
@@ -153,7 +153,7 @@ contract ItemsTest is Test {
         assertEq(id, 1);
         EmogotchiItems.Item memory it = items.item(1);
         assertEq(it.maxSupply, 1000);
-        assertEq(it.perWallet, 1);
+        assertEq(it.perKey, 1);
         assertEq(it.gate, address(named));
         assertEq(items.imageOf(1), string(svg));
         assertEq(items.remaining(1), 1000);
@@ -169,7 +169,7 @@ contract ItemsTest is Test {
         items.claim(id, 1, "");
         assertEq(items.balanceOf(alice, id), 1);
         vm.prank(alice); // one per wallet
-        vm.expectRevert(EmogotchiItems.WalletCapReached.selector);
+        vm.expectRevert(EmogotchiItems.CapReached.selector);
         items.claim(id, 1, "");
     }
 
@@ -601,13 +601,17 @@ contract ItemsTest is Test {
         items.unequip(address(game), 1, a); // it is really gone, not just hidden
     }
 
-    function test_crankFallback_onlyWhenTheSwapPathIsBroken() public {
+    function _paid8() internal returns (uint256 id) {
         EmogotchiItems.CreateParams memory c = _params("Paid");
         c.price = 10 ether;
-        uint256 id = items.create(c);
+        id = items.create(c);
         vm.prank(alice);
         items.claim{value: 10 ether}(id, 1, "");
         assertEq(items.pendingBurnMon(), 8 ether);
+    }
+
+    function test_crankFallback_onlyAfterTheSwapPathStayedBroken() public {
+        _paid8();
         assertFalse(items.swapPathBroken());
         vm.expectRevert(EmogotchiItems.NothingToDo.selector);
         items.crankFallback(type(uint256).max);
@@ -615,11 +619,188 @@ contract ItemsTest is Test {
         assertTrue(items.swapPathBroken());
         items.crankBurn(type(uint256).max, 0); // queues, burns nothing
         assertEq(items.pendingBurnMon(), 8 ether);
+        vm.expectRevert(EmogotchiItems.FallbackNotReady.selector); // nobody has noted it yet
+        items.crankFallback(type(uint256).max);
+        items.noteSwapPath();
+        assertEq(items.brokenSince(), vm.getBlockTimestamp());
+        vm.expectRevert(EmogotchiItems.FallbackNotReady.selector); // and the clock has not run
+        items.crankFallback(type(uint256).max);
+        vm.warp(vm.getBlockTimestamp() + items.FALLBACK_DELAY());
         uint256 dead = items.BURN_ADDRESS().balance;
         items.crankFallback(type(uint256).max);
         assertEq(items.pendingBurnMon(), 0);
         assertEq(items.BURN_ADDRESS().balance, dead + 8 ether);
         assertEq(items.totalMonBurned(), 8 ether);
+    }
+
+    /// @dev Audit: a one-block Lens outage used to let anyone send the whole queue to 0xdEaD as MON.
+    function test_crankFallback_transientOutageCannotDivertTheBurn() public {
+        _paid8();
+        vm.mockCallRevert(address(nad), abi.encodeWithSelector(nad.getAmountOut.selector), "down");
+        assertTrue(items.swapPathBroken());
+        items.noteSwapPath();
+        vm.expectRevert(EmogotchiItems.FallbackNotReady.selector);
+        items.crankFallback(type(uint256).max);
+        vm.clearMockedCalls(); // back next block
+        vm.warp(vm.getBlockTimestamp() + items.FALLBACK_DELAY());
+        vm.expectRevert(EmogotchiItems.NothingToDo.selector); // the path works, so no fallback
+        items.crankFallback(type(uint256).max);
+        items.noteSwapPath(); // anyone can clear the clock
+        assertEq(items.brokenSince(), 0);
+        // and a working burn clears it too
+        items.noteSwapPath();
+        vm.mockCallRevert(address(nad), abi.encodeWithSelector(nad.getAmountOut.selector), "down");
+        items.noteSwapPath();
+        assertGt(items.brokenSince(), 0);
+        vm.clearMockedCalls();
+        items.crankBurn(type(uint256).max, 0);
+        assertEq(items.brokenSince(), 0);
+        assertEq(items.pendingBurnMon(), 0);
+    }
+
+    /// @dev Audit: an emptied pool re-queued every crank and never counted as broken, locking the MON.
+    function test_emptyPoolCountsAsBroken() public {
+        _paid8();
+        nad.setReserves(0, 0);
+        assertTrue(items.swapPathBroken());
+        vm.expectRevert(EmogotchiItems.NothingToDo.selector); // nothing can be pushed, so nothing to do
+        items.crankBurn(type(uint256).max, 0);
+        items.noteSwapPath();
+        vm.warp(vm.getBlockTimestamp() + items.FALLBACK_DELAY());
+        items.crankFallback(type(uint256).max);
+        assertEq(items.pendingBurnMon(), 0);
+    }
+
+    /// @dev Audit: a backlog above the impact guard burned nothing with maxMon = max; now it burns a slice.
+    function test_crankBurn_clampsToTheGuard() public {
+        EmogotchiItems.CreateParams memory c = _params("Paid");
+        c.price = 100 ether;
+        uint256 id = items.create(c);
+        vm.prank(alice);
+        items.claim{value: 100 ether}(id, 1, "");
+        assertEq(items.pendingBurnMon(), 80 ether);
+        nad.setReserves(1000 ether, 42_000_000 ether); // guard: 0.5% of 1000 = 5 MON per crank
+        items.crankBurn(type(uint256).max, 0);
+        assertEq(items.pendingBurnMon(), 75 ether);
+        assertEq(items.totalMonBurned(), 5 ether);
+    }
+
+    /// @dev Audit: the per-wallet cap was drainable by walking one named cat through fresh wallets.
+    ///      The cap is per key now, and NamedCatGate keys on the cat.
+    function test_perKey_oneWitchPerNamedCat_notPerWallet() public {
+        uint256 witch = _witch();
+        vm.prank(alice);
+        items.claim(witch, 1, abi.encode(1));
+        vm.prank(alice);
+        game.transferFrom(alice, carol, 1); // cat 1 (named) moves to a fresh wallet
+        vm.prank(carol);
+        vm.expectRevert(EmogotchiItems.CapReached.selector); // the cat already claimed
+        items.claim(witch, 1, abi.encode(1));
+        vm.prank(carol);
+        vm.expectRevert(EmogotchiItems.CapReached.selector); // the scan finds the same cat
+        items.claim(witch, 1, "");
+        assertEq(items.claimedBy(witch, bytes32(uint256(1))), 1);
+        // naming a second cat (10 MON) earns a second one: the cap is one per named cat
+        vm.prank(alice);
+        game.setName{value: 10 ether}(2, "Binx");
+        vm.prank(alice);
+        items.claim(witch, 1, abi.encode(2));
+        assertEq(items.balanceOf(alice, witch), 2);
+        // a gate-less item keys on the wallet
+        EmogotchiItems.CreateParams memory c = _params("Badge");
+        c.perKey = 1;
+        uint256 badge = items.create(c);
+        vm.prank(alice);
+        items.claim(badge, 1, "");
+        assertEq(items.claimedBy(badge, bytes32(uint256(uint160(alice)))), 1);
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.CapReached.selector);
+        items.claim(badge, 1, "");
+    }
+
+    /// @dev Audit: a 32-bit per-wallet counter locked a wallet out of an unlimited item after 2^32-1 claims.
+    function test_claimedByIs64Bit() public {
+        EmogotchiItems.CreateParams memory c = _params("Free badge");
+        uint256 id = items.create(c);
+        vm.startPrank(bob);
+        items.claim(id, type(uint32).max, "");
+        items.claim(id, type(uint32).max, "");
+        vm.stopPrank();
+        assertEq(items.claimedBy(id, bytes32(uint256(uint160(bob)))), 2 * uint256(type(uint32).max));
+    }
+
+    /// @dev Audit: a gate that cannot answer made an item unclaimable for life with an empty revert.
+    function test_gateMustAnswer_andARevertingGateIsNotEligible() public {
+        EmogotchiItems.CreateParams memory c = _params("x");
+        c.gate = address(items); // a contract with no eligible()
+        vm.expectRevert(EmogotchiItems.BadParams.selector);
+        items.create(c);
+        uint256 witch = _witch();
+        vm.mockCallRevert(address(named), abi.encodeWithSelector(named.eligible.selector), "boom");
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotEligible.selector);
+        items.claim(witch, 1, abi.encode(1));
+    }
+
+    /// @dev Audit: equipped() reverted for a collection without code or with a malformed ownerOf.
+    function test_equippedNeverReverts() public {
+        assertEq(items.equipped(makeAddr("nothing"), 1).length, 0);
+        uint256 witch = _witch();
+        vm.startPrank(alice);
+        items.claim(witch, 1, "");
+        items.equip(address(game), 1, witch);
+        vm.stopPrank();
+        assertEq(items.equipped(address(game), 1).length, 1);
+        vm.mockCall(address(game), abi.encodeWithSelector(game.ownerOf.selector, 1), "");
+        assertEq(items.equipped(address(game), 1).length, 0);
+        vm.mockCall(address(game), abi.encodeWithSelector(game.ownerOf.selector, 1), abi.encode(type(uint256).max));
+        assertEq(items.equipped(address(game), 1).length, 0);
+        vm.clearMockedCalls();
+        assertEq(items.equipped(address(game), 1).length, 1);
+    }
+
+    /// @dev Audit: equip state was keyed on the pet alone, so a stranger who bought the pet and later
+    ///      any copy of the item found it dressed with no equip of their own. It is per owner now.
+    function test_equipIsPerOwner() public {
+        uint256 witch = _witch();
+        vm.startPrank(alice);
+        items.claim(witch, 1, "");
+        items.equip(address(game), 1, witch);
+        game.transferFrom(alice, carol, 1); // kept the outfit, sold the cat
+        vm.stopPrank();
+        address[] memory to = new address[](1);
+        to[0] = carol;
+        items.grant(witch, to, 1); // carol gets her own copy
+        assertEq(items.equipped(address(game), 1).length, 0); // and the cat is still bare for her
+        vm.prank(carol);
+        vm.expectRevert(EmogotchiItems.NotEquipped.selector);
+        items.unequip(address(game), 1, witch);
+        vm.prank(carol);
+        items.equip(address(game), 1, witch);
+        assertEq(items.equipped(address(game), 1).length, 1);
+        vm.prank(carol);
+        game.transferFrom(carol, alice, 1); // alice buys the cat back: her outfit is still on
+        assertEq(items.equipped(address(game), 1)[0], witch);
+    }
+
+    function test_itemCreatedCarriesEveryRule() public {
+        EmogotchiItems.CreateParams memory c = _params("Loud");
+        c.price = 1 ether;
+        c.maxSupply = 7;
+        c.perKey = 2;
+        c.opens = 100;
+        c.closes = 200;
+        c.slot = 4;
+        c.soulbound = true;
+        c.gate = address(named);
+        vm.expectEmit(true, false, false, false);
+        emit EmogotchiItems.ItemCreated(
+            1, "Loud", EmogotchiItems.Kind.Cosmetic, 1 ether, 7, 2, 100, 200, 4, true, address(named), address(0)
+        );
+        uint256 id = items.create(c);
+        EmogotchiItems.Item memory it = items.item(id);
+        assertEq(it.perKey, 2);
+        assertEq(it.closes, 200);
     }
 
     function _has(string memory hay, string memory needle) internal pure returns (bool) {

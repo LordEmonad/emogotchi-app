@@ -35,7 +35,7 @@ contract ItemsArtTest is Test {
         c.description = "d";
         c.svg = witch;
         c.maxSupply = 1000;
-        c.perWallet = 1;
+        c.perKey = 1;
         c.kind = EmogotchiItems.Kind.Cosmetic;
         c.slot = 1;
         uint256 g1 = gasleft();

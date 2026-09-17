@@ -8,7 +8,8 @@ interface IBalance {
 }
 
 /// @notice Eligible if you hold at least `MIN` of `TOKEN`. Works for any ERC-721 (a count of tokens) or
-///         ERC-20 (an amount in its own units), since both answer balanceOf(address).
+///         ERC-20 (an amount in its own units), since both answer balanceOf(address). Point-in-time, so
+///         flash-loanable for an ERC-20; the key is the wallet.
 contract HoldsGate is IGate {
     IBalance public immutable TOKEN;
     uint256 public immutable MIN;
@@ -18,7 +19,7 @@ contract HoldsGate is IGate {
         MIN = min;
     }
 
-    function eligible(address who, bytes calldata) external view returns (bool) {
-        return TOKEN.balanceOf(who) >= MIN;
+    function eligible(address who, bytes calldata) external view returns (bool, bytes32) {
+        return (TOKEN.balanceOf(who) >= MIN, bytes32(uint256(uint160(who))));
     }
 }

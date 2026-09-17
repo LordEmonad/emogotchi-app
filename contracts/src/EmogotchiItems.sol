@@ -35,12 +35,15 @@ interface IOwnerOf {
  *
  *         Claim rules are pluggable: each item may point at a gate contract with one question,
  *         `eligible(who, data)`. "Named your cat", "holds two cats", an allowlist: small separate
- *         contracts, frozen per item, none of them touching this one.
+ *         contracts, frozen per item, none of them touching this one. A gate also says what the
+ *         per-claimer cap counts: the wallet by default, or the thing that qualified (NamedCatGate
+ *         keys on the cat), so a scarce item cannot be drained by walking one cat through fresh wallets.
  *
  *         Equipping is pet-agnostic. Any registered collection's tokens can equip items; a pet carries a
- *         set of equipped items, so an outfit, a room theme and a companion can all be on at once. An
- *         equipped item only counts while the pet's current owner still holds it: sell the item and every
- *         pet wearing it is undressed on the next read, with no cleanup transaction.
+ *         set of equipped items per owner, so an outfit, a room theme and a companion can all be on at
+ *         once. An equipped item only counts while the pet's current owner still holds it: sell the item
+ *         and every pet wearing it is undressed on the next read, with no cleanup transaction; sell the
+ *         pet and its new owner starts with nothing on.
  *
  *         Paid items feed the same flywheel as the game: 80% queued to buy and burn EMO through nad.fun
  *         under the same impact guard, 10% treasury, 10% team. Royalties on resale go to the treasury.
@@ -59,7 +62,7 @@ contract EmogotchiItems {
     struct Item {
         uint128 price; // wei per copy; 0 = free
         uint32 maxSupply; // 0 = unlimited
-        uint32 perWallet; // claims per wallet; 0 = unlimited
+        uint32 perKey; // claims per key; the key is the wallet unless the gate keys on something else; 0 = unlimited
         uint64 minted; // 64-bit: a 32-bit counter could be exhausted by one huge claim of an unlimited item
         uint64 opens; // unix; 0 = at once
         uint64 closes; // unix; 0 = never
@@ -79,7 +82,7 @@ contract EmogotchiItems {
         bytes svg;
         uint128 price;
         uint32 maxSupply;
-        uint32 perWallet;
+        uint32 perKey;
         uint64 opens;
         uint64 closes;
         Kind kind;
@@ -92,6 +95,7 @@ contract EmogotchiItems {
     uint256 public constant BPS = 10_000;
     uint256 public constant ROYALTY_BPS = 500;
     uint256 public constant MAX_EQUIPPED = 16;
+    uint256 public constant FALLBACK_DELAY = 7 days;
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     address public immutable TREASURY;
@@ -110,13 +114,13 @@ contract EmogotchiItems {
     address public curator;
     uint256 public itemCount;
     mapping(uint256 => Item) internal _items;
-    mapping(uint256 => mapping(address => uint32)) public claimedBy;
+    mapping(uint256 => mapping(bytes32 => uint64)) public claimedBy; // item => key (wallet or what the gate keys on)
     mapping(address => bool) public collectionAllowed;
 
     mapping(uint256 => mapping(address => uint256)) private _balances;
     mapping(address => mapping(address => bool)) private _operators;
 
-    mapping(bytes32 => uint256[]) private _equipped;
+    mapping(bytes32 => uint256[]) private _equipped; // keyed by (collection, tokenId, owner)
     mapping(bytes32 => mapping(uint256 => uint256)) private _equippedAt; // 1-based index into _equipped
 
     uint256 public pendingBurnMon;
@@ -124,6 +128,7 @@ contract EmogotchiItems {
     uint128 public teamOwed;
     uint256 public totalMonBurned;
     uint256 public totalEmoBurned;
+    uint256 public brokenSince; // when `swapPathBroken()` was first noted true, 0 while the path works
 
     uint256 private _lock = 1;
 
@@ -135,17 +140,31 @@ contract EmogotchiItems {
     event ApprovalForAll(address indexed account, address indexed operator, bool approved);
     event URI(string value, uint256 indexed id);
 
-    event ItemCreated(uint256 indexed id, string name, Kind kind, uint256 price, uint256 maxSupply, address gate);
+    event ItemCreated(
+        uint256 indexed id,
+        string name,
+        Kind kind,
+        uint256 price,
+        uint256 maxSupply,
+        uint256 perKey,
+        uint256 opens,
+        uint256 closes,
+        uint8 slot,
+        bool soulbound,
+        address gate,
+        address art
+    );
     event Claimed(uint256 indexed id, address indexed to, uint256 qty, uint256 paid);
     event Granted(uint256 indexed id, address indexed to, uint256 qty);
     event Sealed(uint256 indexed id, uint256 finalSupply);
     event CollectionAllowed(address indexed collection, bool allowed);
-    event Equipped(address indexed collection, uint256 indexed tokenId, uint256 indexed itemId);
-    event Unequipped(address indexed collection, uint256 indexed tokenId, uint256 indexed itemId);
+    event Equipped(address indexed collection, uint256 indexed tokenId, uint256 indexed itemId, address owner);
+    event Unequipped(address indexed collection, uint256 indexed tokenId, uint256 indexed itemId, address owner);
     event Consumed(address indexed from, uint256 indexed id, uint256 qty);
     event Burn(uint256 monIn, uint256 emoOut);
     event BurnQueued(uint256 monIn, uint256 pending);
     event Swept(uint256 treasury, uint256 team);
+    event SwapPathNoted(bool broken, uint256 since);
     event CuratorChanged(address indexed from, address indexed to);
 
     // ---------------------------------------------------------------- errors
@@ -156,7 +175,7 @@ contract EmogotchiItems {
     error NotOpenYet();
     error Closed();
     error SoldOut();
-    error WalletCapReached();
+    error CapReached();
     error NotEligible();
     error WrongValue(uint256 expected, uint256 sent);
     error NotOwner();
@@ -173,6 +192,7 @@ contract EmogotchiItems {
     error NothingToDo();
     error Reentrancy();
     error ZeroAddress();
+    error FallbackNotReady();
 
     // ---------------------------------------------------------------- modifiers
     modifier onlyCurator() {
@@ -229,12 +249,19 @@ contract EmogotchiItems {
     function create(CreateParams calldata c) external onlyCurator returns (uint256 id) {
         if (bytes(c.name).length == 0 || c.svg.length == 0 || c.kind == Kind.None) revert BadParams();
         if (c.closes != 0 && c.closes <= c.opens) revert BadParams();
-        if (c.gate != address(0) && c.gate.code.length == 0) revert BadParams();
+        if (c.gate != address(0)) {
+            if (c.gate.code.length == 0) revert BadParams();
+            // a gate that cannot answer would make every claim revert with nothing, for life
+            try IGate(c.gate).eligible(msg.sender, "") returns (bool, bytes32) {}
+            catch {
+                revert BadParams();
+            }
+        }
         id = ++itemCount;
         Item storage it = _items[id];
         it.price = c.price;
         it.maxSupply = c.maxSupply;
-        it.perWallet = c.perWallet;
+        it.perKey = c.perKey;
         it.opens = c.opens;
         it.closes = c.closes;
         it.kind = c.kind;
@@ -246,7 +273,9 @@ contract EmogotchiItems {
         it.description = c.description;
         // no URI event: it would base64-encode the whole SVG on chain just to log it, several million
         // gas for nothing, and ERC-1155 makes the event optional. ItemCreated is the signal.
-        emit ItemCreated(id, c.name, c.kind, c.price, c.maxSupply, c.gate);
+        emit ItemCreated(
+            id, c.name, c.kind, c.price, c.maxSupply, c.perKey, c.opens, c.closes, c.slot, c.soulbound, c.gate, it.art
+        );
     }
 
     /// @notice End an item's minting for good, whatever its window said. One way.
@@ -299,6 +328,8 @@ contract EmogotchiItems {
 
     // ---------------------------------------------------------------- claiming
     /// @notice Claim `qty` copies of an item under its rules. `gateData` is the hint its gate wants, if any.
+    ///         The per-key cap counts against the wallet, or against whatever the gate keys on (the cat,
+    ///         for NamedCatGate), so pass the cat you want to count.
     function claim(uint256 id, uint32 qty, bytes calldata gateData) external payable nonReentrant {
         Item storage it = _item(id);
         if (qty == 0) revert BadParams();
@@ -306,12 +337,22 @@ contract EmogotchiItems {
         if (block.timestamp < it.opens) revert NotOpenYet();
         if (it.closes != 0 && block.timestamp >= it.closes) revert Closed();
         if (it.maxSupply != 0 && it.minted + qty > it.maxSupply) revert SoldOut();
-        if (it.perWallet != 0 && claimedBy[id][msg.sender] + qty > it.perWallet) revert WalletCapReached();
-        if (it.gate != address(0) && !IGate(it.gate).eligible(msg.sender, gateData)) revert NotEligible();
+        bytes32 key = bytes32(uint256(uint160(msg.sender)));
+        if (it.gate != address(0)) {
+            bool ok;
+            try IGate(it.gate).eligible(msg.sender, gateData) returns (bool o, bytes32 k) {
+                ok = o;
+                key = k;
+            } catch {
+                ok = false;
+            }
+            if (!ok) revert NotEligible();
+        }
+        if (it.perKey != 0 && claimedBy[id][key] + qty > it.perKey) revert CapReached();
         uint256 due = uint256(it.price) * qty;
         if (msg.value != due) revert WrongValue(due, msg.value);
 
-        claimedBy[id][msg.sender] += qty;
+        claimedBy[id][key] += qty;
         it.minted += qty;
         if (due > 0) _split(due);
         _balances[id][msg.sender] += qty;
@@ -329,8 +370,10 @@ contract EmogotchiItems {
     }
 
     // ---------------------------------------------------------------- equipping
-    function _key(address collection, uint256 tokenId) private pure returns (bytes32) {
-        return keccak256(abi.encode(collection, tokenId));
+    /// @dev The list is per (pet, owner): what you put on a pet is yours, not the pet's. Sell the pet and
+    ///      its buyer starts bare; buy it back and your outfit is still there.
+    function _key(address collection, uint256 tokenId, address owner) private pure returns (bytes32) {
+        return keccak256(abi.encode(collection, tokenId, owner));
     }
 
     /// @notice Put an item on a pet you own. You must hold at least one copy. A pet carries a set, so an
@@ -341,19 +384,19 @@ contract EmogotchiItems {
         if (IOwnerOf(collection).ownerOf(tokenId) != msg.sender) revert NotOwner();
         if (_balances[itemId][msg.sender] == 0) revert NotHolder();
         if (it.kind != Kind.Cosmetic && it.kind != Kind.Scene) revert NotEquippable();
-        bytes32 k = _key(collection, tokenId);
+        bytes32 k = _key(collection, tokenId, msg.sender);
         if (_equippedAt[k][itemId] != 0) return; // already on
         uint256[] storage list = _equipped[k];
         if (list.length >= MAX_EQUIPPED) revert TooManyEquipped();
         list.push(itemId);
         _equippedAt[k][itemId] = list.length;
-        emit Equipped(collection, tokenId, itemId);
+        emit Equipped(collection, tokenId, itemId, msg.sender);
     }
 
     /// @notice Take an item off a pet you own.
     function unequip(address collection, uint256 tokenId, uint256 itemId) external {
         if (IOwnerOf(collection).ownerOf(tokenId) != msg.sender) revert NotOwner();
-        bytes32 k = _key(collection, tokenId);
+        bytes32 k = _key(collection, tokenId, msg.sender);
         uint256 at = _equippedAt[k][itemId];
         if (at == 0) revert NotEquipped();
         uint256[] storage list = _equipped[k];
@@ -362,14 +405,14 @@ contract EmogotchiItems {
         _equippedAt[k][last] = at;
         list.pop();
         delete _equippedAt[k][itemId];
-        emit Unequipped(collection, tokenId, itemId);
+        emit Unequipped(collection, tokenId, itemId, msg.sender);
     }
 
     /// @notice Drop the entries a pet's current owner no longer holds. Anyone may: it only removes what
-    ///         `equipped` already hides, so a pet sold with a full list does not block its new owner.
+    ///         `equipped` already hides, so a full list of sold items does not block the owner.
     function prune(address collection, uint256 tokenId) external {
         address owner = IOwnerOf(collection).ownerOf(tokenId);
-        bytes32 k = _key(collection, tokenId);
+        bytes32 k = _key(collection, tokenId, owner);
         uint256[] storage list = _equipped[k];
         for (uint256 i = list.length; i > 0; i--) {
             uint256 itemId = list[i - 1];
@@ -379,20 +422,17 @@ contract EmogotchiItems {
             _equippedAt[k][last] = i;
             list.pop();
             delete _equippedAt[k][itemId];
-            emit Unequipped(collection, tokenId, itemId);
+            emit Unequipped(collection, tokenId, itemId, owner);
         }
     }
 
-    /// @notice What a pet is wearing right now: the items its current owner still holds. Sell the item
-    ///         and it drops out of this list by itself; buy it back and it is on again.
+    /// @notice What a pet is wearing right now: the items its current owner put on it and still holds.
+    ///         Sell the item and it drops out of this list by itself; buy it back and it is on again.
+    ///         Empty, never a revert, for a collection or token that cannot answer `ownerOf`.
     function equipped(address collection, uint256 tokenId) external view returns (uint256[] memory out) {
-        uint256[] storage list = _equipped[_key(collection, tokenId)];
-        address owner;
-        try IOwnerOf(collection).ownerOf(tokenId) returns (address o) {
-            owner = o;
-        } catch {
-            return out;
-        }
+        address owner = _ownerOf(collection, tokenId);
+        if (owner == address(0)) return out;
+        uint256[] storage list = _equipped[_key(collection, tokenId, owner)];
         uint256 n;
         uint256[] memory tmp = new uint256[](list.length);
         for (uint256 i = 0; i < list.length; i++) {
@@ -402,6 +442,16 @@ contract EmogotchiItems {
         for (uint256 i = 0; i < n; i++) {
             out[i] = tmp[i];
         }
+    }
+
+    /// @dev `ownerOf` that never reverts: zero for no code, a revert, or malformed return data.
+    function _ownerOf(address collection, uint256 tokenId) private view returns (address) {
+        if (collection.code.length == 0) return address(0);
+        (bool ok, bytes memory ret) = collection.staticcall(abi.encodeWithSelector(IOwnerOf.ownerOf.selector, tokenId));
+        if (!ok || ret.length < 32) return address(0);
+        uint256 word = abi.decode(ret, (uint256));
+        if (word > type(uint160).max) return address(0);
+        return address(uint160(word));
     }
 
     // ---------------------------------------------------------------- consuming
@@ -426,12 +476,26 @@ contract EmogotchiItems {
         pendingBurnMon += amount - toTreasury - toTeam;
     }
 
-    /// @notice Push queued MON through nad.fun into EMO and burn it, up to `maxMon`, under the impact guard.
+    /// @notice Push queued MON through nad.fun into EMO and burn it, up to `maxMon` and up to what the
+    ///         impact guard allows in one go, so `crankBurn(type(uint256).max, 0)` always burns a slice
+    ///         of a backlog instead of nothing.
     function crankBurn(uint256 maxMon, uint256 minEmoOut) external nonReentrant {
         uint256 amount = pendingBurnMon < maxMon ? pendingBurnMon : maxMon;
+        uint256 cap = _maxIn();
+        if (amount > cap) amount = cap;
         if (amount == 0) revert NothingToDo();
         pendingBurnMon -= amount;
         _burn(amount, minEmoOut);
+    }
+
+    /// @notice The most MON one burn may push through the pool right now (`MAX_IMPACT_BPS` of its WMON).
+    function _maxIn() private view returns (uint256) {
+        if (WMON.code.length == 0) return 0;
+        try IERC20Balance(WMON).balanceOf(POOL) returns (uint256 depth) {
+            return (depth * MAX_IMPACT_BPS) / BPS;
+        } catch {
+            return 0;
+        }
     }
 
     /// @notice MON that arrived outside a claim joins the burn queue. Anyone.
@@ -468,19 +532,32 @@ contract EmogotchiItems {
 
     receive() external payable {}
 
-    /// @notice True while queued MON cannot reach EMO: a nad.fun contract without code, or the Lens now
-    ///         naming a router other than the one pinned here (nad.fun has shipped new routers before).
+    /// @notice True while queued MON cannot reach EMO right now: a nad.fun contract without code, the
+    ///         Lens reverting or naming a router other than the one pinned here (nad.fun has shipped new
+    ///         routers before), or a pool with no WMON or no EMO to quote.
     function swapPathBroken() public view returns (bool) {
         if (address(ROUTER).code.length == 0 || address(LENS).code.length == 0 || WMON.code.length == 0) return true;
-        (address router,) = _safeQuote(1 ether);
-        return router != address(ROUTER);
+        if (_maxIn() == 0) return true;
+        (address router, uint256 quoted) = _safeQuote(1 ether);
+        return router != address(ROUTER) || quoted == 0;
     }
 
-    /// @notice If the swap path is broken for good, burn the queued MON itself rather than let it sit
-    ///         locked forever. Anyone, and only while `swapPathBroken()`. The promise was that this MON
-    ///         is burned; EMO was the preferred form.
+    /// @notice Record whether the swap path works. Anyone. The first note of a broken path starts the
+    ///         `FALLBACK_DELAY` clock; a note of a working path clears it, as does any successful burn.
+    ///         A one-block outage can therefore never divert the queue from EMO to raw MON.
+    function noteSwapPath() external {
+        bool broken = swapPathBroken();
+        if (broken && brokenSince == 0) brokenSince = block.timestamp;
+        if (!broken) brokenSince = 0;
+        emit SwapPathNoted(broken, brokenSince);
+    }
+
+    /// @notice If the swap path has been broken for `FALLBACK_DELAY` without a break, burn the queued MON
+    ///         itself rather than let it sit locked forever. Anyone. The promise was that this MON is
+    ///         burned; EMO was the preferred form.
     function crankFallback(uint256 maxMon) external nonReentrant {
         if (!swapPathBroken()) revert NothingToDo();
+        if (brokenSince == 0 || block.timestamp < brokenSince + FALLBACK_DELAY) revert FallbackNotReady();
         uint256 amount = pendingBurnMon < maxMon ? pendingBurnMon : maxMon;
         if (amount == 0) revert NothingToDo();
         pendingBurnMon -= amount;
@@ -508,10 +585,13 @@ contract EmogotchiItems {
         if (minEmoOut > minOut) minOut = minEmoOut;
         try ROUTER.buy{value: monIn}(
             INadRouter.BuyParams({amountOutMin: minOut, token: EMO, to: BURN_ADDRESS, deadline: block.timestamp})
-        ) returns (uint256 amountOut) {
+        ) returns (
+            uint256 amountOut
+        ) {
             emoOut = amountOut;
             totalEmoBurned += emoOut;
             totalMonBurned += monIn;
+            if (brokenSince != 0) brokenSince = 0; // the path works
             emit Burn(monIn, emoOut);
         } catch {
             return _queue(monIn);
@@ -679,7 +759,7 @@ contract EmogotchiItems {
 
     /// @dev SSTORE2 read: the pointer's code is a STOP byte followed by the data.
     function _read(address pointer) private view returns (bytes memory data) {
-        assembly {
+        assembly ("memory-safe") {
             let size := sub(extcodesize(pointer), 1)
             data := mload(0x40)
             mstore(0x40, add(data, and(add(add(size, 0x20), 0x1f), not(0x1f))))
