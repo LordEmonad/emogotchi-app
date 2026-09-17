@@ -60,7 +60,7 @@ contract EmogotchiItems {
         uint128 price; // wei per copy; 0 = free
         uint32 maxSupply; // 0 = unlimited
         uint32 perWallet; // claims per wallet; 0 = unlimited
-        uint32 minted;
+        uint64 minted; // 64-bit: a 32-bit counter could be exhausted by one huge claim of an unlimited item
         uint64 opens; // unix; 0 = at once
         uint64 closes; // unix; 0 = never
         Kind kind;
@@ -229,6 +229,7 @@ contract EmogotchiItems {
     function create(CreateParams calldata c) external onlyCurator returns (uint256 id) {
         if (bytes(c.name).length == 0 || c.svg.length == 0 || c.kind == Kind.None) revert BadParams();
         if (c.closes != 0 && c.closes <= c.opens) revert BadParams();
+        if (c.gate != address(0) && c.gate.code.length == 0) revert BadParams();
         id = ++itemCount;
         Item storage it = _items[id];
         it.price = c.price;
@@ -265,19 +266,23 @@ contract EmogotchiItems {
         if (qty == 0) revert BadParams();
         uint256 total = uint256(qty) * to.length;
         if (it.maxSupply != 0 && it.minted + total > it.maxSupply) revert SoldOut();
-        it.minted += uint32(total);
+        if (it.minted + total > type(uint64).max) revert BadParams();
+        it.minted += uint64(total);
         for (uint256 i = 0; i < to.length; i++) {
+            if (to[i] == address(0)) revert ZeroAddress();
             _balances[id][to[i]] += qty;
             emit TransferSingle(msg.sender, address(0), to[i], id, qty);
             emit Granted(id, to[i], qty);
         }
     }
 
-    /// @notice Let a pet collection's tokens equip items. Today's cats, tomorrow's whatever.
-    function allowCollection(address collection, bool allowed) external onlyCurator {
+    /// @notice Let a pet collection's tokens equip items. Today's cats, tomorrow's whatever. One way:
+    ///         taking a collection back would retroactively undress every pet on it.
+    function allowCollection(address collection) external onlyCurator {
         if (collection == address(0)) revert ZeroAddress();
-        collectionAllowed[collection] = allowed;
-        emit CollectionAllowed(collection, allowed);
+        if (collection.code.length == 0) revert BadParams();
+        collectionAllowed[collection] = true;
+        emit CollectionAllowed(collection, true);
     }
 
     function setCurator(address to) external onlyCurator {
@@ -358,6 +363,24 @@ contract EmogotchiItems {
         list.pop();
         delete _equippedAt[k][itemId];
         emit Unequipped(collection, tokenId, itemId);
+    }
+
+    /// @notice Drop the entries a pet's current owner no longer holds. Anyone may: it only removes what
+    ///         `equipped` already hides, so a pet sold with a full list does not block its new owner.
+    function prune(address collection, uint256 tokenId) external {
+        address owner = IOwnerOf(collection).ownerOf(tokenId);
+        bytes32 k = _key(collection, tokenId);
+        uint256[] storage list = _equipped[k];
+        for (uint256 i = list.length; i > 0; i--) {
+            uint256 itemId = list[i - 1];
+            if (_balances[itemId][owner] > 0) continue;
+            uint256 last = list[list.length - 1];
+            list[i - 1] = last;
+            _equippedAt[k][last] = i;
+            list.pop();
+            delete _equippedAt[k][itemId];
+            emit Unequipped(collection, tokenId, itemId);
+        }
     }
 
     /// @notice What a pet is wearing right now: the items its current owner still holds. Sell the item
@@ -445,7 +468,32 @@ contract EmogotchiItems {
 
     receive() external payable {}
 
+    /// @notice True while queued MON cannot reach EMO: a nad.fun contract without code, or the Lens now
+    ///         naming a router other than the one pinned here (nad.fun has shipped new routers before).
+    function swapPathBroken() public view returns (bool) {
+        if (address(ROUTER).code.length == 0 || address(LENS).code.length == 0 || WMON.code.length == 0) return true;
+        (address router,) = _safeQuote(1 ether);
+        return router != address(ROUTER);
+    }
+
+    /// @notice If the swap path is broken for good, burn the queued MON itself rather than let it sit
+    ///         locked forever. Anyone, and only while `swapPathBroken()`. The promise was that this MON
+    ///         is burned; EMO was the preferred form.
+    function crankFallback(uint256 maxMon) external nonReentrant {
+        if (!swapPathBroken()) revert NothingToDo();
+        uint256 amount = pendingBurnMon < maxMon ? pendingBurnMon : maxMon;
+        if (amount == 0) revert NothingToDo();
+        pendingBurnMon -= amount;
+        totalMonBurned += amount;
+        (bool ok,) = BURN_ADDRESS.call{value: amount}("");
+        if (!ok) revert NothingToDo();
+        emit Burn(amount, 0);
+    }
+
     function _burn(uint256 monIn, uint256 minEmoOut) private returns (uint256 emoOut) {
+        if (address(ROUTER).code.length == 0 || address(LENS).code.length == 0 || WMON.code.length == 0) {
+            return _queue(monIn);
+        }
         uint256 depth;
         try IERC20Balance(WMON).balanceOf(POOL) returns (uint256 d) {
             depth = d;
@@ -608,10 +656,6 @@ contract EmogotchiItems {
             _u(it.slot),
             '},{"trait_type":"max supply","value":',
             _u(it.maxSupply),
-            '},{"trait_type":"minted","value":',
-            _u(it.minted),
-            '},{"trait_type":"sealed","value":',
-            it.isSealed ? "true" : "false",
             '},{"trait_type":"soulbound","value":',
             it.soulbound ? "true" : "false",
             "}]}"
@@ -686,13 +730,27 @@ contract EmogotchiItems {
         uint256 extra;
         for (uint256 i = 0; i < b.length; i++) {
             if (b[i] == '"' || b[i] == "\\") extra++;
+            else if (uint8(b[i]) < 0x20) extra += 5; // \u00XX
         }
         if (extra == 0) return str;
         bytes memory o = new bytes(b.length + extra);
+        bytes16 hexd = 0x30313233343536373839616263646566;
         uint256 j;
         for (uint256 i = 0; i < b.length; i++) {
-            if (b[i] == '"' || b[i] == "\\") o[j++] = "\\";
-            o[j++] = b[i];
+            uint8 c = uint8(b[i]);
+            if (b[i] == '"' || b[i] == "\\") {
+                o[j++] = "\\";
+                o[j++] = b[i];
+            } else if (c < 0x20) {
+                o[j++] = "\\";
+                o[j++] = "u";
+                o[j++] = "0";
+                o[j++] = "0";
+                o[j++] = hexd[c >> 4];
+                o[j++] = hexd[c & 0xf];
+            } else {
+                o[j++] = b[i];
+            }
         }
         return string(o);
     }

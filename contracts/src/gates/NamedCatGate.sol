@@ -24,7 +24,11 @@ contract NamedCatGate is IGate {
     function eligible(address who, bytes calldata data) external view returns (bool) {
         if (data.length >= 32) {
             uint256 id = abi.decode(data, (uint256));
-            return GAME.ownerOf(id) == who && bytes(GAME.nameOf(id)).length > 0;
+            try GAME.ownerOf(id) returns (address o) {
+                return o == who && bytes(GAME.nameOf(id)).length > 0;
+            } catch {
+                return false;
+            }
         }
         uint256 n = GAME.balanceOf(who);
         if (n > SCAN) n = SCAN;

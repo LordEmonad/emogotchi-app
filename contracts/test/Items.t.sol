@@ -95,7 +95,7 @@ contract ItemsTest is Test {
         q.collectionSvg = svg;
         items = new EmogotchiItems(q);
         named = new NamedCatGate(address(game));
-        items.allowCollection(address(game), true);
+        items.allowCollection(address(game));
 
         game.mintMany(alice, 3); // cats 1, 2, 3
         game.mintMany(bob, 1); // cat 4
@@ -471,6 +471,7 @@ contract ItemsTest is Test {
         assertTrue(_has(j, '"image":"data:image/svg+xml;base64,'));
         assertTrue(_has(j, '"trait_type":"kind","value":"cosmetic"'));
         assertTrue(_has(j, '"max supply","value":1000'));
+        assertFalse(_has(j, '"minted"'));
         assertTrue(_has(items.uri(id), "data:application/json;base64,"));
         assertTrue(_has(items.contractURI(), "data:application/json;base64,"));
         assertEq(items.imageOf(id), string(svg));
@@ -518,6 +519,107 @@ contract ItemsTest is Test {
         items.claim(id, 1, "");
         vm.prank(alice); // three
         items.claim(id, 1, "");
+    }
+
+    // ---------------------------------------------------------------- from the audit
+    function test_hugeClaimCannotKillAnUnlimitedItem() public {
+        EmogotchiItems.CreateParams memory c = _params("Free badge"); // unlimited, uncapped, free
+        uint256 id = items.create(c);
+        vm.prank(bob);
+        items.claim(id, type(uint32).max, "");
+        vm.prank(alice); // the counter is 64-bit now; the item lives on
+        items.claim(id, 1, "");
+        assertEq(items.balanceOf(alice, id), 1);
+    }
+
+    function test_grantRejectsZeroAndCountsRight() public {
+        EmogotchiItems.CreateParams memory c = _params("Unlimited");
+        uint256 id = items.create(c);
+        address[] memory to = new address[](2);
+        to[0] = bob;
+        to[1] = address(0);
+        vm.expectRevert(EmogotchiItems.ZeroAddress.selector);
+        items.grant(id, to, 1);
+        to[1] = carol;
+        items.grant(id, to, type(uint32).max);
+        assertEq(items.item(id).minted, uint256(type(uint32).max) * 2);
+    }
+
+    function test_gateAndCollectionMustBeContracts() public {
+        EmogotchiItems.CreateParams memory c = _params("x");
+        c.gate = makeAddr("eoa");
+        vm.expectRevert(EmogotchiItems.BadParams.selector);
+        items.create(c);
+        vm.expectRevert(EmogotchiItems.BadParams.selector);
+        items.allowCollection(makeAddr("eoa2"));
+    }
+
+    function test_namedGate_badHintIsNotEligible() public {
+        uint256 id = _witch();
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotEligible.selector);
+        items.claim(id, 1, abi.encode(uint256(999_999)));
+    }
+
+    function test_metadataEscapesControlCharacters() public {
+        EmogotchiItems.CreateParams memory c = _params("line\nbreak");
+        uint256 id = items.create(c);
+        assertTrue(_has(items.metadata(id), '"name":"line\\u000abreak"'));
+    }
+
+    function test_unequipLastElement() public {
+        uint256 a = _witch();
+        EmogotchiItems.CreateParams memory c = _params("Bat");
+        c.kind = EmogotchiItems.Kind.Scene;
+        uint256 b = items.create(c);
+        vm.startPrank(alice);
+        items.claim(a, 1, "");
+        items.claim(b, 1, "");
+        items.equip(address(game), 1, a);
+        items.equip(address(game), 1, b);
+        items.unequip(address(game), 1, b); // the last one
+        uint256[] memory on = items.equipped(address(game), 1);
+        assertEq(on.length, 1);
+        assertEq(on[0], a);
+        items.equip(address(game), 1, b);
+        assertEq(items.equipped(address(game), 1).length, 2);
+        vm.stopPrank();
+    }
+
+    function test_pruneClearsWhatTheNewOwnerDoesNotHold() public {
+        uint256 a = _witch();
+        vm.startPrank(alice);
+        items.claim(a, 1, "");
+        items.equip(address(game), 1, a);
+        game.transferFrom(alice, carol, 1); // carol gets the cat, not the outfit
+        vm.stopPrank();
+        assertEq(items.equipped(address(game), 1).length, 0);
+        vm.prank(bob); // anyone
+        items.prune(address(game), 1);
+        vm.prank(carol);
+        vm.expectRevert(EmogotchiItems.NotEquipped.selector);
+        items.unequip(address(game), 1, a); // it is really gone, not just hidden
+    }
+
+    function test_crankFallback_onlyWhenTheSwapPathIsBroken() public {
+        EmogotchiItems.CreateParams memory c = _params("Paid");
+        c.price = 10 ether;
+        uint256 id = items.create(c);
+        vm.prank(alice);
+        items.claim{value: 10 ether}(id, 1, "");
+        assertEq(items.pendingBurnMon(), 8 ether);
+        assertFalse(items.swapPathBroken());
+        vm.expectRevert(EmogotchiItems.NothingToDo.selector);
+        items.crankFallback(type(uint256).max);
+        nad.setLensRouter(makeAddr("newRouter")); // nad.fun moved on
+        assertTrue(items.swapPathBroken());
+        items.crankBurn(type(uint256).max, 0); // queues, burns nothing
+        assertEq(items.pendingBurnMon(), 8 ether);
+        uint256 dead = items.BURN_ADDRESS().balance;
+        items.crankFallback(type(uint256).max);
+        assertEq(items.pendingBurnMon(), 0);
+        assertEq(items.BURN_ADDRESS().balance, dead + 8 ether);
+        assertEq(items.totalMonBurned(), 8 ether);
     }
 
     function _has(string memory hay, string memory needle) internal pure returns (bool) {

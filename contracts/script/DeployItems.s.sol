@@ -38,7 +38,7 @@ contract DeployItems is Script {
         vm.startBroadcast();
         NamedCatGate gate = new NamedCatGate(game);
         EmogotchiItems items = new EmogotchiItems(p);
-        items.allowCollection(game, true);
+        items.allowCollection(game);
         EmogotchiItems.CreateParams memory c;
         c.name = "Witch outfit";
         c.description =
