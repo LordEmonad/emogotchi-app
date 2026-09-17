@@ -22,7 +22,7 @@ export function SceneryBack({ scene }: { scene: SceneName }) {
     <div className="scenery scenery-back" aria-hidden>
       <Piece name="harvestmoon" x={432} bottom={168} w={126} ar={1} className="scn-moon" />
       <Piece name="cobweb" x={50} bottom={100} w={100} ar={1} className="scn-web" />
-      <Piece name="cobweb" x={556} bottom={76} w={76} ar={1} className="scn-web scn-web-r" />
+      <Piece name="cobweb" x={WORLD.w - 38} bottom={76} w={76} ar={1} className="scn-web scn-web-r" />
       {[0, 1, 2].map((i) => <Piece key={i} name="bat" x={0} bottom={0} w={[54, 40, 32][i]!} ar={90 / 46} className={`scn-bat scn-bat-${i}`} />)}
       {/* the back of the room: everything stands on the far edge of the floor (its curved rim), a step up
           from where the cat walks, so the cat passes in front of it and never seems to tread on it */}

@@ -644,9 +644,6 @@ def pumpkin():
     g.append(path("M82,52 L68,42 L66,58 Z", FLAME, INK, 1.8))
     g.append(path("M53,62 L59,62 L56,68 Z", FLAME, INK, 1.6))
     g.append(path("M26,70 L36,74 L40,68 L46,76 L52,70 L58,78 L64,70 L70,76 L74,68 L80,74 L86,70 L80,84 L56,88 L32,84 Z", FLAME, INK, 1.8))
-    # teeth cut into the grin
-    g.append(path("M46,76 L46,82 L52,82 L52,72", INK, "none", 0, 'opacity="0.85"'))
-    g.append(path("M64,70 L64,81 L70,81 L70,76", INK, "none", 0, 'opacity="0.85"'))
     g.append('</g>')
     # stem and leaf
     g.append(path(smooth_closed([(50, 24), (49, 12), (54, 4), (62, 6), (61, 14), (60, 24)], 0.45), MOSS, INK, LW))
