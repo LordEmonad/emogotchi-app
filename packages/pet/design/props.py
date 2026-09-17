@@ -716,12 +716,14 @@ def deadtree():
     g.append(path(smooth_closed([(104, 254), (108, 244), (116, 244), (119, 254), (115, 264), (107, 264)], 0.5), INK, "none", 0))
     # the spider
     g.append('<g id="spider">')
-    g.append(path("M66,226 L66,258", "none", LAV, 1.0, 'opacity="0.7"'))
-    for (x0, y0, x1, y1) in ((66, 266, 52, 258), (66, 268, 50, 270), (66, 270, 54, 282), (66, 266, 80, 258), (66, 268, 82, 270), (66, 270, 78, 282)):
-        g.append(path(f"M{x0},{y0} Q{(x0+x1)/2},{y1-6} {x1},{y1}", "none", INK, 1.8))
-    g.append(ellipse(66, 270, 7, 8, P, INK, 1.6))
-    g.append(ellipse(66, 261, 4.2, 4, P, INK, 1.4))
-    g.append(f'<circle cx="64.4" cy="260.6" r="1.1" fill="{LAV}"/><circle cx="67.6" cy="260.6" r="1.1" fill="{LAV}"/>')
+    # hangs from the tip of the low bough, out past the claw, well clear of the trunk
+    X = 40
+    g.append(path(f"M{X},214 L{X},252", "none", LAV, 1.0, 'opacity="0.7"'))
+    for (dx0, y0, dx1, y1) in ((0, 260, -14, 252), (0, 262, -16, 264), (0, 264, -12, 276), (0, 260, 14, 252), (0, 262, 16, 264), (0, 264, 12, 276)):
+        g.append(path(f"M{X+dx0},{y0} Q{X+(dx0+dx1)/2},{y1-6} {X+dx1},{y1}", "none", INK, 1.8))
+    g.append(ellipse(X, 264, 7, 8, P, INK, 1.6))
+    g.append(ellipse(X, 255, 4.2, 4, P, INK, 1.4))
+    g.append(f'<circle cx="{X-1.6}" cy="254.6" r="1.1" fill="{LAV}"/><circle cx="{X+1.6}" cy="254.6" r="1.1" fill="{LAV}"/>')
     g.append('</g>')
     svg("deadtree", 212, 336, g, amp=0.8, step=8.0, decimals=1)
 

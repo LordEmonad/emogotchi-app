@@ -26,12 +26,15 @@ export function SceneryBack({ scene }: { scene: SceneName }) {
       {[0, 1, 2].map((i) => <Piece key={i} name="bat" x={0} bottom={0} w={[54, 40, 32][i]!} ar={90 / 46} className={`scn-bat scn-bat-${i}`} />)}
       {/* the back of the room: everything stands on the far edge of the floor (its curved rim), a step up
           from where the cat walks, so the cat passes in front of it and never seems to tread on it */}
+      {/* a raised bank of ground behind the cat's floor: the scenery stands on it, and the ground is
+          visible under and behind every piece, so nothing floats */}
+      <div className="ground-back" style={{ top: F - 58 }} />
       <Piece name="fence" x={300} bottom={F - 30} w={300} ar={350 / 62} className="scn-fence" />
-      <Piece name="deadtree" x={546} bottom={F - 22} w={200} ar={212 / 336} className="scn-tree" />
-      <span className="pumpkin-light" style={{ left: 10, top: F - 56 }} />
-      <Piece name="tombstone" x={64} bottom={F - 26} w={100} ar={104 / 116} className="scn-stone" />
-      <Piece name="pumpkin" x={128} bottom={F - 24} w={74} ar={112 / 100} className="scn-pumpkin scn-pumpkin-a" />
-      <Piece name="pumpkin" x={24} bottom={F - 26} w={48} ar={112 / 100} className="scn-pumpkin scn-pumpkin-b" style={{ transform: 'scaleX(-1)' }} />
+      <Piece name="deadtree" x={546} bottom={F - 18} w={200} ar={212 / 336} className="scn-tree" />
+      <span className="pumpkin-light" style={{ left: 10, top: F - 52 }} />
+      <Piece name="tombstone" x={64} bottom={F - 20} w={100} ar={104 / 116} className="scn-stone" />
+      <Piece name="pumpkin" x={128} bottom={F - 18} w={74} ar={112 / 100} className="scn-pumpkin scn-pumpkin-a" />
+      <Piece name="pumpkin" x={24} bottom={F - 20} w={48} ar={112 / 100} className="scn-pumpkin scn-pumpkin-b" style={{ transform: 'scaleX(-1)' }} />
     </div>
   );
 }
