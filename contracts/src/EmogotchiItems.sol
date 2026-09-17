@@ -380,8 +380,11 @@ contract EmogotchiItems {
         (bool success, bytes memory ret) =
             gate.staticcall{gas: gas}(abi.encodeWithSelector(IGate.eligible.selector, who, data));
         if (!success || ret.length < 64) return (false, false, 0);
-        (ok, key) = abi.decode(ret, (bool, bytes32));
-        answered = true;
+        // decode by hand: abi.decode reverts on a bool word that is not 0 or 1, and a malformed
+        // answer must read as "no", never as a raw revert
+        (uint256 okWord, bytes32 k) = abi.decode(ret, (uint256, bytes32));
+        if (okWord > 1) return (false, false, 0);
+        return (true, okWord == 1, k);
     }
 
     /// @notice Why a claim would fail, without sending it: `reason` 0 = it would go through, 1 no such

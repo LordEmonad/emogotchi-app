@@ -42,6 +42,17 @@ contract ShapeShiftGate {
     }
 }
 
+/// @dev Answers with a bool word that is neither 0 nor 1: abi.decode would revert on it.
+contract DirtyBoolGate {
+    function eligible(address, bytes calldata) external pure returns (bool, bytes32) {
+        assembly {
+            mstore(0, 2)
+            mstore(32, 1)
+            return(0, 64)
+        }
+    }
+}
+
 contract ZeroKeyGate {
     function eligible(address, bytes calldata) external pure returns (bool, bytes32) {
         return (true, 0);
@@ -843,6 +854,24 @@ contract ItemsTest is Test {
         vm.prank(alice);
         items.claim(id, 1, ""); // the empty hint still answers in shape
         assertEq(items.balanceOf(alice, id), 1);
+    }
+
+    /// @dev Ultrafuzz (2026-09-17): a gate answering with a dirty bool word made abi.decode revert raw.
+    function test_dirtyBoolGateIsNotEligible() public {
+        EmogotchiItems.CreateParams memory c = _params("x");
+        c.gate = address(new DirtyBoolGate());
+        vm.expectRevert(EmogotchiItems.BadParams.selector); // the probe already refuses it
+        items.create(c);
+        uint256 witch = _witch();
+        vm.mockCall(
+            address(named), abi.encodeWithSelector(named.eligible.selector), abi.encode(uint256(2), bytes32(uint256(1)))
+        );
+        vm.prank(alice);
+        vm.expectRevert(EmogotchiItems.NotEligible.selector); // and a live gate turning dirty reads as no
+        items.claim(witch, 1, abi.encode(1));
+        (bool ok, uint8 reason,,) = items.canClaim(witch, alice, 1, abi.encode(1));
+        assertFalse(ok);
+        assertEq(reason, 6);
     }
 
     /// @dev Round 3: a gate returning key 0 would have collapsed the per-key cap into one global cap.
