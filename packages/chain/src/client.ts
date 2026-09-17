@@ -4,11 +4,12 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  encodeAbiParameters,
   http,
   type EIP1193Provider,
   type PublicClient,
 } from 'viem';
-import { emogotchiAbi, emogotchiDropAbi } from './abi';
+import { emogotchiAbi, emogotchiDropAbi, emogotchiItemsAbi } from './abi';
 import type { Address, ChainConfig } from './config';
 
 /** One cat, as the contract reports it (`state(id)`), with bigints and packed ints turned into numbers. */
@@ -60,6 +61,37 @@ export type DropView = {
 };
 
 export type Totals = { emoBurned: bigint; monBurned: bigint; pendingBurnMon: bigint; totalSupply: number };
+
+/** One item type in the shop, as `catalogue()` reports it. */
+export type ItemKind = 'cosmetic' | 'scene' | 'passive' | 'consumable';
+export const ITEM_KINDS: ItemKind[] = ['cosmetic', 'cosmetic', 'scene', 'passive', 'consumable']; // index = the contract's enum (0 = none)
+export type ItemView = {
+  id: number;
+  name: string;
+  description: string;
+  /** wei per copy; 0 = free */
+  price: bigint;
+  /** 0 = unlimited */
+  maxSupply: number;
+  /** claims per key (the wallet, or the cat for the witch's gate); 0 = unlimited */
+  perKey: number;
+  minted: number;
+  opens: number;
+  closes: number;
+  kind: ItemKind;
+  slot: number;
+  soulbound: boolean;
+  sealed: boolean;
+  gate: Address;
+  /** copies still to be made; null = unlimited */
+  remaining: number | null;
+};
+/** `canClaim`'s answer. `reason`: 0 fine, 1 no item, 2 sealed, 3 not open, 4 closed, 5 sold out, 6 not eligible, 7 cap reached. */
+export type ClaimCheck = { ok: boolean; reason: number; key: `0x${string}`; due: bigint };
+export const CLAIM_REASON: Record<number, string> = {
+  0: '', 1: 'No such item.', 2: 'Sealed: no more will ever be made.', 3: 'Not open yet.', 4: 'Closed.', 5: 'Sold out.',
+  6: 'Not eligible.', 7: 'Already claimed.',
+};
 export type CrownEntry = { id: number; score: number; streak: number; alive: boolean };
 export type CareAction = 'feed' | 'play' | 'wash' | 'sleep' | 'clean';
 export const ACTION_CODE: Record<CareAction, number> = { feed: 0, play: 1, wash: 2, sleep: 3, clean: 4 };
@@ -100,6 +132,8 @@ class Limiter {
 const GAS_FLOOR: Record<string, bigint> = {
   feed: 120_000n, play: 120_000n, wash: 120_000n, sleep: 120_000n, clean: 120_000n, care: 120_000n,
   wake: 60_000n, pet: 60_000n, setName: 100_000n, revive: 120_000n, crankBurn: 220_000n, sweep: 140_000n, poke: 80_000n,
+  // the shop (live measurements: claim with the cat id 75k, equipMany three cats 222k)
+  claim: 160_000n, equip: 120_000n, equipMany: 120_000n, unequip: 80_000n,
 };
 
 export class ChainError extends Error {
@@ -240,6 +274,66 @@ export class ChainClient {
   /** Mint the caller's one cat. Returns the tx hash; the new id is the game's totalSupply after the receipt. */
   claim(proof: `0x${string}`[]) { return this.writeTo(this.cfg.drop!, emogotchiDropAbi, 'claim', [proof]); }
 
+  // ---------------------------------------------------------------- the item shop
+  private get shop(): Address { const a = this.cfg.items; if (!a) throw new ChainError('This build has no item shop.', 'wallet'); return a; }
+  private itemImages = new Map<number, Promise<string>>();
+
+  /** Every item in the shop, in one call. */
+  async items(): Promise<ItemView[]> {
+    const shop = this.shop;
+    const n = Number(await this.limit.run(() => this.pub.readContract({ address: shop, abi: emogotchiItemsAbi, functionName: 'itemCount' })));
+    if (n === 0) return [];
+    const raw = await this.limit.run(() => this.pub.readContract({ address: shop, abi: emogotchiItemsAbi, functionName: 'catalogue', args: [1n, BigInt(n)] }));
+    return raw.map((it, i) => {
+      const maxSupply = Number(it.maxSupply); const minted = Number(it.minted);
+      return {
+        id: i + 1, name: it.name, description: it.description, price: it.price, maxSupply, perKey: Number(it.perKey), minted,
+        opens: Number(it.opens), closes: Number(it.closes), kind: ITEM_KINDS[Number(it.kind)] ?? 'cosmetic', slot: Number(it.slot),
+        soulbound: it.soulbound, sealed: it.isSealed, gate: it.gate,
+        remaining: it.isSealed ? 0 : maxSupply === 0 ? null : maxSupply - minted,
+      };
+    });
+  }
+  /** The item's own picture (SVG text), from chain, once. */
+  itemImage(id: number): Promise<string> {
+    let p = this.itemImages.get(id);
+    if (!p) {
+      p = this.limit.run(() => this.pub.readContract({ address: this.shop, abi: emogotchiItemsAbi, functionName: 'imageOf', args: [BigInt(id)] }));
+      this.itemImages.set(id, p);
+      p.catch(() => this.itemImages.delete(id));
+    }
+    return p;
+  }
+  /** The gate hint for a cat: its id, as the witch's gate wants it. */
+  static catHint(catId: number): `0x${string}` { return encodeAbiParameters([{ type: 'uint256' }], [BigInt(catId)]); }
+  /** Would this claim go through, and if not why. Never reverts. */
+  async canClaim(id: number, who: Address, qty: number, hint: `0x${string}`): Promise<ClaimCheck> {
+    const [ok, reason, key, due] = await this.limit.run(() => this.pub.readContract({ address: this.shop, abi: emogotchiItemsAbi, functionName: 'canClaim', args: [BigInt(id), who, qty, hint] }));
+    return { ok, reason: Number(reason), key, due };
+  }
+  /** Item id → copies held, for one wallet. */
+  async holdings(who: Address): Promise<Record<number, number>> {
+    const [ids, bals] = await this.limit.run(() => this.pub.readContract({ address: this.shop, abi: emogotchiItemsAbi, functionName: 'holdings', args: [who] }));
+    const out: Record<number, number> = {};
+    ids.forEach((id, i) => { out[Number(id)] = Number(bals[i]); });
+    return out;
+  }
+  /** What each cat is wearing right now (items its current owner still holds). One call per hundred cats. */
+  async equippedMany(catIds: number[]): Promise<Record<number, number[]>> {
+    const out: Record<number, number[]> = {};
+    if (!this.cfg.items || catIds.length === 0) return out;
+    const shop = this.cfg.items;
+    for (let i = 0; i < catIds.length; i += 100) {
+      const slice = catIds.slice(i, i + 100);
+      const res = await this.limit.run(() => this.pub.readContract({ address: shop, abi: emogotchiItemsAbi, functionName: 'equippedMany', args: [this.cfg.contract, slice.map(BigInt)] }));
+      slice.forEach((id, k) => { out[id] = (res[k] ?? []).map(Number); });
+    }
+    return out;
+  }
+  claimItem(id: number, qty: number, hint: `0x${string}`, value: bigint) { return this.writeTo(this.shop, emogotchiItemsAbi, 'claim', [BigInt(id), qty, hint], value); }
+  equipMany(catIds: number[], itemId: number) { return this.writeTo(this.shop, emogotchiItemsAbi, 'equipMany', [this.cfg.contract, catIds.map(BigInt), BigInt(itemId)]); }
+  unequip(catId: number, itemId: number) { return this.writeTo(this.shop, emogotchiItemsAbi, 'unequip', [this.cfg.contract, BigInt(catId), BigInt(itemId)]); }
+
   // ---------------------------------------------------------------- writes
   care(id: number, action: CareAction) { return this.write(action, [BigInt(id)], PRICE); }
   careMany(ids: number[], actions: CareAction[]) {
@@ -307,6 +401,20 @@ const REASONS: Record<string, string> = {
   NotEnoughCats: 'Not enough eligible cats for that.',
   NothingToDo: 'Nothing to do.',
   InvalidToken: 'No such cat.',
+  // the shop
+  NoItem: 'No such item.',
+  IsSealed: 'This item is sealed: no more will ever be made.',
+  NotOpenYet: 'This item is not open yet.',
+  Closed: 'This item has closed.',
+  SoldOut: 'Sold out.',
+  CapReached: 'This cat already claimed one.',
+  NotEligible: 'Not eligible: it needs a living, named cat of yours.',
+  NotHolder: 'You do not hold that item.',
+  NotEquippable: 'That item cannot be worn.',
+  CollectionNotAllowed: 'Those pets cannot wear items.',
+  TooManyEquipped: 'A cat can wear at most 16 items.',
+  NotEquipped: 'It is not wearing that.',
+  Soulbound: 'That item cannot be transferred.',
 };
 
 type RawView = {

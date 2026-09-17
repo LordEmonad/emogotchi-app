@@ -117,13 +117,22 @@ export function paintCard(x: CanvasRenderingContext2D, cat: CatView, portrait: (
   x.fillText('fully on chain · Monad', L + 232, H - 46);
 }
 
-export async function renderShareCard(cat: CatView, svg: string): Promise<Blob> {
+export type Portrait = string | { url: string };
+/** An <img> from SVG text or from a URL (the costumed portraits are PNGs on the site). */
+export const loadPortrait = (p: Portrait) => (typeof p === 'string' ? loadSvg(p) : new Promise<HTMLImageElement>((resolve, reject) => {
+  const img = new Image();
+  img.onload = () => resolve(img);
+  img.onerror = () => reject(new Error('could not draw the cat'));
+  img.src = p.url;
+}));
+
+export async function renderShareCard(cat: CatView, svg: Portrait): Promise<Blob> {
   await (document as Document & { fonts?: FontFaceSet }).fonts?.ready;
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const x = cv.getContext('2d')!;
   let img: HTMLImageElement | null = null;
-  try { img = await loadSvg(svg); } catch { /* text-only card rather than no card */ }
+  try { img = await loadPortrait(svg); } catch { /* text-only card rather than no card */ }
   paintCard(x, cat, (c) => { if (img) c.drawImage(img, PORTRAIT.x, PORTRAIT.y, PORTRAIT.size, PORTRAIT.size); });
   return new Promise<Blob>((resolve, reject) => cv.toBlob((b) => (b ? resolve(b) : reject(new Error('could not make the image'))), 'image/png'));
 }

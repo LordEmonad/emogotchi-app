@@ -456,3 +456,37 @@ canvas.share-preview { background: #170b2a; }
 .lab-grid figure { margin: 0; }
 .lab-grid img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid rgba(184,148,216,.22); }
 .lab-grid figcaption { font-size: 12px; color: rgba(248,248,255,.6); margin-top: 6px; text-align: center; }
+
+/* ---- the item shop */
+.shop { width: min(1100px, 100% - 32px); margin: 0 auto; padding: 8px 0 40px; display: flex; flex-direction: column; gap: 18px; }
+.shop-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+@media (min-width: 760px) { .shop-grid { grid-template-columns: repeat(2, 1fr); } }
+.item-card { display: grid; grid-template-columns: 1fr; border-radius: 22px; overflow: hidden; background: linear-gradient(180deg, rgba(58,31,92,.55), rgba(36,18,63,.55)); border: 1px solid rgba(184,148,216,.28); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+@media (min-width: 520px) { .item-card { grid-template-columns: 200px 1fr; } }
+.item-card[data-status="open"] { border-color: rgba(232,77,127,.55); }
+.item-card[data-status="sealed"], .item-card[data-status="closed"], .item-card[data-status="gone"] { filter: saturate(.85); }
+.item-img { aspect-ratio: 1 / 1; background: #24123f; display: flex; align-items: center; justify-content: center; }
+.item-img > div { width: 100%; } .item-img svg { width: 100%; height: auto; display: block; }
+@media (min-width: 520px) { .item-img { aspect-ratio: auto; align-self: stretch; padding: 12px 0; } .item-img > div { width: 200px; } }
+.item-body { display: flex; flex-direction: column; gap: 10px; padding: 18px 18px 20px; min-width: 0; }
+.item-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .item-head h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
+.item-desc { margin: 0; font-size: 14px; line-height: 1.5; color: rgba(248,248,255,.78); }
+.item-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 14px; margin: 2px 0 0; }
+.item-facts div { display: flex; flex-direction: column; gap: 1px; } .item-facts dt { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: rgba(248,248,255,.5); } .item-facts dd { margin: 0; font-size: 14px; font-weight: 600; }
+.item-claim { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-top: 6px; padding-top: 12px; border-top: 1px solid rgba(248,248,255,.08); }
+.item-note { margin: 0; font-size: 13px; color: rgba(248,248,255,.7); } .item-note a { color: #ff7aa6; }
+.item-have { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #EAC6EA; }
+.item-pick { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(248,248,255,.7); }
+.item-pick select { padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,.06); color: #F8F8FF; border: 1px solid rgba(184,148,216,.28); font: inherit; font-size: 13px; }
+.item-wear { display: flex; flex-direction: column; gap: 8px; width: 100%; padding-top: 10px; border-top: 1px solid rgba(248,248,255,.08); }
+.item-wear-title { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: rgba(248,248,255,.5); }
+.item-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.item-cat { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 999px; font-size: 12.5px; background: rgba(255,255,255,.05); border: 1px solid rgba(184,148,216,.22); cursor: pointer; }
+.item-cat.is-on { background: rgba(232,77,127,.16); border-color: rgba(232,77,127,.4); }
+.item-cat input { accent-color: #E84D7F; margin: 0; } .item-cat-name { color: rgba(248,248,255,.8); } .item-cat-wearing { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: #ff7aa6; }
+.item-cat-off { border: 0; background: transparent; color: #ff7aa6; font-size: 12px; cursor: pointer; padding: 0 2px; line-height: 1; }
+.outfit-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #F8F8FF; background: rgba(255,255,255,.06); border: 1px solid rgba(184,148,216,.28); cursor: pointer; }
+.outfit-btn.is-on { background: rgba(232,77,127,.16); border-color: rgba(232,77,127,.4); } .outfit-btn:disabled { opacity: .5; cursor: default; }
+.outfit-link { font-size: 12.5px; color: #ff7aa6; text-decoration: none; } .outfit-link:hover { text-decoration: underline; }
+.gal-trait.is-outfit { color: #EAC6EA; }
+.gallery-img img { width: 100%; height: 100%; display: block; object-fit: cover; }

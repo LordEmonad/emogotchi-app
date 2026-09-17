@@ -15,6 +15,10 @@ type Props = {
   act: (a: PaidAction | 'wake') => void;
   /** live mode: the wallet's cats, for switching between them */
   tabs?: CatTab[];
+  /** our cat wears a costume, or could: one tap puts it on or takes it off (a transaction) */
+  outfit?: { on: boolean; label: string; toggle: () => void | Promise<void> };
+  /** the item shop, when this build has one */
+  shopHref?: string;
   activeId?: number | null;
   onTab?: (id: number) => void;
   /** live mode: the "All" tab; when it is on, every button acts on every cat in the wallet */
@@ -33,7 +37,7 @@ type Props = {
 const BUSY_MOOD: Record<string, string> = { feed: 'eating', wash: 'bathing', play: 'playing', poop: 'busy…', clean: 'relieved', pet: 'purring', wake: 'waking up', walk: 'wandering', wander: 'wandering', rumble: 'hungry', sleep: 'dozing off', tour: 'showing off', die: 'fading…', revive: 'coming back' };
 const NEED_MOOD: Record<NonNullable<ReturnType<typeof need>>, string> = { food: 'hungry', clean: 'grubby', fun: 'bored', energy: 'sleepy', poop: 'grossed out' };
 
-export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, all, onAll, onShare, shareNote = null, pending = null, locked = false, live = false }: Props) {
+export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = null, onTab, all, onAll, onShare, shareNote = null, pending = null, locked = false, live = false, outfit, shopHref }: Props) {
   const busy = d.busy !== null || locked;
   const every = all?.on ? all.counts : null;
   const dead = !g.alive;
@@ -80,6 +84,16 @@ export function PetView({ stage, g, d, name, onName, act, tabs = [], activeId = 
         <span className="name-day tnum" title={live ? 'Days since this cat\'s clock started' : `Demo clock: one day passes every ${Math.round(DAY / TIME_SCALE / 60)} minutes`}>{dead && g.diedOnDay ? `Died on day ${g.diedOnDay}` : live ? `Day ${day}` : `Day ${day} · ${clockOf(g.t)}`}</span>
         <span className="name-sep">·</span>
         <span className={`name-mood mood-${mood.replace(/[\s…]/g, '-')}`}>{mood}</span>
+        {outfit && !dead && (<>
+          <span className="name-sep">·</span>
+          <button className={`outfit-btn ${outfit.on ? 'is-on' : ''}`} onClick={() => void outfit.toggle()} disabled={busy} title={outfit.on ? `Take the ${outfit.label.toLowerCase()} off · gas only` : `Put the ${outfit.label.toLowerCase()} on · gas only`}>
+            <Icon name="heart" size={12} /> {outfit.on ? `${outfit.label} on` : `Wear ${outfit.label.toLowerCase()}`}
+          </button>
+        </>)}
+        {!outfit && shopHref && live && !dead && (<>
+          <span className="name-sep">·</span>
+          <a className="outfit-link" href={shopHref}>Items</a>
+        </>)}
       </div>
 
       <section className={`grid grid-cols-4 gap-2 sm:gap-3 ${dead ? 'meters-dead' : ''}`}>

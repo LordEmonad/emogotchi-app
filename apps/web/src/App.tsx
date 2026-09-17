@@ -24,6 +24,8 @@ import { ShareModal } from './ui/ShareModal';
 import { marketplace } from './links';
 import { Claim } from './ui/Claim';
 import { Gallery } from './ui/Gallery';
+import { Shop } from './ui/Shop';
+import { WITCH, COSTUME_ITEMS, costumeOf, costumePortrait } from './items';
 import { Icon } from './ui/Icon';
 
 const NEED_ICON: Record<NonNullable<ReturnType<typeof need>>, PropName> = { food: 'bowl', clean: 'sponge', fun: 'yarn', energy: 'moon', poop: 'poop' };
@@ -34,7 +36,7 @@ const params = new URLSearchParams(location.search);
 const DEV = params.has('dev');
 const COSTUME = params.get('costume');   // ?costume=witch dresses the cat, for the costume lab and portraits
 const EMPTY: DirectorState = { x: 300, dir: 1, busy: null, poop: false, sleeping: false, inTub: false, dead: false };
-const EMPTY_SNAP: ChainSnapshot = { owner: null, cats: [], activeId: null, spectator: null, totals: null, loaded: false, pending: null, pendingLabel: '', error: null, log: [] };
+const EMPTY_SNAP: ChainSnapshot = { owner: null, cats: [], activeId: null, spectator: null, totals: null, worn: {}, held: {}, loaded: false, pending: null, pendingLabel: '', error: null, log: [] };
 
 export function App() {
   // ---- routes ----
@@ -46,6 +48,7 @@ export function App() {
   }
   if (path === '/claim') return <Claim />;
   if (path === '/costume') return <CostumeLab />;
+  if (path === '/shop' || path === '/items') return <Shop />;
   if (path === '/faq') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><main className="landing"><Faq /></main><SiteFooter /></div>;
   if (path === '/leaderboard') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Leaderboard /><SiteFooter /></div>;
   if (path === '/cats' || path === '/collection') return <div className="page"><Header wallet={EMPTY_WALLET} onConnect={() => { location.href = '/'; }} onDisconnect={() => {}} compact /><Gallery /><SiteFooter /></div>;
@@ -91,6 +94,9 @@ function Home({ petId }: { petId: number | null }) {
   const g: Game = live && activeCat ? toGame(activeCat, snap.totals, snap.log) : simG;
   const name = live ? (activeCat?.name ?? '') : simName;
   const crown = crownOverride ?? (live ? (activeCat?.crowned ?? false) : true);
+  // the outfit: what the shop says this cat is wearing (its owner still holds the item), or the lab's ?costume=
+  const worn = live && activeCat ? snap.worn[activeCat.id] ?? [] : [];
+  const costume = (COSTUME as 'witch' | null) ?? costumeOf(worn);
 
   // ---- wallet ----
   useEffect(() => { void restore().then((w) => { if (w) setWallet(w); }); }, []);
@@ -138,7 +144,7 @@ function Home({ petId }: { petId: number | null }) {
   useEffect(() => { director?.setSad(sad); }, [director, sad]);
   useEffect(() => { director?.setDirty(dirty); }, [director, dirty]);
   useEffect(() => { director?.setCrown(crown); }, [director, crown]);
-  useEffect(() => { director?.setCostume(COSTUME === 'witch'); }, [director]);
+  useEffect(() => { director?.setCostume(costume === 'witch'); }, [director, costume]);
 
   // ---- events the world raises on its own (demo: from the clock; live: from the contract) ----
   const poopFired = useRef(false);
@@ -266,8 +272,10 @@ function Home({ petId }: { petId: number | null }) {
     if (!activeCat || !chainClient) return;
     setShareNote('Drawing…');
     try {
-      const svg = await chainClient.artImage(activeCat.alive ? activeCat.mood : 'dead', activeCat.crowned);
-      setShareCard({ cat: activeCat, blob: await renderShareCard(activeCat, svg) });
+      const mood = activeCat.alive ? activeCat.mood : 'dead';
+      // a costumed cat shares its costumed portrait, drawn ahead of time; the plain cat comes from chain
+      const picture = costume ? { url: costumePortrait(costume, mood, activeCat.crowned) } : await chainClient.artImage(mood, activeCat.crowned);
+      setShareCard({ cat: activeCat, blob: await renderShareCard(activeCat, picture) });
       setShareNote(null);
     } catch (e) {
       setShareNote((e as Error).message.slice(0, 60));
@@ -297,6 +305,17 @@ function Home({ petId }: { petId: number | null }) {
   const tabs: CatTab[] = live ? snap.cats.map((c) => ({ id: c.id, name: c.name, alive: c.alive, crowned: c.crowned })) : [];
   const allCounts = live && chainStore && owns && tabs.length > 1 ? chainStore.allCounts() : null;
   const allOn = allMode && allCounts !== null;
+  // the outfit toggle on our own cat: shown when the wallet holds a costume the rig can draw
+  const outfitItem = live && owns && activeCat ? Object.keys(COSTUME_ITEMS).map(Number).find((id) => (snap.held[id] ?? 0) > 0 || worn.includes(id)) ?? null : null;
+  const outfit = outfitItem !== null && activeCat ? {
+    on: worn.includes(outfitItem),
+    label: outfitItem === WITCH ? 'Witch outfit' : 'Outfit',
+    toggle: async () => {
+      if (!chainStore || !activeCat) return;
+      try { if (worn.includes(outfitItem)) await chainStore.undress(activeCat.id, outfitItem, 'Witch outfit'); else await chainStore.wear([activeCat.id], outfitItem, 'Witch outfit'); } catch { return; }
+      await chainStore.refresh();
+    },
+  } : null;
   const pending = live ? (snap.pending ? snap.pendingLabel : !owns && activeCat ? 'Someone else\'s cat · look but don\'t touch' : wrongChain ? `Switch your wallet to ${chainCfg?.chain.name ?? 'Monad'}` : allOn && allCounts ? `Every button acts on all ${allCounts.total} cats${allCounts.asleep ? ` · ${allCounts.asleep} asleep wake up when fed, washed or played with` : ''} · the room shows ${name || `#${activeCat?.id ?? ''}`}` : null) : null;
   const stage = (
     <Stage onDirector={setDirector} night={g.sleeping} thought={thought} thoughtSide={dState.x > 330 ? -1 : 1} onPet={onPet}>
@@ -315,7 +334,7 @@ function Home({ petId }: { petId: number | null }) {
       {which === 'landing' && <Landing stage={stage} onConnect={() => setModal(true)} connecting={wallet.status === 'connecting'} claimHref={chainCfg?.drop ? '/claim' : null} />}
       {which === 'loading' && <main className="nopet"><div className="shell"><div className="empty-room"><div className="empty-dots" /><div className="empty-floor" /><div className="empty-card"><h2>Looking in your wallet…</h2>{snap.error && <p className="tnum">{snap.error}</p>}</div></div></div></main>}
       {which === 'nopet' && <NoPet address={wallet.address ?? '0x0000…0000'} onDemo={() => { if (live) doDemo(); else setHasPet(true); }} />}
-      {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onShare={live && activeCat ? () => void onShare() : undefined} shareNote={shareNote} onTab={(id) => { setAllMode(false); chainStore?.setActive(id); }} all={allCounts ? { on: allOn, counts: allCounts } : undefined} onAll={() => setAllMode(true)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} />}
+      {(which === 'pet' || which === 'dead') && <PetView stage={stage} g={g} d={dState} name={name} onName={(nm) => void onName(nm)} act={(a) => void act(a)} tabs={tabs} activeId={activeCat?.id ?? null} onShare={live && activeCat ? () => void onShare() : undefined} shareNote={shareNote} onTab={(id) => { setAllMode(false); chainStore?.setActive(id); }} all={allCounts ? { on: allOn, counts: allCounts } : undefined} onAll={() => setAllMode(true)} pending={pending} locked={live && (!owns || !!snap.pending || wrongChain)} live={live} outfit={outfit ?? undefined} shopHref={live && chainCfg?.items ? '/shop' : undefined} />}
       {which !== 'landing' && which !== 'nopet' && which !== 'loading' && (
         <><BurnBar /><SiteFooter extra={catOnChain ? <a href={catOnChain} target="_blank" rel="noreferrer">This cat on chain</a> : undefined} /></>
       )}

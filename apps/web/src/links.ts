@@ -10,6 +10,7 @@ export function navLinks(): { href: string; label: string }[] {
   return [
     ...(chainCfg?.drop ? [{ href: '/claim', label: 'Claim' }] : []),
     ...(chainCfg ? [{ href: '/cats', label: 'Cats' }] : []),
+    ...(chainCfg?.items ? [{ href: '/shop', label: 'Items' }] : []),
     { href: '/leaderboard', label: 'Leaderboard' },
     { href: '/nft', label: 'NFT' },
     { href: '/faq', label: 'FAQ' },

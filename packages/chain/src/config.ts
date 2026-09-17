@@ -19,12 +19,15 @@ export type ChainConfig = {
   contract: Address;
   /** EmogotchiDrop, the minter: the claim page reads its window and calls claim(). Optional. */
   drop: Address | null;
+  /** EmogotchiItems, the item shop: the Items page, costumes on the cats. Optional. */
+  items: Address | null;
   explorer: string | null;
 };
 
 /**
  * Build the config from Vite env vars: VITE_CHAIN_ID (143 | 10143 | 31337), VITE_CONTRACT_ADDRESS,
- * VITE_RPC_URL (optional override), VITE_DROP_ADDRESS (the claim contract, optional). No contract address
+ * VITE_RPC_URL (optional override), VITE_DROP_ADDRESS (the claim contract, optional), VITE_ITEMS_ADDRESS (the
+ * item shop, optional). No contract address
  * means the site runs its local simulation.
  */
 export function configFromEnv(env: Record<string, string | undefined>): ChainConfig | null {
@@ -38,6 +41,7 @@ export function configFromEnv(env: Record<string, string | undefined>): ChainCon
     rpcUrl: env.VITE_RPC_URL ?? chain.rpcUrls.default.http[0]!,
     contract,
     drop: /^0x[0-9a-fA-F]{40}$/.test(env.VITE_DROP_ADDRESS ?? '') ? (env.VITE_DROP_ADDRESS as Address) : null,
+    items: /^0x[0-9a-fA-F]{40}$/.test(env.VITE_ITEMS_ADDRESS ?? '') ? (env.VITE_ITEMS_ADDRESS as Address) : null,
     explorer: chain.blockExplorers?.default.url ?? null,
   };
 }

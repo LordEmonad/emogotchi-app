@@ -14,8 +14,9 @@ import type { Address, CatView } from '@emo-pets/chain';
 import { shortAddr, getProvider, hasInjected } from '../wallet';
 import { Icon } from './Icon';
 import { BurnBar } from './BurnBar';
+import { costumeOf, costumePortrait } from '../items';
 
-type Row = { cat: CatView; svg: string | null };
+type Row = { cat: CatView; svg: string | null; worn: number[] };
 type Mode = { kind: 'browse' } | { kind: 'id'; id: number } | { kind: 'owner'; owner: Address; mine: boolean } | { kind: 'crown' } | { kind: 'name'; q: string };
 /**
  * Filters. "Crowned" has a real on-chain source (`crownList`), so it is complete. The rest have no
@@ -141,8 +142,10 @@ export function Gallery() {
         if (!slice.length) { setPage(0); return; }
         cats = await client.catsByIds(slice);
         if (dead) return;
-        setRows(cats.map((cat) => ({ cat, svg: null })));
+        setRows(cats.map((cat) => ({ cat, svg: null, worn: [] })));
         setError(null);
+        // what each cat wears, one call for the page; a failure here just shows them plain
+        void client.equippedMany(cats.map((c) => c.id)).then((worn) => { if (!dead) setRows((rs) => rs?.map((r) => ({ ...r, worn: worn[r.cat.id] ?? [] })) ?? rs); }).catch(() => {});
         await paint(cats, alive);
       } catch (e) { if (!dead) setError((e as Error).message); } finally { if (!dead) setBusy(false); }
     };
@@ -217,7 +220,7 @@ export function Gallery() {
         </p>
       ) : null}
       <div className="gallery-grid">
-        {shownRows?.map(({ cat, svg }) => <Card key={cat.id} cat={cat} svg={svg} />)}
+        {shownRows?.map(({ cat, svg, worn }) => <Card key={cat.id} cat={cat} svg={svg} worn={worn} />)}
       </div>
       {pages > 1 && <Pager page={page} pages={pages} busy={busy} go={(n) => { setPage(n); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />}
       {wallet && mode.kind === 'owner' && mode.mine && rows?.length ? <p className="gallery-count tnum" style={{ textAlign: 'center' }}>{rows.length} cat{rows.length === 1 ? '' : 's'} in {shortAddr(wallet)}</p> : null}
@@ -254,12 +257,14 @@ function Meter({ label, v }: { label: string; v: number }) {
   );
 }
 
-function Card({ cat, svg }: { cat: CatView; svg: string | null }) {
+function Card({ cat, svg, worn }: { cat: CatView; svg: string | null; worn: number[] }) {
   const dies = cat.alive && cat.started ? inFuture(cat.diesAt) : null;
   const wakes = cat.alive && !cat.started ? inFuture(cat.startsAt) : null;
+  const costume = costumeOf(worn);
   return (
     <a className={`gallery-card ${cat.alive ? '' : 'is-dead'}`} href={`/pet/${cat.id}`}>
-      {svg ? <div className="gallery-img" dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="gallery-img gallery-img-loading" />}
+      {costume ? <div className="gallery-img"><img src={costumePortrait(costume, cat.alive ? cat.mood : 'dead', cat.crowned)} alt="" loading="lazy" /></div>
+        : svg ? <div className="gallery-img" dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="gallery-img gallery-img-loading" />}
       <div className="gallery-meta">
         <span className="gallery-name">{cat.crowned && <span className="lb-crown" title="Wears the crown">♛ </span>}{cat.name || `Emogotchi #${cat.id}`}</span>
         <span className="gallery-sub tnum">#{cat.id} · {cat.alive ? cat.mood : 'dead'} · {shortAddr(cat.owner)}</span>
@@ -281,6 +286,7 @@ function Card({ cat, svg }: { cat: CatView; svg: string | null }) {
           {cat.poop && <span className="gal-trait is-warn">needs cleaning</span>}
           {!cat.alive && <span className="gal-trait is-warn">died {ago(cat.deadAt)} ago</span>}
           {cat.names > 0 && <span className="gal-trait">named</span>}
+          {costume && <span className="gal-trait is-outfit">{costume} outfit</span>}
         </div>
 
         <div className="gal-stats tnum">

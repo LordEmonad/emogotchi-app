@@ -3,6 +3,7 @@
  * action is a real transaction through the connected wallet. Without it, the local simulation runs.
  */
 import { ChainClient, ChainError, configFromEnv, type CareAction, type CatView, type Totals } from '@emo-pets/chain';
+
 import { DAY, type Game, type PaidAction, label } from './state';
 
 export const chainCfg = configFromEnv(import.meta.env as unknown as Record<string, string | undefined>);
@@ -17,6 +18,10 @@ export type ChainSnapshot = {
   /** a cat we are only looking at (/pet/<id>), not necessarily ours */
   spectator: CatView | null;
   totals: Totals | null;
+  /** cat id → item ids it is wearing (its owner still holds them), for our cats and the spectator */
+  worn: Record<number, number[]>;
+  /** item id → copies the connected wallet holds */
+  held: Record<number, number>;
   loaded: boolean;
   pending: Pending;
   pendingLabel: string;
@@ -36,7 +41,7 @@ export type AllCounts = Record<BatchAction, number> & { total: number; asleep: n
 const MAX_BATCH = 200; // the contract's cap per care() call
 
 export class ChainStore {
-  private snap: ChainSnapshot = { owner: null, cats: [], activeId: null, spectator: null, totals: null, loaded: false, pending: null, pendingLabel: '', error: null, log: [] };
+  private snap: ChainSnapshot = { owner: null, cats: [], activeId: null, spectator: null, totals: null, worn: {}, held: {}, loaded: false, pending: null, pendingLabel: '', error: null, log: [] };
   private subs = new Set<() => void>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private watchId: number | null = null;
@@ -54,7 +59,7 @@ export class ChainStore {
   setSigner(provider: Eip1193 | null, address: `0x${string}` | null): void {
     this.client.setSigner(provider && address ? { provider: provider as never, address } : null);
     if (this.snap.owner !== address) {
-      this.set({ owner: address, cats: [], activeId: null, loaded: false, error: null });
+      this.set({ owner: address, cats: [], activeId: null, held: {}, loaded: false, error: null });
       this.schedule(0);
     }
   }
@@ -99,7 +104,19 @@ export class ChainStore {
       ]);
       if (this.snap.owner !== forOwner) return; // the wallet changed underneath us; the next run covers it
       const activeId = this.snap.activeId ?? this.watchId ?? cats[0]?.id ?? null;
-      this.set({ cats, totals, spectator, activeId, loaded: true, error: null });
+      // the shop: what these cats wear and what the wallet holds; a failure here must not hide the cats
+      let worn = this.snap.worn; let held = this.snap.held;
+      if (this.client.cfg.items) {
+        const ids = [...cats.map((c) => c.id), ...(spectator && !cats.some((c) => c.id === spectator.id) ? [spectator.id] : [])];
+        const [w, h] = await Promise.all([
+          this.client.equippedMany(ids).catch(() => null),
+          forOwner ? this.client.holdings(forOwner).catch(() => null) : Promise.resolve({} as Record<number, number>),
+        ]);
+        if (w) worn = w;
+        if (h) held = h;
+        if (this.snap.owner !== forOwner) return;
+      }
+      this.set({ cats, totals, spectator, activeId, worn, held, loaded: true, error: null });
     } catch (e) {
       // a failed read is not an empty wallet: `loaded` stays false until a read succeeds, so the page
       // keeps its "looking in your wallet" screen (with the reason) instead of "no Emogotchi here"
@@ -173,6 +190,22 @@ export class ChainStore {
   }
 
   async crank(): Promise<void> { return this.tx('Burning', () => this.client.crankBurn(), 'Burn · queued MON → EMO → 0x…dEaD'); }
+
+  // ---------------------------------------------------------------- the item shop
+  /** Claim an item for one of our cats (the cat is the gate's hint and the cap's key). */
+  async claimItem(itemId: number, name: string, catId: number | null, price: bigint): Promise<void> {
+    const hint = catId === null ? ('0x' as const) : ChainClient.catHint(catId);
+    const cost = price === 0n ? 'free · gas only' : `${Number(price / 1_000_000_000_000_000n) / 1000} MON → 80% to the burn queue`;
+    return this.tx(`Claiming ${name}`, () => this.client.claimItem(itemId, 1, hint, price), `${name} · ${cost}`);
+  }
+  /** Put one item on several of our cats in one transaction. */
+  async wear(catIds: number[], itemId: number, name: string): Promise<void> {
+    if (catIds.length === 0) throw new ChainError('Pick a cat.', 'wallet');
+    return this.tx(`Dressing ${catIds.length === 1 ? 'the cat' : `${catIds.length} cats`}`, () => this.client.equipMany(catIds, itemId), `${name} on${catIds.length === 1 ? '' : ` ×${catIds.length}`} · gas only`);
+  }
+  async undress(catId: number, itemId: number, name: string): Promise<void> {
+    return this.tx('Undressing', () => this.client.unequip(catId, itemId), `${name} off · gas only`);
+  }
 
   private async tx(what: string, send: () => Promise<`0x${string}`>, line: string): Promise<void> {
     if (this.snap.pending) throw new ChainError('Another transaction is in progress.', 'wallet');
