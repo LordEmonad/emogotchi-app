@@ -9,11 +9,19 @@ import {
   type EIP1193Provider,
   type PublicClient,
 } from 'viem';
-import { emogotchiAbi, emogotchiDropAbi, emogotchiItemsAbi } from './abi';
+import { emogotchiAbi, emogotchiDropAbi, emogotchiItemsAbi, inversegotchiAbi } from './abi';
 import type { Address, ChainConfig } from './config';
 
-/** One cat, as the contract reports it (`state(id)`), with bigints and packed ints turned into numbers. */
+/** Which pet contract a token lives in: the cat (Emogotchi) or inversebrah (Inversegotchi). */
+export type Collection = 'cat' | 'frok';
+export const COLLECTIONS: Collection[] = ['cat', 'frok'];
+/** inversebrah's four abuses, in the contract's order. */
+export type AbuseKind = 'screenshot' | 'slap' | 'squeeze' | 'burn';
+export const ABUSE_CODE: Record<AbuseKind, 'screenshot' | 'slap' | 'squeeze' | 'ignite'> = { screenshot: 'screenshot', slap: 'slap', squeeze: 'squeeze', burn: 'ignite' };
+
+/** One pet, as its contract reports it (`state(id)`), with bigints and packed ints turned into numbers. */
 export type CatView = {
+  col: Collection;
   id: number;
   owner: Address;
   name: string;
@@ -50,6 +58,11 @@ export type CatView = {
   revives: number;
   /** wei */
   monPaid: bigint;
+  /** inversebrah's abuses (0 on a cat) */
+  screenshots: number;
+  slaps: number;
+  squeezes: number;
+  burns: number;
 };
 
 export const MOODS = ['content', 'happy', 'hungry', 'grubby', 'bored', 'sleepy', 'sleeping', 'sad', 'dead'] as const;
@@ -132,6 +145,8 @@ class Limiter {
 const GAS_FLOOR: Record<string, bigint> = {
   feed: 120_000n, play: 120_000n, wash: 120_000n, sleep: 120_000n, clean: 120_000n, care: 120_000n,
   wake: 60_000n, pet: 60_000n, setName: 100_000n, revive: 120_000n, crankBurn: 220_000n, sweep: 140_000n, poke: 80_000n,
+  // inversebrah (his first care and his abuses touch a fresh pet's slots; mint writes the owner list)
+  mint: 250_000n, screenshot: 100_000n, slap: 100_000n, squeeze: 100_000n, ignite: 100_000n,
   // the shop (live measurements: claim with the cat id 75k, equipMany three cats 222k)
   claim: 160_000n, equip: 120_000n, equipMany: 120_000n, unequip: 80_000n,
 };
@@ -163,12 +178,23 @@ export class ChainClient {
   }
 
   setSigner(s: Signer | null): void { this.signer = s; }
+  /** The connected wallet, for clients that send their own transactions (the Autocare client). */
+  get signerInfo(): Signer | null { return this.signer; }
   get address(): Address | null { return this.signer?.address ?? null; }
 
+  /** Which collections this build knows: the cat always, inversebrah when his address is configured. */
+  get collections(): Collection[] { return this.cfg.inverse ? ['cat', 'frok'] : ['cat']; }
+  /** The contract for a collection. Both answer the same `state`, `catsOf`, `crownList`, `imageOf`, `ART` shape. */
+  addr(col: Collection): Address {
+    if (col === 'cat') return this.cfg.contract;
+    const a = this.cfg.inverse; if (!a) throw new ChainError('This build has no inversebrah.', 'wallet'); return a;
+  }
+  private abi(col: Collection) { return (col === 'cat' ? emogotchiAbi : inversegotchiAbi) as typeof emogotchiAbi; }
+
   // ---------------------------------------------------------------- reads
-  async cat(id: number): Promise<CatView> {
-    const v = await this.limit.run(() => this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'state', args: [BigInt(id)] }));
-    return toView(v);
+  async cat(id: number, col: Collection = 'cat'): Promise<CatView> {
+    const v = await this.limit.run(() => this.pub.readContract({ address: this.addr(col), abi: this.abi(col), functionName: 'state', args: [BigInt(id)] }));
+    return toView(v as RawView, col);
   }
 
   /**
@@ -176,7 +202,7 @@ export class ChainClient {
    * refused by the public RPC, so this goes in chunks of 50; the per-cat fallback is paced well under
    * the node's 15 requests a second.
    */
-  async catsByIds(ids: number[]): Promise<CatView[]> {
+  async catsByIds(ids: number[], col: Collection = 'cat'): Promise<CatView[]> {
     if (ids.length === 0) return [];
     const CHUNK = 50;
     const out: CatView[] = [];
@@ -186,12 +212,12 @@ export class ChainClient {
         const res = await this.limit.run(() => this.pub.multicall({
           multicallAddress: MULTICALL3,
           allowFailure: false,
-          contracts: slice.map((id) => ({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'state' as const, args: [BigInt(id)] as const })),
+          contracts: slice.map((id) => ({ address: this.addr(col), abi: this.abi(col), functionName: 'state' as const, args: [BigInt(id)] as const })),
         }));
-        out.push(...(res as RawView[]).map(toView));
+        out.push(...(res as RawView[]).map((v) => toView(v, col)));
       } catch {
         for (const id of slice) {
-          out.push(await this.cat(id));
+          out.push(await this.cat(id, col));
           await new Promise((r) => setTimeout(r, 150));
         }
       }
@@ -200,13 +226,18 @@ export class ChainClient {
     return out;
   }
 
-  async catsOf(owner: Address): Promise<CatView[]> {
-    const vs = await this.limit.run(() => this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'catsOf', args: [owner] }));
-    return vs.map(toView);
+  async catsOf(owner: Address, col: Collection = 'cat'): Promise<CatView[]> {
+    const vs = await this.limit.run(() => this.pub.readContract({ address: this.addr(col), abi: this.abi(col), functionName: 'catsOf', args: [owner] }));
+    return (vs as RawView[]).map((v) => toView(v, col));
+  }
+  /** Every pet the wallet holds, across every collection this build knows, cats first. */
+  async petsOf(owner: Address): Promise<CatView[]> {
+    const lists = await Promise.all(this.collections.map((col) => this.catsOf(owner, col)));
+    return lists.flat();
   }
 
-  async totals(): Promise<Totals> {
-    const c = { address: this.cfg.contract, abi: emogotchiAbi } as const;
+  async totals(col: Collection = 'cat'): Promise<Totals> {
+    const c = { address: this.addr(col), abi: this.abi(col) } as const;
     const [emoBurned, monBurned, pendingBurnMon, totalSupply] = await Promise.all([
       this.pub.readContract({ ...c, functionName: 'totalEmoBurned' }),
       this.pub.readContract({ ...c, functionName: 'totalMonBurned' }),
@@ -216,26 +247,32 @@ export class ChainClient {
     return { emoBurned, monBurned, pendingBurnMon, totalSupply: Number(totalSupply) };
   }
 
-  async crownList(): Promise<CrownEntry[]> {
-    const [ids, scores, streaks, alive] = await this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'crownList' });
+  async crownList(col: Collection = 'cat'): Promise<CrownEntry[]> {
+    const [ids, scores, streaks, alive] = await this.pub.readContract({ address: this.addr(col), abi: this.abi(col), functionName: 'crownList' });
     return ids.map((id, i) => ({ id: Number(id), score: Number(scores[i]!) / 100, streak: Number(streaks[i]!), alive: alive[i]! }));
   }
 
-  async imageOf(id: number): Promise<string> {
-    return this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'imageOf', args: [BigInt(id)] });
+  async imageOf(id: number, col: Collection = 'cat'): Promise<string> {
+    return this.pub.readContract({ address: this.addr(col), abi: this.abi(col), functionName: 'imageOf', args: [BigInt(id)] });
   }
 
-  private artAddr: Address | null = null;
+  private artAddr: Partial<Record<Collection, Address>> = {};
   private artCache = new Map<string, Promise<string>>();
 
-  /** The portrait for a mood and crown state, from the art contract, cached: there are only 18 of them. */
-  artImage(mood: Mood, crowned: boolean): Promise<string> {
-    const key = `${mood}:${crowned ? 1 : 0}`;
+  /** The art contract behind a collection's tokenURI. */
+  async artAddress(col: Collection = 'cat'): Promise<Address> {
+    this.artAddr[col] ??= await this.limit.run(() => this.pub.readContract({ address: this.addr(col), abi: this.abi(col), functionName: 'ART' }));
+    return this.artAddr[col]!;
+  }
+
+  /** The portrait for a mood and crown state, from the collection's art contract, cached: there are only 18 per pet. */
+  artImage(mood: Mood, crowned: boolean, col: Collection = 'cat'): Promise<string> {
+    const key = `${col}:${mood}:${crowned ? 1 : 0}`;
     let p = this.artCache.get(key);
     if (!p) {
       p = (async () => {
-        this.artAddr ??= await this.limit.run(() => this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'ART' }));
-        return this.limit.run(() => this.pub.readContract({ address: this.artAddr!, abi: artAbi, functionName: 'image', args: [MOODS.indexOf(mood), crowned] }));
+        const art = await this.artAddress(col);
+        return this.limit.run(() => this.pub.readContract({ address: art, abi: artAbi, functionName: 'image', args: [MOODS.indexOf(mood), crowned] }));
       })();
       p.catch(() => this.artCache.delete(key));
       this.artCache.set(key, p);
@@ -243,9 +280,19 @@ export class ChainClient {
     return p;
   }
 
-  async tokenURI(id: number): Promise<string> {
-    return this.pub.readContract({ address: this.cfg.contract, abi: emogotchiAbi, functionName: 'tokenURI', args: [BigInt(id)] });
+  async tokenURI(id: number, col: Collection = 'cat'): Promise<string> {
+    return this.pub.readContract({ address: this.addr(col), abi: this.abi(col), functionName: 'tokenURI', args: [BigInt(id)] });
   }
+
+  // ---------------------------------------------------------------- inversebrah
+  /** Has this wallet minted its inversebrah? (one per wallet, forever) */
+  async hasMinted(wallet: Address): Promise<boolean> {
+    return this.limit.run(() => this.pub.readContract({ address: this.addr('frok'), abi: inversegotchiAbi, functionName: 'hasMinted', args: [wallet] }));
+  }
+  /** Mint the caller's inversebrah. Free. Returns the tx hash; the new id is his totalSupply after the receipt. */
+  mint() { return this.writeTo(this.addr('frok'), inversegotchiAbi, 'mint', []); }
+  /** One of the four abuses. Gas only. */
+  abuse(id: number, kind: AbuseKind) { return this.writeTo(this.addr('frok'), inversegotchiAbi, ABUSE_CODE[kind], [BigInt(id)]); }
 
   async chainTime(): Promise<number> {
     const b = await this.pub.getBlock();
@@ -318,37 +365,40 @@ export class ChainClient {
     ids.forEach((id, i) => { out[Number(id)] = Number(bals[i]); });
     return out;
   }
-  /** What each cat is wearing right now (items its current owner still holds). One call per hundred cats. */
-  async equippedMany(catIds: number[]): Promise<Record<number, number[]>> {
+  /** The gate hint for a collection: its address, as AnyPetGate (the emo hair) wants it. */
+  static collectionHint(collection: Address): `0x${string}` { return encodeAbiParameters([{ type: 'address' }], [collection]); }
+  /** What each pet of one collection is wearing right now (items its current owner still holds). One call per hundred. */
+  async equippedMany(catIds: number[], col: Collection = 'cat'): Promise<Record<number, number[]>> {
     const out: Record<number, number[]> = {};
     if (!this.cfg.items || catIds.length === 0) return out;
     const shop = this.cfg.items;
     for (let i = 0; i < catIds.length; i += 100) {
       const slice = catIds.slice(i, i + 100);
-      const res = await this.limit.run(() => this.pub.readContract({ address: shop, abi: emogotchiItemsAbi, functionName: 'equippedMany', args: [this.cfg.contract, slice.map(BigInt)] }));
+      const res = await this.limit.run(() => this.pub.readContract({ address: shop, abi: emogotchiItemsAbi, functionName: 'equippedMany', args: [this.addr(col), slice.map(BigInt)] }));
       slice.forEach((id, k) => { out[id] = (res[k] ?? []).map(Number); });
     }
     return out;
   }
   claimItem(id: number, qty: number, hint: `0x${string}`, value: bigint) { return this.writeTo(this.shop, emogotchiItemsAbi, 'claim', [BigInt(id), qty, hint], value); }
-  equipMany(catIds: number[], itemId: number) { return this.writeTo(this.shop, emogotchiItemsAbi, 'equipMany', [this.cfg.contract, catIds.map(BigInt), BigInt(itemId)]); }
-  unequip(catId: number, itemId: number) { return this.writeTo(this.shop, emogotchiItemsAbi, 'unequip', [this.cfg.contract, BigInt(catId), BigInt(itemId)]); }
+  equipMany(catIds: number[], itemId: number, col: Collection = 'cat') { return this.writeTo(this.shop, emogotchiItemsAbi, 'equipMany', [this.addr(col), catIds.map(BigInt), BigInt(itemId)]); }
+  unequip(catId: number, itemId: number, col: Collection = 'cat') { return this.writeTo(this.shop, emogotchiItemsAbi, 'unequip', [this.addr(col), BigInt(catId), BigInt(itemId)]); }
 
-  // ---------------------------------------------------------------- writes
-  care(id: number, action: CareAction) { return this.write(action, [BigInt(id)], PRICE); }
-  careMany(ids: number[], actions: CareAction[]) {
-    return this.write('care', [ids.map(BigInt), actions.map((a) => ACTION_CODE[a])], PRICE * BigInt(ids.length));
+  // ---------------------------------------------------------------- writes (the cat pays; inversebrah's care and revive are free)
+  private price(col: Collection, wei: bigint) { return col === 'cat' ? wei : 0n; }
+  care(id: number, action: CareAction, col: Collection = 'cat') { return this.write(action, [BigInt(id)], this.price(col, PRICE), col); }
+  careMany(ids: number[], actions: CareAction[], col: Collection = 'cat') {
+    return this.write('care', [ids.map(BigInt), actions.map((a) => ACTION_CODE[a])], this.price(col, PRICE * BigInt(ids.length)), col);
   }
-  wake(id: number) { return this.write('wake', [BigInt(id)]); }
-  pet(id: number, count: number) { return this.write('pet', [BigInt(id), BigInt(Math.max(1, Math.min(20, count)))]); }
-  setName(id: number, name: string) { return this.write('setName', [BigInt(id), name], NAME_PRICE); }
-  revive(id: number) { return this.write('revive', [BigInt(id)], REVIVE_PRICE); }
-  poke(id: number) { return this.write('poke', [BigInt(id)]); }
-  crankBurn(maxMon: bigint = 2n ** 255n, minEmoOut = 0n) { return this.write('crankBurn', [maxMon, minEmoOut]); }
-  sweep() { return this.write('sweep', []); }
+  wake(id: number, col: Collection = 'cat') { return this.write('wake', [BigInt(id)], 0n, col); }
+  pet(id: number, count: number, col: Collection = 'cat') { return this.write('pet', [BigInt(id), BigInt(Math.max(1, Math.min(20, count)))], 0n, col); }
+  setName(id: number, name: string, col: Collection = 'cat') { return this.write('setName', [BigInt(id), name], NAME_PRICE, col); }
+  revive(id: number, col: Collection = 'cat') { return this.write('revive', [BigInt(id)], this.price(col, REVIVE_PRICE), col); }
+  poke(id: number, col: Collection = 'cat') { return this.write('poke', [BigInt(id)], 0n, col); }
+  crankBurn(maxMon: bigint = 2n ** 255n, minEmoOut = 0n, col: Collection = 'cat') { return this.write('crankBurn', [maxMon, minEmoOut], 0n, col); }
+  sweep(col: Collection = 'cat') { return this.write('sweep', [], 0n, col); }
 
   /** Estimate, send with a 10% margin above the estimate, wait for the receipt. Returns the tx hash. */
-  private write(fn: string, args: unknown[], value = 0n): Promise<`0x${string}`> { return this.writeTo(this.cfg.contract, emogotchiAbi, fn, args, value); }
+  private write(fn: string, args: unknown[], value = 0n, col: Collection = 'cat'): Promise<`0x${string}`> { return this.writeTo(this.addr(col), this.abi(col), fn, args, value); }
   private async writeTo(address: Address, abi: unknown, fn: string, args: unknown[], value = 0n): Promise<`0x${string}`> {
     const s = this.signer;
     if (!s) throw new ChainError('Connect a wallet first.', 'wallet');
@@ -412,7 +462,8 @@ const REASONS: Record<string, string> = {
   Closed: 'This item has closed.',
   SoldOut: 'Sold out.',
   CapReached: 'This cat already claimed one.',
-  NotEligible: 'Not eligible: it needs a living, named cat of yours.',
+  NotEligible: 'Not eligible for this item.',
+  AlreadyMinted: 'This wallet already minted its inversebrah (one each, forever).',
   NotHolder: 'You do not hold that item.',
   NotEquippable: 'That item cannot be worn.',
   CollectionNotAllowed: 'Those pets cannot wear items.',
@@ -426,15 +477,18 @@ type RawView = {
   food: number; clean: number; fun: number; energy: number; mood: number; streak: number; score: number; day: bigint;
   mintedAt: number; startsAt: number; bornAt: number; deadAt: number; poopAt: number; wakesAt: number; diesAt: number;
   feeds: number; washes: number; plays: number; naps: number; cleanups: number; pets: number; names: number; deaths: number; revives: number; monPaid: bigint;
+  screenshots?: number; slaps?: number; squeezes?: number; ignitions?: number;
 };
 
-function toView(v: RawView): CatView {
+function toView(v: RawView, col: Collection = 'cat'): CatView {
   return {
+    col,
     id: Number(v.id), owner: v.owner, name: v.name, started: v.started, alive: v.alive, asleep: v.asleep, poop: v.poop,
     crowned: v.crowned, crownEligible: v.crownEligible,
     food: v.food, clean: v.clean, fun: v.fun, energy: v.energy, mood: MOODS[v.mood] ?? 'content', streak: v.streak, score: v.score / 100,
     day: Number(v.day), mintedAt: v.mintedAt, startsAt: v.startsAt, bornAt: v.bornAt, deadAt: v.deadAt, poopAt: v.poopAt, wakesAt: v.wakesAt, diesAt: v.diesAt,
     feeds: v.feeds, washes: v.washes, plays: v.plays, naps: v.naps, cleanups: v.cleanups, pets: v.pets, names: v.names, deaths: v.deaths, revives: v.revives,
     monPaid: v.monPaid,
+    screenshots: v.screenshots ?? 0, slaps: v.slaps ?? 0, squeezes: v.squeezes ?? 0, burns: v.ignitions ?? 0,
   };
 }

@@ -6,3 +6,19 @@ compatibility_date = "2026-09-01"
 [[routes]]
 pattern = "emogotchi.emonad.lol/api/*"
 zone_name = "emonad.lol"
+# a pet's page gets its own link preview (worker/preview.js); everything else on the domain stays on GitHub Pages
+[[routes]]
+pattern = "emogotchi.emonad.lol/pet/*"
+zone_name = "emonad.lol"
+[[routes]]
+pattern = "emogotchi.emonad.lol/inversebrah/pet/*"
+zone_name = "emonad.lol"
+
+# The Autocare poker: every 5 minutes, read due(), send runPets() only when something is due. Needs the secret
+# AUTOCARE_KEEPER_KEY (`npx wrangler secret put AUTOCARE_KEEPER_KEY`: a wallet holding gas money only) and the var
+# AUTOCARE_ADDRESS below once the machine is deployed. Without them the cron is a no-op.
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+AUTOCARE_ADDRESS = ""

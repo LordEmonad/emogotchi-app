@@ -21,13 +21,17 @@ export type ChainConfig = {
   drop: Address | null;
   /** EmogotchiItems, the item shop: the Items page, costumes on the cats. Optional. */
   items: Address | null;
+  /** Inversegotchi, the second pet (inversebrah): free mint, free care, the four abuses. Optional. */
+  inverse: Address | null;
+  /** Autocare, the machine that keeps pets alive: one vault per user. Optional; without it /autocare is the demo. */
+  autocare: Address | null;
   explorer: string | null;
 };
 
 /**
  * Build the config from Vite env vars: VITE_CHAIN_ID (143 | 10143 | 31337), VITE_CONTRACT_ADDRESS,
  * VITE_RPC_URL (optional override), VITE_DROP_ADDRESS (the claim contract, optional), VITE_ITEMS_ADDRESS (the
- * item shop, optional). No contract address
+ * item shop, optional), VITE_INVERSE_ADDRESS (Inversegotchi, optional). No contract address
  * means the site runs its local simulation.
  */
 export function configFromEnv(env: Record<string, string | undefined>): ChainConfig | null {
@@ -42,6 +46,8 @@ export function configFromEnv(env: Record<string, string | undefined>): ChainCon
     contract,
     drop: /^0x[0-9a-fA-F]{40}$/.test(env.VITE_DROP_ADDRESS ?? '') ? (env.VITE_DROP_ADDRESS as Address) : null,
     items: /^0x[0-9a-fA-F]{40}$/.test(env.VITE_ITEMS_ADDRESS ?? '') ? (env.VITE_ITEMS_ADDRESS as Address) : null,
+    inverse: /^0x[0-9a-fA-F]{40}$/.test(env.VITE_INVERSE_ADDRESS ?? '') ? (env.VITE_INVERSE_ADDRESS as Address) : null,
+    autocare: /^0x[0-9a-fA-F]{40}$/.test(env.VITE_AUTOCARE_ADDRESS ?? '') ? (env.VITE_AUTOCARE_ADDRESS as Address) : null,
     explorer: chain.blockExplorers?.default.url ?? null,
   };
 }
