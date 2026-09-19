@@ -11,7 +11,13 @@ library ArtDeploy {
     uint256 internal constant CHUNK = 24_000;
 
     function deploy(Vm vm) internal returns (EmogotchiArt art) {
-        string memory dir = string.concat(vm.projectRoot(), "/art/");
+        return deployFrom(vm, "art");
+    }
+
+    /// @dev The same for another character's bake: `folder` is the directory under contracts/ (`art` for the
+    ///      cat, `art-inversebrah` for inversebrah). The contract is the same; only the blobs differ.
+    function deployFrom(Vm vm, string memory folder) internal returns (EmogotchiArt art) {
+        string memory dir = string.concat(vm.projectRoot(), "/", folder, "/");
         bytes[] memory blobs = new bytes[](37);
         blobs[0] = vm.readFileBinary(string.concat(dir, "base.bin"));
         for (uint256 i = 0; i < 18; i++) {
