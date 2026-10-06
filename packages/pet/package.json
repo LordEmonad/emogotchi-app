@@ -5,10 +5,22 @@
   "type": "module",
   "exports": {
     "./cat.svg": "./cat.svg",
-    "./props/*": "./props/*"
+    "./frog.svg": "./frog.svg",
+    "./sahur.svg": "./sahur.svg",
+    "./thiccums.svg": "./thiccums.svg",
+    "./r3tards.svg": "./r3tards.svg",
+    "./emonad.svg": "./emonad.svg",
+    "./emonadgotchi.svg": "./emonadgotchi.svg",
+    "./props/*": "./props/*",
+    "./town/*": "./town/*",
+    "./cat-lite.svg": "./cat-lite.svg",
+    "./frog-lite.svg": "./frog-lite.svg",
+    "./thiccums-lite.svg": "./thiccums-lite.svg",
+    "./r3tards-lite.svg": "./r3tards-lite.svg",
+    "./emonadgotchi-lite.svg": "./emonadgotchi-lite.svg"
   },
   "scripts": {
-    "build": "python3 design/cat.py && python3 design/props.py",
+    "build": "python3 design/cat.py && python3 design/frog.py && python3 design/sahur.py && python3 design/props.py && python3 design/town_lite.py && python3 design/town.py && python3 design/town_ground.py && python3 design/town_civic.py && python3 design/town_cozy.py && python3 design/town_works.py && python3 design/town_spooky.py && python3 design/town_street.py && python3 design/town_seasons.py && python3 design/town_manifest.py",
     "render": "python3 design/render.py"
   }
 }

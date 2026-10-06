@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 7" width="52" height="7">
+<g class="majlisplane" stroke-linejoin="round" stroke-linecap="round">
+<g transform="translate(40 0.3)">
+<g class="mj-planeday">
+<path d="M-40 3.2H-2" fill="none" stroke="#FFFFFF" stroke-width="1.2" opacity="0.6"/>
+<path d="M-2 3.2H10" fill="none" stroke="#C8D2DC" stroke-width="1.6"/>
+<path d="M3 3.2L-1 .2M3 3.2L-1 6.2" fill="none" stroke="#C8D2DC" stroke-width="1.2"/>
+</g>
+<g class="mj-planenight"><circle cx="9" cy="3.2" r="1" fill="#FFFFFF"/></g>
+</g>
+</g>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 23" width="15" height="23">
+<g class="majlisflame" stroke-linejoin="round" stroke-linecap="round">
+<g transform="translate(7.5 -125)">
+<ellipse cx="0" cy="136.5" rx="7.5" ry="11" fill="#FFF0B0" opacity=".5"/><path d="M0 125.5C4.8 134.5 5.6 141.5 0 146.5C-5.6 141.5-4.8 134.5 0 125.5Z" fill="#FFB52E"/><path d="M0 133.5C2.6 139 3 143 0 145.7C-3 143-2.6 139 0 133.5Z" fill="#FFF8DC"/>
+</g>
+</g>
+</svg>

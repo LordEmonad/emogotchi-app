@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 32" width="80" height="32">
+<g class="majliscloud" stroke-linejoin="round" stroke-linecap="round">
+<path d="M6 22a10 10 0 1 1 20 0a10 10 0 1 1-20 0zM17 15a13 13 0 1 1 26 0a13 13 0 1 1-26 0zM34 13a12 12 0 1 1 24 0a12 12 0 1 1-24 0zM50 19a10 10 0 1 1 20 0a10 10 0 1 1-20 0zM63 24a7 7 0 1 1 14 0a7 7 0 1 1-14 0zM8 26a32 5 0 1 0 64 0a32 5 0 1 0-64 0z" fill="#D9E5F0"/>
+<path d="M7 21a9 8.5 0 1 1 18 0a9 8.5 0 1 1-18 0zM18 14a12 11.5 0 1 1 24 0a12 11.5 0 1 1-24 0zM35 12a11 10.5 0 1 1 22 0a11 10.5 0 1 1-22 0zM51 18a9 8.5 0 1 1 18 0a9 8.5 0 1 1-18 0zM64 23a6 5.5 0 1 1 12 0a6 5.5 0 1 1-12 0z" fill="#FFFFFF"/>
+</g>
+</svg>

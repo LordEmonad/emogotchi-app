@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="10" height="16">
+<g class="emoroomflame" stroke-linejoin="round" stroke-linecap="round">
+<ellipse cx="5" cy="9" rx="5" ry="7.5" fill="#FFE7A0" opacity=".35"/>
+<path d="M5 1.4C7.6 6 8.2 10 5 14.6C1.8 10 2.4 6 5 1.4Z" fill="#FFB43A"/>
+<path d="M5 6.6C6.3 9 6.5 11 5 13.6C3.5 11 3.7 9 5 6.6Z" fill="#FFF6D6"/>
+</g>
+</svg>

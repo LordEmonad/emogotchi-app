@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 60" width="480" height="60">
+<defs></defs>
+<g id="kerb">
+<path d="M0,0 L480,0 L480,14 L0,14 L0,0 Z" fill="#4A3866" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M0,14 L480,14 L480,26 L0,26 L0,14 Z" fill="#33254D" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M79.5,1 L79.5,25" fill="none" stroke="#000000" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+<path d="M171.3,1 L171.3,25" fill="none" stroke="#000000" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+<path d="M256.1,1 L256.1,25" fill="none" stroke="#000000" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+<path d="M350.2,1 L350.2,25" fill="none" stroke="#000000" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+<path d="M445.3,1 L445.3,25" fill="none" stroke="#000000" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+<path d="M0,0.8 L480,0.8" fill="none" stroke="#000000" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M0,14 L480,14" fill="none" stroke="#000000" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+<path d="M2,4 L478,4" fill="none" stroke="#6E5A92" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+<path d="M0,26 L480,26 L480,60 L0,60 L0,26 Z" fill="#150C24" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M0,26 L480,26" fill="none" stroke="#000000" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M20,46 L76,46 L76,50 L20,50 L20,46 Z" fill="#3A2A56" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M140,46 L196,46 L196,50 L140,50 L140,46 Z" fill="#3A2A56" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M260,46 L316,46 L316,50 L260,50 L260,46 Z" fill="#3A2A56" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M380,46 L436,46 L436,50 L380,50 L380,46 Z" fill="#3A2A56" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+</g>
+</svg>

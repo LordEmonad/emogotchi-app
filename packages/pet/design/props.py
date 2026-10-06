@@ -7,7 +7,8 @@ for the rig (food layers in the bowl, stink lines on the poop, ...).
 import os, re, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cat import (INK, FUR, HAIR, STRAND, PURPLE, LAV, LAV2, PINK, GOLD, GOLD2, RUBY, GREEN, TEAL, PUPIL,
-                 LW, LD, smooth_closed, smooth_open, poly, path, ellipse, tube, tapered)
+                 LW, LD, smooth_closed, smooth_open, poly, path, ellipse, tube, tapered,
+                 lens, strip, stitches, carve_mouth, LINEN, LINEN2, STITCH, BRAIN, BRAIN2, PUMPKIN3)
 from wobble import bake
 
 OUT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
@@ -310,6 +311,26 @@ def witchhat():
     g.append(ellipse(54, 108, 22, 4, PUPIL, "none", 0, 'opacity="0.28"'))           # cone shading the brim
     g.append(ellipse(30, 110, 6, 2.2, "#FFFFFF", "none", 0, 'opacity="0.18"'))
     svg("witchhat", 120, 130, g)
+
+def emohair():
+    """The second item that goes *on* a pet: a black emo fringe, the cat's own hair as an item for the pets that
+    do not have it (inversebrah first). Drawn as it sits on him, swept from the back of the head down over one
+    eye, standing by itself here for the shop card: a soft contact shadow under it, the strands that follow the
+    sweep, the same baked ink wobble as everything else."""
+    g = []
+    g.append(ellipse(62, 118, 40, 6, PUPIL, "none", 0, 'opacity="0.30"'))          # contact shadow
+    # swept from the top left down to the right, the locks getting longer the further they hang over the eye
+    hair = smooth_closed([(10, 58), (16, 34), (30, 16), (52, 6), (80, 5), (104, 12), (120, 26), (128, 44), (130, 62),
+                          (122, 58), (118, 76), (111, 62), (104, 94), (97, 72), (88, 104), (81, 78), (70, 100), (64, 78),
+                          (54, 92), (48, 74), (38, 82), (32, 66), (20, 70)], 0.22)
+    g.append(path(hair, HAIR, INK, LW))
+    g.append(f'<clipPath id="ehclip"><path d="{hair}"/></clipPath>')
+    g.append('<g clip-path="url(#ehclip)">')
+    for (x0, y0, L) in ((24, 30, 46), (40, 14, 70), (58, 8, 84), (76, 6, 90), (94, 10, 78), (110, 22, 50)):
+        x1, y1 = x0 + L * 0.16, y0 + L
+        g.append(path(smooth_open([(x0, y0), ((x0 + x1) / 2 - 4, (y0 + y1) / 2), (x1, y1)]), "none", STRAND, 1.7))
+    g.append('</g>')
+    svg("emohair", 130, 124, g)
 
 def _locker_body(g, open_door=False):
     g.append(ellipse(50, 197, 40, 5, PUPIL, "none", 0, 'opacity="0.35"'))
@@ -767,8 +788,229 @@ def harvestmoon():
     svg("harvestmoon", 140, 140, g, amp=0.5, decimals=1)
 
 
-for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat, locker, lockeropen, pricetag, bag, shelf,
+# ================================================================ the Halloween items' shop pictures
+# Each is the thing itself, standing alone for its shop card, drawn from the same shapes the pets wear.
+
+def jackolantern():
+    """The pumpkin item: the very pumpkin the cat wears (same lobes, same cat face: two lens eyes and a nose-and-grin
+    cut as one), standing on the floor and lit from inside. Each cut shows its wall in a deeper orange and the
+    candlelight inside it; flat fills, like everything else."""
+    X, Y = -25, -4                                    # the cat's pumpkin, moved into this box
+    t = lambda pts: [(x + X, y + Y) for x, y in pts]
+    g = [ellipse(75, 142, 58, 7, PUPIL, "none", 0, 'opacity="0.32"')]            # contact shadow
+    for (cx, cy, rx, ry, f) in ((62, 88, 27, 52, PUMPKIN3), (138, 88, 27, 52, PUMPKIN3), (80, 87, 30, 57, PUMPKIN), (120, 87, 30, 57, PUMPKIN), (100, 86, 31, 60, PUMPKIN)):
+        g.append(ellipse(cx + X, cy + Y, rx, ry, f, INK, LW))
+    g.append(path(f"M{100+X},{30+Y} Q{94+X},{86+Y} {100+X},{144+Y}", "none", PUMPKIN2, 2.6, 'opacity="0.45"'))
+    g.append(ellipse(70 + X, 50 + Y, 8, 3.4, "#FFFFFF", "none", 0, f'opacity="0.24" transform="rotate(-42 {70+X} {50+Y})"'))
+    # the card's face is the classic one, a little higher on the pumpkin: lens eyes like the worn pumpkin's, a nose of
+    # its own and the zigzag grin (on the cat the nose and grin are one cut, to show its own nose; alone it read as
+    # a moustache)
+    cuts = [(t(lens(77, 96, 38, 32, -6)), 0.5, (77 + X, 96 + Y)), (t(lens(123, 96, 38, 32, 6)), 0.5, (123 + X, 96 + Y)),
+            (t([(100, 104), (106.5, 114), (93.5, 114)]), None, (100 + X, 110.5 + Y)), (t(carve_mouth("idle", 100, 123, 78, 14)), None, (100 + X, 128 + Y))]
+    for pts, sm, (cx, cy) in cuts:
+        d = smooth_closed(pts, sm) if sm else poly(pts)
+        inner = [(cx + (x - cx) * 0.78, cy + (y - cy) * 0.72 + 1.0) for x, y in pts]
+        g.append(path(d, "#C9581A", "none", 0))                                   # the cut wall, in shadow
+        g.append(path(smooth_closed(inner, sm) if sm else poly(inner), FLAME, "none", 0))   # candlelight inside
+        g.append(path(d, "none", INK, LW))
+    g.append(path(smooth_closed(t([(95, 30), (93, 21), (96, 12), (104, 10), (107, 20), (106, 30)]), 0.4), MOSS, INK, LW))
+    g.append(path(f"M{106+X},{19+Y} Q{118+X},{9+Y} {124+X},{19+Y} Q{126+X},{28+Y} {119+X},{27+Y}", "none", MOSS, 2.0))
+    g.append(path(f"M{104+X},{22+Y} Q{116+X},{11+Y} {127+X},{17+Y} Q{118+X},{26+Y} {106+X},{26+Y} Z", GREEN, INK, 1.6))
+    g.append(path(f"M{107+X},{24+Y} Q{116+X},{17+Y} {124+X},{18+Y}", "none", INK, 1.0, 'opacity="0.5"'))
+    svg("jackolantern", 150, 150, g)
+
+def mummyheap():
+    """The mummy item: a heap of old linen bandages, wound round and round, and in a gap between two of them one
+    half-lidded purple eye looking out (the cat's own eye, emo to the last). A loose end curls up off the top. The
+    same strips, creases and linen as the wraps the pets wear."""
+    g = [ellipse(75, 120, 60, 7, PUPIL, "none", 0, 'opacity="0.30"')]            # contact shadow
+    dome = smooth_closed([(20, 116), (16, 96), (22, 72), (36, 50), (56, 36), (78, 32), (100, 36), (118, 48), (130, 68), (134, 92), (130, 116), (100, 120), (50, 120)], 0.5)
+    g.append(path(dome, LINEN2, INK, LW))
+    g.append(f'<clipPath id="mhclip"><path d="{dome}"/></clipPath>')
+    g.append('<g clip-path="url(#mhclip)">')
+    # the dark gap the eye looks out of, then the eye (white, purple iris, pupil, a glint, a heavy lid)
+    g.append(path(smooth_closed([(46, 76), (62, 70), (82, 70), (100, 74), (98, 84), (80, 88), (60, 88), (46, 84)], 0.5), "#2A1A10", "none", 0))
+    g.append(ellipse(73, 80, 11, 8.5, "#FFFFFF", INK, 1.8))
+    g.append(f'<circle cx="74.5" cy="81" r="6.2" fill="{PURPLE}"/><circle cx="74.5" cy="83" r="5" fill="{LAV2}" opacity="0.8"/><circle cx="74.5" cy="81.4" r="3.4" fill="{PUPIL}"/><circle cx="72" cy="78.8" r="1.9" fill="#FFFFFF"/>')
+    g.append(path("M61,77.5 Q73,71 85,77.5 L85,70 L61,70 Z", LINEN2, "none", 0))       # the lid, half down
+    g.append(path("M61,77.5 Q73,71.5 85,77.5", "none", INK, 2.2))
+    # the bandages, wound round the heap at every angle, crossing; the two either side of the eye leave its gap open
+    for pts, w in (([(8, 112), (50, 104), (96, 102), (142, 108)], 16), ([(8, 98), (60, 94), (142, 86)], 13),
+                   ([(8, 60), (50, 64), (100, 60), (142, 52)], 15), ([(30, 30), (60, 44), (96, 50), (140, 64)], 14),
+                   ([(8, 76), (30, 70), (46, 68), (58, 67)], 11), ([(90, 67), (112, 68), (142, 74)], 11),
+                   ([(10, 128), (60, 104), (104, 92), (146, 84)], 13), ([(4, 84), (50, 96), (100, 112), (146, 128)], 13)):
+        g += strip(pts, w)
+    g.append('</g>')
+    g.append(path(dome, "none", INK, LW))
+    # the loose end, off the top and curling over
+    g += strip([(96, 42), (104, 30), (116, 24), (128, 28), (136, 40), (140, 56), (146, 66)], 11)
+    g.append(path("M144.5,69 Q145.5,72.5 144,75", "none", LINEN2, 1.2))            # two loose threads at the tip
+    g.append(path("M148.5,68 Q150.5,71 150,73.5", "none", LINEN2, 1.2))
+    g.append(path("M34,56 Q44,44 58,38", "none", "#FFFFFF", 2.4, 'opacity="0.4"'))
+    svg("mummyheap", 150, 130, g)
+
+def zombiebrain():
+    """The zombie item: a brain in profile (frontal lobe to the left, the long fold down its side, the cerebellum and
+    the stem behind and below), stitched shut across the top with black thread, a green drip off the stem. Flat pink,
+    folds in the darker pink, the house ink."""
+    g = [ellipse(72, 118, 50, 6.5, PUPIL, "none", 0, 'opacity="0.30"')]           # contact shadow
+    g.append(path(smooth_closed([(86, 90), (96, 92), (98, 104), (96, 116), (86, 116), (84, 104)], 0.4), BRAIN2, INK, LW))      # the stem
+    cereb = smooth_closed([(92, 84), (104, 76), (122, 76), (134, 84), (132, 96), (118, 102), (100, 100), (90, 94)], 0.5)
+    g.append(path(cereb, "#D98AA2", INK, LW))                                        # the cerebellum
+    for y in (84, 90, 96):
+        g.append(path(f"M{98 + (y - 84) * 0.4:.1f},{y - 1:.1f} Q{114},{y + 3:.1f} {130 - (y - 84) * 0.6:.1f},{y - 2:.1f}", "none", BRAIN2, 1.8))
+    brain = smooth_closed([(20, 76), (14, 58), (18, 40), (32, 24), (52, 13), (76, 10), (100, 14), (120, 24), (132, 40), (134, 58),
+                           (126, 74), (110, 82), (92, 86), (78, 94), (60, 96), (42, 92), (28, 86)], 0.5)
+    g.append(path(brain, BRAIN, INK, LW))
+    g.append(path("M34,70 C48,64 60,62 72,58 C84,54 92,56 100,62", "none", BRAIN2, 2.8))  # the long fold down its side
+    folds = ["M24,52 C30,44 40,48 36,56 C33,62 42,64 46,58", "M30,34 C38,28 46,34 42,40 C39,46 48,50 54,44",
+             "M54,22 C60,16 70,22 64,28 C60,33 68,38 74,32", "M80,18 C88,14 94,22 88,28 C84,32 90,38 98,34",
+             "M104,26 C112,24 116,32 110,36 C106,40 112,46 120,42", "M122,48 C128,52 126,60 120,60",
+             "M58,40 C64,36 72,42 66,48 C62,52 70,56 78,50", "M84,40 C90,38 98,44 92,50", "M102,48 C108,48 112,56 106,60",
+             "M40,76 C46,72 54,76 50,82 C48,86 56,88 62,84", "M68,74 C74,70 82,74 78,80", "M22,64 C26,60 32,62 30,68",
+             "M108,64 C114,60 122,64 118,70 C116,74 122,76 126,72", "M88,70 C94,66 100,72 96,76", "M124,36 C130,38 132,46 126,48",
+             "M72,86 C78,84 84,88 88,84", "M114,52 C118,50 122,54 120,58", "M44,44 C48,40 54,42 52,48"]
+    for d in folds: g.append(path(d, "none", BRAIN2, 2.2))
+    g.append(path("M24,36 Q34,20 54,14", "none", "#FFFFFF", 2.6, 'opacity="0.42"'))
+    g += stitches((30, 30), (120, 30), 8, 9.0, 2.2)                                  # stitched shut across the top
+    g.append(path("M91,114 C91,114 88,121 88,124 C88,127 90,128.5 92,128.5 C94,128.5 96,127 96,124 C96,121 93,116 91,114 Z", "#8BC34A", INK, 1.6))
+    svg("zombiebrain", 146, 132, g)
+
+
+# ================================================================ the Backrooms (a Scene item; drawn only, nothing on chain yet)
+# Mono-yellow wallpaper with a faint pattern, damp carpet, a drop ceiling of humming fluorescent panels, empty
+# partitions receding at odd angles. The wall and the carpet are CSS (stage.css, data-scene="backrooms"); these are
+# the fixed pieces on top of them: the ceiling along the top, a partition jutting out on the left, and an opening
+# on the right into a further, dimmer room. One-point perspective from VP in the room's 600x460 world; every piece is
+# drawn in world coordinates and shifted into its own box (Scenery.tsx places the boxes), so the rays line up on
+# the stage. Straight architecture, baked with a light wobble and a coarse step, so the whole room stays small.
+WALLPAPER  = "#E9D77A"   # the wallpaper
+WALLPAPER2 = "#D9C25C"   # its pattern; a wall in shadow
+WALLPAPER3 = "#C9B04E"   # deeper still: the stripes on a shadowed wall
+WALLEND    = "#F1E3A4"   # a wall's end face, lit
+CEILING    = "#E6DFB9"   # ceiling tiles
+TILEGAP    = "#B4A97A"   # the grid between tiles
+PANELOFF   = "#D4D0A6"   # a panel's diffuser with the tube dimmed
+FLUORO     = "#F3F7D8"   # fluorescent white-green (the site recolours this fill at night)
+CARPET     = "#C9B36A"
+
+VP = (300.0, 236.0)                 # eye level, mid-wall; the ceiling meets the wall at y=84, the wall meets the carpet at y=366
+CEIL_Y = 84.0
+def ray_x(k, y, s=34.0):
+    """x on the ceiling ray k tile-widths right of centre at screen y (tiles are s wide where the ceiling meets the wall)."""
+    return VP[0] + s * k * (VP[1] - y) / (VP[1] - CEIL_Y)
+
+def _shift(pts, dx, dy):
+    return [(x - dx, y - dy) for x, y in pts]
+
+def _lerp(a, b, t):
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+
+def _panel(k0, k1, y0, y1, n, dx=0, dy=0):
+    """A fluorescent panel set into the tile grid between rays k0..k1 and rows y0..y1: the dull diffuser, then the lit
+    face (class "lit": the site flickers it) with the tube's brighter core along it."""
+    a, b, c, d = (ray_x(k0, y0), y0), (ray_x(k1, y0), y0), (ray_x(k1, y1), y1), (ray_x(k0, y1), y1)
+    cx = (a[0] + b[0] + c[0] + d[0]) / 4; cy = (y0 + y1) / 2
+    out = [path(poly(_shift([a, b, c, d], dx, dy)), PANELOFF, INK, 1.6)]
+    ins = [_lerp(p, (cx, cy), 0.11) for p in (a, b, c, d)]
+    out.append(f'<g class="lit lit-{n}">')
+    out.append(path(poly(_shift(ins, dx, dy)), FLUORO, "none", 0))
+    for t in (0.4, 0.64):
+        y = y0 + (y1 - y0) * t
+        x0 = ray_x(k0, y) + (ray_x(k1, y) - ray_x(k0, y)) * 0.12; x1 = ray_x(k1, y) - (ray_x(k1, y) - ray_x(k0, y)) * 0.12
+        out.append(path(f"M{x0-dx:.1f},{y-dy:.1f} L{x1-dx:.1f},{y-dy:.1f}", "none", "#FFFFFF", 2.2, 'opacity="0.6"'))
+    out.append('</g>')
+    return out
+
+def _ray_clipped(k, ya, yb, x_lo=0.0, x_hi=600.0):
+    """The segment of ceiling ray k between rows ya..yb that lies inside x_lo..x_hi (rays fan out past the frame)."""
+    xa, xb = ray_x(k, ya), ray_x(k, yb)
+    pts = []
+    for (x, y) in ((xa, ya), (xb, yb)):
+        pts.append((x, y))
+    # clip against the vertical edges by interpolating along the segment
+    def at_x(x):
+        t = (x - xa) / (xb - xa); return (x, ya + (yb - ya) * t)
+    (x0, y0), (x1, y1) = pts
+    lo, hi = min(x0, x1), max(x0, x1)
+    if hi < x_lo or lo > x_hi: return None
+    if x0 < x_lo: (x0, y0) = at_x(x_lo)
+    if x0 > x_hi: (x0, y0) = at_x(x_hi)
+    if x1 < x_lo: (x1, y1) = at_x(x_lo)
+    if x1 > x_hi: (x1, y1) = at_x(x_hi)
+    return (x0, y0), (x1, y1)
+
+def ceiling():
+    """The drop ceiling along the top of the room, seen from below: tile rows closing up toward the wall, rays
+    converging on the VP, six fluorescent panels set into the grid (two rows of three). The ink line where it meets
+    the wall stops short of the opening on the right, where the ceiling carries on into the next room (opening.svg)."""
+    g = [path("M0,0 L600,0 L600,84 L0,84 Z", CEILING, "none", 0)]
+    for y in (22, 46, 62, 73, 80):
+        g.append(path(f"M0,{y} L600,{y}", "none", TILEGAP, 1.2, 'opacity="0.6"'))
+    for k in range(-9, 10, 2):
+        seg = _ray_clipped(k, 0, CEIL_Y)
+        if seg: g.append(path(f"M{seg[0][0]:.1f},{seg[0][1]:.1f} L{seg[1][0]:.1f},{seg[1][1]:.1f}", "none", TILEGAP, 1.2, 'opacity="0.6"'))
+    n = 0
+    for (k0, k1, y0, y1) in ((-1, 1, 8, 46), (-5, -3, 8, 46), (3, 5, 8, 46), (-1, 1, 62, 80), (-5, -3, 62, 80), (3, 5, 62, 80)):
+        n += 1; g += _panel(k0, k1, y0, y1, n)
+    g.append(path("M0,84 L470,84", "none", INK, 1.7, 'opacity="0.8"'))
+    svg("ceiling", 600, 88, g, amp=0.6, step=18.0, decimals=1)
+
+def wallfoot():
+    """The ink line where the back wall meets the carpet, the ceiling line's twin (ceiling.svg draws that one); it
+    stops where the wall ends at the opening on the right. Box: world x 0..600, y 362..370, the line at 366."""
+    g = [path("M0,4 L470,4", "none", INK, 1.7, 'opacity="0.8"')]
+    svg("wallfoot", 600, 8, g, amp=0.6, step=18.0, decimals=1)
+
+def partition():
+    """A wall jutting out of the back wall on the left, its lit end face toward us and its long face (in shadow,
+    the wallpaper's stripes closing up as it recedes) toward the room; it casts a soft shadow on the carpet. Box:
+    world x 20..102, y 30..420."""
+    dx, dy = 20, 30
+    S = lambda pts: poly(_shift(pts, dx, dy))
+    near_top, near_bot, far_top, far_bot = (34, 36), (34, 407), (98, 84), (98, 366)
+    g = [path(S([near_bot, far_bot, (150, 371), (86, 416)]), PUPIL, "none", 0, 'opacity="0.13"')]     # its shadow on the carpet
+    g.append(path(S([near_top, far_top, far_bot, near_bot]), WALLPAPER2, INK, 2.2))                    # the long face
+    for x in (47, 59, 69, 78, 86, 93):
+        t = (x - 34) / 64.0
+        y0 = 36 + (84 - 36) * t; y1 = 407 + (366 - 407) * t
+        g.append(path(f"M{x-dx},{y0+3-dy:.1f} L{x-dx},{y1-3-dy:.1f}", "none", WALLPAPER3, 1.6, 'opacity="0.4"'))
+    g.append(path(S([(22, 36), near_top, near_bot, (22, 407)]), WALLEND, INK, 2.2))                     # the end face, lit
+    svg("partition", 82, 390, g, amp=0.7, step=14.0, decimals=1)
+
+def opening():
+    """The back wall ends at x=470 and the room carries on: the ceiling continues (one more panel, dimmer), a
+    further wall in shadow, its carpet running into ours, and another partition inside at an odd angle heading off
+    to the right. Box: world x 466..600, y 84..366."""
+    dx, dy = 466, 84
+    S = lambda pts: poly(_shift(pts, dx, dy))
+    g = [path(S([(470, 84), (600, 84), (600, 124), (470, 124)]), CEILING, "none", 0)]                    # the ceiling carrying on
+    for y in (98, 110, 118):
+        g.append(path(f"M{470-dx},{y-dy} L{600-dx},{y-dy}", "none", TILEGAP, 1.2, 'opacity="0.6"'))
+    for k in (7, 9, 11):
+        seg = _ray_clipped(k, CEIL_Y, 124, 470, 600)
+        if seg: g.append(path(f"M{seg[0][0]-dx:.1f},{seg[0][1]-dy:.1f} L{seg[1][0]-dx:.1f},{seg[1][1]-dy:.1f}", "none", TILEGAP, 1.2, 'opacity="0.6"'))
+    g += _panel(7, 9, 98, 110, 7, dx, dy)
+    g.append(path(S([(470, 124), (600, 124), (600, 332), (470, 332)]), WALLPAPER2, "none", 0))           # the further wall, in shadow
+    for x in (486, 501, 516, 531, 545):
+        g.append(path(f"M{x-dx},{128-dy} L{x-dx},{328-dy}", "none", WALLPAPER3, 1.5, 'opacity="0.4"'))
+    g.append(path(f"M{470-dx},{124-dy} L{600-dx},{124-dy}", "none", INK, 1.5, 'opacity="0.7"'))          # its ceiling line
+    g.append(path(S([(470, 332), (600, 332), (600, 366), (470, 366)]), CARPET, "none", 0))              # its carpet, into ours
+    g.append(path(f"M{470-dx},{332-dy} L{548-dx},{332-dy}", "none", INK, 1.7, 'opacity="0.8"'))         # where that wall meets its carpet
+    g.append(path(S([(470, 332), (600, 332), (600, 346), (470, 346)]), PUPIL, "none", 0, 'opacity="0.14"'))  # the wall's foot in shadow
+    # a partition inside the far room, at an odd angle, off to the right
+    g.append(path(S([(548, 124), (600, 104), (600, 354), (548, 332)]), "#D3BE60", INK, 2.0))
+    for x in (562, 578, 592):
+        t = (x - 548) / 52.0
+        g.append(path(f"M{x-dx},{124 + (104-124)*t + 3 - dy:.1f} L{x-dx},{332 + (354-332)*t - 3 - dy:.1f}", "none", WALLPAPER3, 1.5, 'opacity="0.4"'))
+    g.append(path(S([(548, 332), (600, 354), (600, 366), (548, 344)]), PUPIL, "none", 0, 'opacity="0.13"'))  # its shadow on the carpet
+    g.append(path(f"M{470-dx},{84-dy} L{470-dx},{366-dy}", "none", INK, 2.0, 'opacity="0.85"'))           # where our wall ends
+    svg("opening", 134, 282, g, amp=0.6, step=14.0, decimals=1)
+
+
+for fn in (bowl, poop, tub, yarn, crumb, foam, heart, bubble, sparkle, droplet, puff, scoop, sponge, thought, moon, tangle, sun, coin, flame, grave, witchhat, emohair, locker, lockeropen, pricetag, bag, shelf,
            partyhat, bow, shades, bell, fish, potion, wand, cushion, crate, beanie, hook, milk, robehung,
-           cobweb, pumpkin, tombstone, deadtree, bat, harvestmoon, fence):
+           cobweb, pumpkin, tombstone, deadtree, bat, harvestmoon, fence, jackolantern, mummyheap, zombiebrain,
+           ceiling, wallfoot, partition, opening):
     fn()
 deadtree(coarse=True)
