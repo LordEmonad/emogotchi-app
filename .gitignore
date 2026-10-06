@@ -22,3 +22,52 @@ snapshot/cache/
 
 # testnet rehearsal progress, not a launch input
 snapshot/*-testnet.progress.json
+
+# ---------- secrets: nothing below may ever be committed ----------
+# The repo's own worker/wrangler.toml walks you through setting HYPERSYNC_TOKEN, DRIP_KEY and
+# AUTOCARE_KEEPER_KEY. The local-dev form of all three is a line in worker/.dev.vars — one `wrangler dev`
+# session that needs live values writes the drip wallet's PRIVATE KEY to disk inside this repo.
+.env
+.env.*
+!.env.example
+!**/.env.example
+.dev.vars
+.dev.vars.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.keystore
+keystore/
+keystore*.json
+UTC--*
+.credentials.json
+*.credentials.json
+.envio-token
+secrets.json
+
+# ---------- local tool state ----------
+# .wrangler/cache/cf.json records the machine's own ISP, city, postcode and lat/long from a dev session.
+.wrangler/
+.claude/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+__pycache__/
+*.pyc
+
+# ---------- mainnet airdrop progress, same rule as the testnet one above ----------
+snapshot/*.progress.json
+halloween-shots/
+sahur-shots/
+
+# frame sheets from tools/pfp-moments.mjs (scratch)
+pfp-moments/
+
+# the site as deployed to Cloudflare (tools/pages-deploy.sh)
+.site-stage/
+# screenshots from tools/topup-e2e.mjs (scratch)
+.topup-e2e/
+
+# the trailer: its film, the filmed takes and the build they were filmed from (tools/trailer/), all regenerable
+/trailer/

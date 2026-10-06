@@ -19,5 +19,10 @@
   "devDependencies": {
     "puppeteer-core": "^23.11.1",
     "viem": "^2.21.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
