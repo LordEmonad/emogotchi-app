@@ -1,0 +1,27 @@
+# The site itself (since 2026-09-28): the built pages and files, served by Cloudflare from Workers Static Assets.
+# It used to be GitHub Pages behind Cloudflare, and that leg from Cloudflare to GitHub was never authenticated (GitHub
+# held no certificate for this name), so anyone able to hijack the route to GitHub could have served their own code on
+# the origin that derives passkey keys. Now nothing leaves Cloudflare. See CLAUDE.md, "The site on Cloudflare".
+#
+# No script: an assets-only Worker. tools/pages-deploy.sh builds the site, stages it in ../.site-stage (the same files
+# GitHub serves, without .git/.github/CNAME) plus ./_headers, and runs `npx wrangler deploy` here.
+# The API Worker (../worker, emogotchi-api) keeps its own, more specific routes (/api/*, /pet/*, /u/*...) and reads
+# the page from this Worker through a service binding, never over the network.
+name = "emogotchi-site"
+compatibility_date = "2026-09-01"
+# no workers.dev copy: the app on another origin would be a second, confusing place to make a wallet
+workers_dev = false
+preview_urls = false
+
+[assets]
+directory = "../.site-stage"
+# GitHub's behaviour: /stats redirects to /stats/, and an unknown path answers the app's page (404.html) with a 404
+not_found_handling = "404-page"
+html_handling = "auto-trailing-slash"
+
+# The whole domain. The API Worker's routes are more specific (/api/*, /pet/*, /inversebrah/pet/*, /tung/pet/*, /u/*) and
+# win on their paths (tested 2026-09-28). The DNS record still points at GitHub Pages: tools/site-rollback.sh takes this
+# route off and GitHub serves the domain again.
+[[routes]]
+pattern = "emogotchi.emonad.lol/*"
+zone_name = "emonad.lol"

@@ -1,0 +1,10 @@
+{
+  "name": "emogotchi-api",
+  "private": true,
+  "type": "module",
+  "description": "The Cloudflare Worker behind emogotchi.emonad.lol/api/*. Deployed with `npx wrangler deploy`; viem resolves from the repo root.",
+  "scripts": {
+    "test": "node --test test/unit.test.mjs",
+    "test:integration": "node --test --test-concurrency=1 test/integration.test.mjs"
+  }
+}

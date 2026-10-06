@@ -2,23 +2,222 @@ name = "emogotchi-api"
 main = "index.js"
 compatibility_date = "2026-09-01"
 
-# Answer /api/* on the live site. The rest of the domain keeps going to GitHub Pages.
+# Answer /api/* on the live site. Everything else on the domain is the site Worker (../site, emogotchi-site, Workers
+# Static Assets, route emogotchi.emonad.lol/*); these routes are more specific, so they win on their paths.
 [[routes]]
 pattern = "emogotchi.emonad.lol/api/*"
 zone_name = "emonad.lol"
-# a pet's page gets its own link preview (worker/preview.js); everything else on the domain stays on GitHub Pages
+# a pet's page gets its own link preview (worker/preview.js), built on the site's page read through the SITE binding
 [[routes]]
 pattern = "emogotchi.emonad.lol/pet/*"
 zone_name = "emonad.lol"
 [[routes]]
 pattern = "emogotchi.emonad.lol/inversebrah/pet/*"
 zone_name = "emonad.lol"
+[[routes]]
+pattern = "emogotchi.emonad.lol/emonadgotchi/pet/*"
+zone_name = "emonad.lol"
 
-# The Autocare poker: every 5 minutes, read due(), send runPets() only when something is due. Needs the secret
-# AUTOCARE_KEEPER_KEY (`npx wrangler secret put AUTOCARE_KEEPER_KEY`: a wallet holding gas money only) and the var
-# AUTOCARE_ADDRESS below once the machine is deployed. Without them the cron is a no-op.
+[[routes]]
+pattern = "emogotchi.emonad.lol/r3tardgotchi/pet/*"
+zone_name = "emonad.lol"
+
+[[routes]]
+pattern = "emogotchi.emonad.lol/thiccums/pet/*"
+zone_name = "emonad.lol"
+
+[[routes]]
+pattern = "emogotchi.emonad.lol/tung/pet/*"
+zone_name = "emonad.lol"
+# a profile's page (/u/<address> or /u/<name>) gets that person's link preview (worker/social/preview.js)
+[[routes]]
+pattern = "emogotchi.emonad.lol/u/*"
+zone_name = "emonad.lol"
+# The pictures people upload (worker/social/pics.js), on a host of their own: a SIBLING of the site, never a
+# subdomain of it (a subdomain could use the site's passkey rpId). A Custom Domain: wrangler creates its DNS record
+# and certificate on deploy. The Worker answers nothing on it but GET /p/<id>.webp.
+[[routes]]
+pattern = "emotown-media.emonad.lol"
+custom_domain = true
+
+# The site's own files (the page shell for the previews above, and any other path under their prefixes), read from the
+# site Worker directly: nothing crosses the network (it used to be fetched from GitHub Pages).
+[[services]]
+binding = "SITE"
+service = "emogotchi-site"
+
+# The cron, every minute: the index behind /api/stats, /api/cats and /api/starvation reads the chain's new blocks
+# (worker/indexer.js; it needs the secret HYPERSYNC_TOKEN and the `fold` table of migration 0009). Everything else it
+# runs only on every fifth minute, as when the cron was */5: the social sweep, push notifications, the Fight Club settle
+# watcher, and the Autocare poker (a no-op: it needs AUTOCARE_KEEPER_KEY and AUTOCARE_ADDRESS below, never set).
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["* * * * *"]
 
 [vars]
 AUTOCARE_ADDRESS = ""
+# Fight Club's settle watcher (worker/fightkeeper.js, every 5 minutes with the cron above): for a fight still pending
+# 3 minutes after its accept, fetch Pyth's revelation from Fortuna and settle it through Entropy's own reveal. Needs
+# the secret FIGHT_KEEPER_KEY (`npx wrangler secret put FIGHT_KEEPER_KEY`: a wallet holding gas money only, ~0.05 MON a
+# settle) and the contract's address here once deployed. Without them it is a no-op.
+FIGHTCLUB_ADDRESS = "0x996b7Af41570a6eAd15d2749B718edD4C138cE06"
+# What one starter is worth, in MON (worker/drip.js). 0.5 since 2026-10-02 (operator: "if they use it longer theyll be
+# more incentivized to use it after they run out"): a free pet's mint (0.0255 MON: the site sends 250,000 gas at ~102
+# gwei and Monad charges the limit) plus a week of full daily care (35 actions at 0.0122 MON, 120,000 gas each) is 0.45.
+# It was 0.05 (a mint and two actions). What a sybil recovers by sweeping rose tenfold with it: at DRIP_ALL's 20 a
+# minute the most that can leave is 10 MON a minute, and the drip wallet's balance is the only hard cap (the operator
+# was told and chose it).
+DRIP_MON = "0.5"
+# The drip wallet's public address. Not a secret, and not what authorises anything — it is a guard: drip.js
+# refuses to send if DRIP_KEY turns out to belong to a different wallet, so a key pasted into the wrong secret
+# cannot quietly start spending someone else's money.
+DRIP_ADDRESS = "0x00036BAaf671aF375f7f22664b4086b9D4bb9EF8"
+# Emotown social: whose wallets are admins (comma-separated; the operator's: "lord" first, then the deployer), and what a sign-in message names.
+ADMINS = "0xe974c0ed0eace26d85943309e6ed05bf3f536904,0x40ad8cf176672efe12a0d7ac50fa5da2b0b64e74"
+# Where uploaded pictures are served (the Custom Domain route above).
+MEDIA_HOST = "emotown-media.emonad.lol"
+SITE_ORIGIN = "https://emogotchi.emonad.lol"
+# push notifications (worker/push.js): the VAPID public key the page subscribes with; the private key is the secret
+# VAPID_PRIVATE_KEY (`node tools/vapid-keys.mjs` makes a pair; `npx wrangler secret put VAPID_PRIVATE_KEY`). Empty = off.
+VAPID_PUBLIC_KEY = "BCMgOFIf7GlibQ9jofer1JGujmUFhZF9cA7HRqWEro3a0dKoX7iEd7MKKQEt5fs4Fy9NFDy8bccIOrUMV7Q8vT0"
+VAPID_SUBJECT = "https://emogotchi.emonad.lol"
+SIWE_DOMAIN = "emogotchi.emonad.lol"
+
+# The starter drip: one small transfer to a brand-new passkey account so it can mint and play a little.
+#
+#   npx wrangler secret put DRIP_KEY        <- DRIP_KEY is the secret's NAME and is typed literally. Wrangler then
+#                                              prompts "Enter a secret value:" and THAT is where the private key
+#                                              goes. Running `wrangler secret put` with no name argument asks for
+#                                              the name first, and a key pasted there is stored in the clear: secret
+#                                              NAMES are returned by `wrangler secret list` and shown in the
+#                                              dashboard. A key that lands there is burned — rotate the wallet.
+#
+# The wallet behind it should hold ONLY what you are willing to lose,
+# because its balance is the entire cap. Without the secret the route answers 503 and the site falls back to
+# "fund yourself", which is how it behaves today. Top the wallet up by hand; there is no cron and no counter.
+[[ratelimits]]
+name = "DRIP_LIMIT"
+namespace_id = "1001"
+simple = { limit = 3, period = 60 }
+
+# Referrals (worker/referral.js). Holds nothing but two wallet addresses and a timestamp per referred player —
+# all of it already public on chain — so it stays outside the custody story entirely.
+# The counts are NOT stored here: they are folded out of the chain's own Named events every 5 minutes into the
+# stats blob that is already cached at the edge, so /refer costs zero KV operations however many people open it.
+# See the header of referral.js for why that inversion is what makes this survive going viral.
+[[kv_namespaces]]
+binding = "REFERRALS"
+id = "d87b470cd39f487498134372cf75b939"
+
+[[ratelimits]]
+name = "REFER_LIMIT"
+namespace_id = "1002"
+simple = { limit = 5, period = 60 }
+
+# The whole site's pace for the two POST routes that spend something (the drip's MON, the referrals' KV writes), keyed
+# 'all': spreading requests over many addresses must not multiply the budget (security review, 2026-09-27). Counted per
+# Cloudflare location, like every binding here. Namespace ids must not clash with others on the account.
+[[ratelimits]]
+name = "DRIP_ALL"
+namespace_id = "20271"
+simple = { limit = 20, period = 60 }
+
+[[ratelimits]]
+name = "REFER_ALL"
+namespace_id = "20272"
+simple = { limit = 60, period = 60 }
+
+# "Add MON from another chain" (worker/topup/, CROSSCHAIN.md). The switch is the secret RELAY_API_KEY: without it every
+# /api/topup/* route answers 503 and the site falls back to "fund it yourself". Set it with the NAME as an argument
+# (`npx wrangler secret put RELAY_API_KEY`, then paste at "Enter a secret value:"; see the drip's note above).
+# Per /48 for every top-up route (a sheet polls the status every 3 s), and site-wide for quotes, which spend Relay's
+# 50-a-minute allowance for our key.
+[[ratelimits]]
+name = "TOPUP_LIMIT"
+namespace_id = "20275"
+simple = { limit = 60, period = 60 }
+
+[[ratelimits]]
+name = "TOPUP_ALL"
+namespace_id = "20276"
+simple = { limit = 40, period = 60 }
+
+# ---------------------------------------------------------------------------------------------------------------
+# Emotown's social layer (worker/social/, built 2026-09-26): profiles, follows, the town square, DMs, moderation.
+#
+# One-time setup (the operator, with the Cloudflare account logged in; see CLAUDE.md "Emotown social"):
+#   npx wrangler d1 create emotown-social        -> paste the database_id it prints below
+#   npx wrangler d1 migrations apply emotown-social --remote
+#   npx wrangler deploy                           -> also creates the two Durable Object classes (migration v1)
+# Created 2026-09-26 (region ENAM).
+[[d1_databases]]
+binding = "DB"
+database_name = "emotown-social"
+database_id = "c3ed8ec1-153b-4ee1-94d0-6f9264d5cf1b"
+migrations_dir = "migrations"
+
+# The bytes of the pictures people upload (worker/social/pics.js), apart from the town's own data so pictures can
+# never fill it. Created 2026-09-27 (region ENAM).
+[[d1_databases]]
+binding = "MEDIA"
+database_name = "emotown-media"
+database_id = "bb254e6e-18c5-4def-98f7-0881cbbe62f8"
+migrations_dir = "migrations-media"
+
+# Cloudflare's image service remakes every uploaded picture (the uploader's own file is never kept or served), and a
+# vision model screens it before anyone else sees it. Both run on Cloudflare's side; neither needs a secret.
+[images]
+binding = "IMAGES"
+[ai]
+binding = "AI"
+# local dev (`wrangler dev`) reaches the real model too; deployed, it always is
+remote = true
+
+# The town square (one object per room) and each person's live inbox (one per address). SQLite-backed, which the
+# Workers Free plan allows; the websockets hibernate, so idle readers cost nothing.
+[[durable_objects.bindings]]
+name = "CHAT"
+class_name = "ChatRoom"
+[[durable_objects.bindings]]
+name = "INBOX"
+class_name = "Inbox"
+[[migrations]]
+tag = "social-v1"
+new_sqlite_classes = ["ChatRoom", "Inbox"]
+
+# Rate limits (per IP /64 unless noted). Sign-ins; every social write; websocket handshakes; the gate's manual
+# re-check (per address); every public read (each is a D1 query); and the profile activity reads, which spend the ONE
+# shared HyperSync token (site-wide key).
+[[ratelimits]]
+name = "AUTH_LIMIT"
+namespace_id = "1003"
+simple = { limit = 20, period = 60 }
+[[ratelimits]]
+name = "SOCIAL_LIMIT"
+namespace_id = "1004"
+simple = { limit = 90, period = 60 }
+[[ratelimits]]
+name = "SOCKET_LIMIT"
+namespace_id = "1005"
+simple = { limit = 30, period = 60 }
+[[ratelimits]]
+name = "GATE_LIMIT"
+namespace_id = "1006"
+simple = { limit = 3, period = 60 }
+[[ratelimits]]
+name = "READ_LIMIT"
+namespace_id = "1008"
+simple = { limit = 300, period = 60 }
+[[ratelimits]]
+name = "ACTIVITY_LIMIT"
+namespace_id = "1007"
+simple = { limit = 12, period = 60 }
+# GIF search (worker/social/gifs.js), per person: a picker's worth of searching, not a scraper's
+[[ratelimits]]
+name = "GIF_LIMIT"
+namespace_id = "20273"
+simple = { limit = 30, period = 60 }
+# likes in the square and in DMs, per person
+[[ratelimits]]
+name = "LIKE_LIMIT"
+namespace_id = "20274"
+simple = { limit = 60, period = 60 }

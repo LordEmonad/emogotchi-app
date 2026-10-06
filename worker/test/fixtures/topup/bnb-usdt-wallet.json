@@ -1,0 +1,137 @@
+{
+ "requestId": "0x1790739532f40045d867763c65a079f1af08b6cbe93eb39b4d9c9d9ec4fcef5d",
+ "steps": [
+  {
+   "id": "approve",
+   "action": "Confirm transaction in your wallet",
+   "description": "Sign an approval for USDT",
+   "kind": "transaction",
+   "items": [
+    {
+     "status": "incomplete",
+     "data": {
+      "from": "0x40ad8cf176672efe12a0d7ac50fa5da2b0b64e74",
+      "to": "0x55d398326f99059ff775485246999027b3197955",
+      "data": "0x095ea7b30000000000000000000000004cd00e387622c35bddb9b4c962c136462338bc310000000000000000000000000000000000000000000000001311b29f24c102d7",
+      "value": "0",
+      "chainId": 56,
+      "gas": "60580",
+      "maxFeePerGas": "120000000",
+      "maxPriorityFeePerGas": "120000000"
+     }
+    }
+   ],
+   "requestId": "0x1790739532f40045d867763c65a079f1af08b6cbe93eb39b4d9c9d9ec4fcef5d"
+  },
+  {
+   "id": "deposit",
+   "action": "Confirm transaction in your wallet",
+   "description": "Depositing funds to the relayer to execute the swap for MON",
+   "kind": "transaction",
+   "items": [
+    {
+     "status": "incomplete",
+     "data": {
+      "from": "0x40ad8cf176672efe12a0d7ac50fa5da2b0b64e74",
+      "to": "0x4cd00e387622c35bddb9b4c962c136462338bc31",
+      "data": "0xe801795200000000000000000000000040ad8cf176672efe12a0d7ac50fa5da2b0b64e7400000000000000000000000055d398326f99059ff775485246999027b31979550000000000000000000000000000000000000000000000001311b29f24c102d79fbf9168e70b891538af25bdbc9448c3f3790740f541430f371ccfec0a64cf65",
+      "value": "0",
+      "chainId": 56,
+      "gas": "65072",
+      "maxFeePerGas": "120000000",
+      "maxPriorityFeePerGas": "120000000"
+     },
+     "check": {
+      "endpoint": "/intents/status/v3?requestId=0x1790739532f40045d867763c65a079f1af08b6cbe93eb39b4d9c9d9ec4fcef5d",
+      "method": "GET"
+     }
+    }
+   ],
+   "requestId": "0x1790739532f40045d867763c65a079f1af08b6cbe93eb39b4d9c9d9ec4fcef5d",
+   "depositAddress": ""
+  }
+ ],
+ "protocol": {
+  "v2": {
+   "orderId": "0x9fbf9168e70b891538af25bdbc9448c3f3790740f541430f371ccfec0a64cf65",
+   "hubType": "onchain",
+   "orderData": {
+    "version": "v1",
+    "solverChainId": "base",
+    "solver": "0xf70da97812cb96acdf810712aa562db8dfa3dbef",
+    "salt": "0x3a8181cb26d98372287b1c25d4da9ac83dd089f6011d773a8e64a614e763a30c",
+    "inputs": [
+     {
+      "payment": {
+       "chainId": "bnb",
+       "currency": "0x55d398326f99059ff775485246999027b3197955",
+       "amount": "1374075757910885079",
+       "weight": "1"
+      },
+      "refunds": [
+       {
+        "chainId": "bnb",
+        "recipient": "0x40ad8cf176672efe12a0d7ac50fa5da2b0b64e74",
+        "currency": "0x55d398326f99059ff775485246999027b3197955",
+        "minimumAmount": "0",
+        "deadline": 1791344332,
+        "extraData": "0x000000000000000000000000b92fe925dc43a0ecde6c8b1a2709c170ec4fff4f"
+       },
+       {
+        "chainId": "monad",
+        "recipient": "0x40ad8cf176672efe12a0d7ac50fa5da2b0b64e74",
+        "currency": "0x0000000000000000000000000000000000000000",
+        "minimumAmount": "0",
+        "deadline": 1791344332,
+        "extraData": "0x000000000000000000000000b92fe925dc43a0ecde6c8b1a2709c170ec4fff4f"
+       }
+      ]
+     }
+    ],
+    "output": {
+     "chainId": "monad",
+     "payments": [
+      {
+       "recipient": "0x40ad8cf176672efe12a0d7ac50fa5da2b0b64e74",
+       "currency": "0x0000000000000000000000000000000000000000",
+       "minimumAmount": "50000000000000000000",
+       "expectedAmount": "50000000000000000000"
+      }
+     ],
+     "calls": [],
+     "deadline": 1791344332,
+     "extraData": "0x000000000000000000000000b92fe925dc43a0ecde6c8b1a2709c170ec4fff4f"
+    },
+    "fees": []
+   },
+   "orderSignature": "0x74116c692cea8e5fbfa0f963f6227f78f360574c3be76aaa6ce51091139e48b151a0ee39a9bfc7046b329af28d1b076e1e8f9a663f88722ac3139efa04acb2811b",
+   "paymentDetails": {
+    "chainId": "bnb",
+    "depository": "0x4cd00e387622c35bddb9b4c962c136462338bc31",
+    "currency": "0x55d398326f99059ff775485246999027b3197955",
+    "amount": "1374075757910885079"
+   }
+  }
+ },
+ "details": {
+  "currencyIn": {
+   "currency": {
+    "chainId": 56,
+    "address": "0x55d398326f99059ff775485246999027b3197955",
+    "symbol": "USDT",
+    "name": "Tether USD",
+    "decimals": 18,
+    "metadata": {
+     "logoURI": "https://coin-images.coingecko.com/coins/images/39963/large/usdt.png?1724952731",
+     "verified": true
+    }
+   },
+   "amount": "1374075757910885079",
+   "amountFormatted": "1.374075757910885079",
+   "amountUsd": "1.372678",
+   "minimumAmount": "1374075757910885079"
+  },
+  "timeEstimate": 1
+ },
+ "capturedAt": 1790739532
+}
