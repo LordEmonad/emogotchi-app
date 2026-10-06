@@ -1,0 +1,52 @@
+/* ==== the emo pack's page (/shop/emo, DEV ONLY) and its banner in the shop: the pack page's layout (shop.css) in black,
+   hot pink and a checkerboard; the holders' edition in the holographic foil of its cards ==== */
+.pack.emo .pack-hero { background: radial-gradient(90% 120% at 100% 0%, rgba(232,77,127,.22) 0%, rgba(232,77,127,0) 60%), linear-gradient(180deg, rgba(30,14,40,.85), rgba(12,6,18,.92)); border-color: rgba(232,77,127,.32); }
+.pack.emo .pack-hero::before, .pack.emo .pack-hero::after,
+.pack-banner.emo::before, .pack-banner.emo::after { background: repeating-conic-gradient(#141118 0 25%, #F4F2F7 0 50%) 0 0 / 10px 10px; opacity: .55; height: 5px; }
+.pack.emo .pack-eyebrow, .pack-banner.emo .pack-eyebrow { color: #FFD3E4; background: rgba(232,77,127,.22); border-color: rgba(232,77,127,.55); }
+.pack.emo .pack-eyebrow b, .pack-banner.emo .pack-eyebrow b { color: #1A0A1E; background: #FF8DBA; }
+.pack.emo .lore-number { flex-direction: column; gap: 10px; background: linear-gradient(180deg, rgba(232,77,127,.16), rgba(232,77,127,.05)); border-color: rgba(232,77,127,.34); }
+.pack.emo .lore-number strong { min-width: 0; color: #FF8DBA; }
+.pack.emo .lore-intro { margin-bottom: 16px; background: linear-gradient(135deg, rgba(232,77,127,.12), rgba(255,255,255,.03) 60%); border-color: rgba(232,77,127,.3); }
+.pack.emo .lore-intro h3 { font-size: 28px; }
+
+/* the two editions, side by side: a card each and its terms */
+.emo-editions { margin: 34px 0 6px; }
+.emo-ed-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.emo-ed { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: center; padding: 14px; border-radius: 20px; background: rgba(255,255,255,.035); border: 1px solid rgba(184,148,216,.22); }
+.emo-ed img { width: 100%; aspect-ratio: 1; border-radius: 14px; display: block; }
+.emo-ed h3 { margin: 0 0 8px; font-size: 20px; }
+.emo-ed ul { margin: 0 0 14px; padding-left: 18px; color: rgba(248,248,255,.8); font-size: 14.5px; line-height: 1.45; }
+.emo-ed li + li { margin-top: 6px; }
+.emo-ed .is-off { pointer-events: none; opacity: .75; }
+.emo-ed.holder { position: relative; border: 2px solid transparent; background:
+  linear-gradient(#170B1C, #170B1C) padding-box,
+  linear-gradient(135deg, #FF78B6, #C79BFF 22%, #7BD9FF 42%, #B4FFE0 58%, #FFE597 76%, #FF9BCB) border-box; }
+.emo-ed.holder h3 { background: linear-gradient(90deg, #FF9BCB, #C79BFF, #7BD9FF); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* an item's card: tap to see the other edition */
+.emo-flip { position: relative; padding: 0; border: 0; background: none; cursor: pointer; display: block; width: 100%; }
+.emo-flip img { display: block; width: 100%; }
+.emo-flip-tag { position: absolute; left: 10px; bottom: 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; color: #F8F8FF; background: rgba(12,6,18,.72); border: 1px solid rgba(248,248,255,.18); }
+.emo-flip.holder .emo-flip-tag { color: #1A0A1E; background: linear-gradient(90deg, #FF9BCB, #C79BFF, #7BD9FF); border-color: transparent; }
+
+/* the shop's banner and its nav link */
+.pack-banner.emo { background: radial-gradient(120% 140% at 0% 0%, rgba(232,77,127,.18) 0%, rgba(30,14,40,.6) 50%, rgba(12,6,18,.78) 100%); border-color: rgba(232,77,127,.36); }
+.pack-banner.emo:hover { box-shadow: 0 22px 60px rgba(150,20,80,.4); }
+.pack-banner.emo h3 em { font-style: normal; color: #FF8DBA; }
+/* seven cards, not five: they share the copy column's width instead of running into the picture */
+.pack-banner.emo { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 860px) { .pack-banner.emo { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); } }
+.pack-banner.emo .pack-banner-thumbs { display: grid; grid-template-columns: repeat(7, minmax(0, 52px)); gap: 6px; }
+.pack-banner.emo .pack-banner-thumbs img { width: 100%; height: auto; aspect-ratio: 1; }
+.shop-nav a.is-pack.emo { border-color: rgba(232,77,127,.6); background: rgba(232,77,127,.14); }
+.shop-nav a.is-pack.emo:hover { background: rgba(232,77,127,.26); }
+.shop-nav a.is-pack.emo .tag { background: #FFD36E; color: #1A0A1E; }
+
+@media (max-width: 900px) { .emo-ed-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .emo-ed { grid-template-columns: 1fr; } }
+
+/* the holders' button: the foil of their cards */
+.btn.btn-holo { color: #1A0A1E; border: 0; background: linear-gradient(110deg, #FF9BCB, #C79BFF 30%, #7BD9FF 55%, #B4FFE0 75%, #FFE597); background-size: 200% 100%; transition: background-position .6s ease; font-weight: 700; }
+.btn.btn-holo:hover:not(:disabled) { background-position: 100% 0; }
+.btn.btn-holo:disabled { opacity: .55; filter: saturate(.6); }

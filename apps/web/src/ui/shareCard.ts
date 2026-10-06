@@ -8,6 +8,7 @@
  * The animated card is the same drawing with a moving portrait, so everything except the picture in
  * the frame lives in `paintCard` and both callers share it. Change the card once, change it for both.
  */
+import { PETS, anA, fallbackName, petHref } from '../pets';
 import type { CatView } from '@emo-pets/chain';
 
 export const W = 1200;
@@ -66,16 +67,17 @@ export function paintCard(x: CanvasRenderingContext2D, cat: CatView, portrait: (
 
   x.font = `600 20px ${FONT}`;
   x.fillStyle = '#EAC6EA';
-  x.fillText(dead ? 'IN MEMORY OF' : cat.crowned ? '♛  WEARS THE CROWN' : 'A CAT THAT LIVES IN A WALLET', L, 132);
+  const P = PETS[cat.col];
+  x.fillText(dead ? 'IN MEMORY OF' : cat.crowned ? '♛  WEARS THE CROWN' : `${anA(P.kind).toUpperCase()} ${P.kind.toUpperCase()} THAT LIVES IN A WALLET`, L, 132);
 
-  const title = cat.name || `Emogotchi #${cat.id}`;
+  const title = cat.name || fallbackName(cat.col, cat.id);
   x.font = `700 ${title.length > 16 ? 52 : 68}px ${FONT}`;
   x.fillStyle = '#F8F8FF';
   x.fillText(title.length > 24 ? title.slice(0, 23) + '…' : title, L, 200);
 
   x.font = `400 22px ${FONT}`;
   x.fillStyle = 'rgba(248,248,255,0.62)';
-  x.fillText(`#${cat.id} · ${dead ? 'dead' : !cat.started ? 'asleep until its first week is up' : cat.mood}`, L, 236);
+  x.fillText(`#${cat.id} · ${dead ? 'dead' : !cat.started ? `asleep until ${P.his} first week is up` : cat.mood}`, L, 236);
 
   // meters, only once the cat is actually running
   let y = 290;
@@ -139,13 +141,24 @@ export async function renderShareCard(cat: CatView, svg: Portrait): Promise<Blob
 
 /** The X composer, pre-filled. The image has to be attached by hand; X has no way to take it from us. */
 export function shareText(cat: CatView): string {
-  const who = cat.name ? `${cat.name} (#${cat.id})` : `Emogotchi #${cat.id}`;
+  const P = PETS[cat.col];
+  const frok = cat.col === 'frok'; const sahur = cat.col === 'sahur';
+  const who = cat.name ? `${cat.name} (#${cat.id})` : fallbackName(cat.col, cat.id);
+  const abused = cat.screenshots + cat.slaps + cat.squeezes + cat.burns;
   const line = !cat.alive
     ? `${who} is dead. I did this.`
     : !cat.started
-      ? `${who} is asleep for its first week. Then it's my problem.`
+      ? `${who} is asleep for ${P.his} first week. Then ${P.he === 'he' ? "he's" : "it's"} my problem.`
       : cat.crowned
         ? `${who} wears the crown. Care score ${cat.score.toFixed(0)}, ${cat.streak} day streak.`
-        : `${who} · care score ${cat.score.toFixed(0)} · ${cat.streak} day streak · still alive.`;
-  return `${line}\n\nA cat that lives in your wallet, fully on chain on @monad.\n\nemogotchi.emonad.lol/pet/${cat.id}`;
+        : frok
+          ? `${who} · care score ${cat.score.toFixed(0)} · ${cat.streak} day streak · abused ${abused} times · still alive.`
+          : sahur
+            ? `${who} · care score ${cat.score.toFixed(0)} · ${cat.streak} day streak · tung tung tung ${cat.tungs} times · still alive.`
+            : __THICCUMS__ && cat.col === 'thiccums'
+              ? `${who} · care score ${cat.score.toFixed(0)} · ${cat.streak} day streak · bounced ${cat.bounces ?? 0} times · still alive.`
+              : `${who} · care score ${cat.score.toFixed(0)} · ${cat.streak} day streak · still alive.`;
+  return P.free
+    ? `${line}\n\n${anA(P.kind)} ${P.kind} that lives in your wallet, fully on chain on @monad. Free to mint, one each.\n\nemogotchi.emonad.lol${petHref(cat.col, cat.id)}`
+    : `${line}\n\nA cat that lives in your wallet, fully on chain on @monad.\n\nemogotchi.emonad.lol${petHref(cat.col, cat.id)}`;
 }

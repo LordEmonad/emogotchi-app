@@ -1,0 +1,69 @@
+/* ==== Emonadgotchi (emonadgotchi.svg: Emonad, the $EMO mascot, as a pet; LAB ONLY, dev builds only) ====
+   Loaded by his chunk alone. Every pivot is pinned to a view-box point: his drawing's own joints (emonad.svg's front
+   view, data-pivots) through emonadgotchi.py's map (x 100 + 0.3x, y 212 + 0.3y). */
+/* the head unit turns where his head sits on his neck; the neck (#neckback, a twin of #head under the shirt) with it */
+.pet.emonad #head, .pet.emonad #neckback, .pet.emonad #crown, .pet.emonad #halo, .pet.emonad #witchhat, .pet.emonad #pumpkin,
+.pet.emonad #kippah, .pet.emonad #keffiyeh, .pet.emonad #keffiyehback, .pet.emonad #beanie, .pet.emonad #beanieback,
+.pet.emonad #emohair { transform-box: view-box; transform-origin: 100.6px 77px; }
+.pet.emonad #body, .pet.emonad #arms, .pet.emonad #armsover { transform-box: view-box; transform-origin: 100px 142.4px; }   /* the hips */
+.pet.emonad #legL, .pet.emonad #legLover { transform-box: view-box; transform-origin: 81.634px 89.624px; }   /* the shoulders */
+.pet.emonad #legR, .pet.emonad #legRover { transform-box: view-box; transform-origin: 118.198px 89.624px; }
+.pet.emonad #foreL, .pet.emonad #foreLover { transform-box: view-box; transform-origin: 80.986px 113px; }    /* the elbows */
+.pet.emonad #foreR, .pet.emonad #foreRover { transform-box: view-box; transform-origin: 118.45px 113px; }
+.pet.emonad #footL { transform-box: view-box; transform-origin: 90.556px 143.6px; }                          /* the hips (a whole leg) */
+.pet.emonad #footR { transform-box: view-box; transform-origin: 109.576px 143.6px; }
+.pet.emonad #shinL { transform-box: view-box; transform-origin: 90.19px 168.8px; }                            /* the knees */
+.pet.emonad #shinR { transform-box: view-box; transform-origin: 110.05px 168.8px; }
+.pet.emonad #figure, .pet.emonad #cat { transform-box: view-box; transform-origin: 100px 212px; }
+.pet.emonad #shadow { transform-box: view-box; transform-origin: 100px 212.6px; }
+
+/* ---- the shop's items on him (emonaditems.py) ----
+   pieces that sit inside his head (which the rig moves) cannot carry an id the rig also moves: they are shown by the class
+   the rig puts on the svg when the item is worn */
+.pet.emonad .egkf { display: none; }
+.pet.emonad .rig.haskeffiyeh:not(.hatted):not(.pumpkinhead) .egkf { display: inline; }
+/* under the witch hat his hair shows only below the brim; under the keffiyeh his hair is flattened under the cloth (cut to
+   its outline: what shows is what frames his face in the opening) and his fringe shows only in that opening */
+.pet.emonad .rig.hatted .eghair { clip-path: url(#egunderhat); }
+.pet.emonad .rig.haskeffiyeh:not(.hatted):not(.pumpkinhead) .eghair { clip-path: url(#egkfout); }
+.pet.emonad .rig.haskeffiyeh:not(.hatted):not(.pumpkinhead) .egfringe { clip-path: url(#egkfopen); }
+/* under a sleeve that covers the elbow, the skin disc over his elbow's seam goes (the bisht's sleeve is whole round the
+   elbow; the emo fit puts its own cloth there) */
+.pet.emonad .rig.hasbisht .seam, .pet.emonad .rig.hasemofit .seam { display: none; }
+/* the pumpkin is worn over his head: all of the head that shows is inside it, or the ends of his hair below it */
+.pet.emonad svg.rig.pumpkinhead #head, .pet.emonad .petroot.pumpkinhead [data-of="head"] { clip-path: url(#egpkclip); }
+/* the zombie: his skin a dead green, the whites of his eyes yellowed (the shine in them stays white) */
+.pet.emonad .rig.zombie [fill="#FEFEFE"] { fill: #9DB07E; }
+.pet.emonad .rig.zombie { --eg-c-FEFEFE: #9DB07E; }   /* his arms: drawn through <use>, recoloured by their custom property */
+.pet.emonad .rig.zombie [stroke="#FEFEFE"] { stroke: #9DB07E; }
+.pet.emonad .rig.zombie .eye [fill="#FFFFFF"] { fill: #E6E3C2; }
+.pet.emonad .rig.zombie .eye .pupil [fill="#FFFFFF"] { fill: #FFFFFF; }
+/* the golden versions of the pieces that are twins (the rig gilds only the pieces it knows by id) */
+.pet.emonad .rig:has(.mummy.gold) .mummy path[fill="#EFE6C8"] { fill: #E0B54E; }
+.pet.emonad .rig:has(.mummy.gold) .mummy path[stroke="#D9CBA3"] { stroke: #2D7D8A; }
+.pet.emonad .rig:has(.zombie.gold) .zombie path[stroke="#111111"] { stroke: #D4A646; }
+.pet.emonad .rig:has(.emofit.gold) .emofit .emostripe { display: none; }
+.pet.emonad .rig:has(.emofit.gold) .emofit .emogold { display: inline; }
+/* the bisht's lower sleeves are twins of the upper ones: the golden bisht's rules (pet.css) for them too */
+.pet.emonad .rig:has(.bisht.gold) .bisht [fill="#221C17"] { fill: #B98A3E; }
+.pet.emonad .rig:has(.bisht.gold) .bisht [stroke="#3A3129"] { stroke: #E2BC6C; }
+.pet.emonad .rig:has(.bisht.gold) .bisht [fill="#D9A93C"] { fill: #F4D77E; }
+.pet.emonad .rig:has(.bisht.gold) .bisht [stroke="#A5761C"] { stroke: #B8862A; }
+.pet.emonad .rig:has(.bisht.gold) .bisht [fill="#A5761C"] { fill: #B8862A; }
+
+/* ---- the ghost: his black goes a dusk plum, his skin and the whites pale, his hair a pale violet; his legs stay ---- */
+.pet.emonad .rig.ghost #footL, .pet.emonad .rig.ghost #footR { opacity: 0.86; }
+.pet.emonad .rig.ghost [fill="#000000"] { fill: #4E3A5E; }
+.pet.emonad .rig.ghost [stroke="#000000"] { stroke: #4E3A5E; }
+.pet.emonad .rig.ghost [fill="#FEFEFE"] { fill: #EFE4F2; }
+.pet.emonad .rig.ghost [fill="#422553"] { fill: #B49AC8; }
+.pet.emonad .rig.ghost [fill="#23142C"], .pet.emonad .rig.ghost [fill="#2E1839"], .pet.emonad .rig.ghost [fill="#3A1E4A"] { fill: #9A80B0; }
+.pet.emonad .rig.ghost [fill="#6E5180"] { fill: #D2C2E0; }
+.pet.emonad .rig.ghost [fill="#7A5389"] { fill: #C4AED6; }
+.pet.emonad .rig.ghost [fill="#6F6176"] { fill: #B6A8C0; }
+/* (the same for what is drawn through <use>: his arms and his hair) */
+.pet.emonad .rig.ghost { --eg-c-000000: #4E3A5E; --eg-c-FEFEFE: #EFE4F2; --eg-c-422553: #B49AC8; --eg-c-23142C: #9A80B0; --eg-c-2E1839: #9A80B0;
+  --eg-c-3A1E4A: #9A80B0; --eg-c-6E5180: #D2C2E0; --eg-c-7A5389: #C4AED6; --eg-c-6F6176: #B6A8C0; }
+
+/* the lab's showreel line, under the action buttons */
+.eg-reel-note { margin: 10px 0 0; text-align: center; font-size: 13px; opacity: 0.8; }

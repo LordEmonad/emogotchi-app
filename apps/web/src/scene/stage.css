@@ -89,3 +89,396 @@
   .stage .scn-bat, .stage .scn-bat #wl, .stage .scn-bat #wr, .stage .scn-tree #spider, .stage .scn-pumpkin #glow, .stage .fog { animation: none; }
   .stage .scn-bat-0 { transform: translate(120px, 96px); } .stage .scn-bat-1 { transform: translate(420px, 110px) scaleX(-1); } .stage .scn-bat-2 { transform: translate(260px, 20px); }
 }
+
+/* ---- the Backrooms: mono-yellow wallpaper with a faint pattern, damp carpet, a drop ceiling of humming fluorescent
+   panels (ceiling.svg), a partition jutting out on the left and, on the right, the wall ending on a further room
+   (partition.svg, opening.svg; Scenery.tsx). The pet's floor is untouched: the pieces sit along the ceiling and at the
+   two edges. Night: the lights go dim and green. */
+.stage[data-scene="backrooms"] { background: #E9D77A; }
+.stage[data-scene="backrooms"] .wall {
+  background:
+    radial-gradient(56% 34% at 50% 14%, rgba(255, 252, 224, 0.42), transparent 72%),     /* the panels' light on the wall */
+    radial-gradient(120% 70% at 50% 60%, transparent 55%, rgba(120, 90, 20, 0.16) 100%), /* the corners fall off */
+    repeating-linear-gradient(90deg, rgba(217, 194, 92, 0.42) 0 1.5px, transparent 1.5px 13px),  /* the paper's pinstripe */
+    #E9D77A;
+}
+/* the wall's foot in shadow, just above the carpet line (the opening covers it where the room carries on) */
+.stage[data-scene="backrooms"] .wall::after { content: ""; position: absolute; left: 0; right: 0; top: 338px; height: 28px; background: linear-gradient(180deg, transparent, rgba(74, 54, 10, 0.20) 70%, rgba(74, 54, 10, 0.30)); }
+/* the paper's other pattern: a diagonal lattice of tiny darker marks over the whole wall, no fade */
+.stage[data-scene="backrooms"] .dots { opacity: 1; mask-image: none; -webkit-mask-image: none;
+  background-image: radial-gradient(rgba(190, 162, 62, 0.34) 1.1px, transparent 1.4px), radial-gradient(rgba(190, 162, 62, 0.34) 1.1px, transparent 1.4px);
+  background-size: 18px 18px, 18px 18px; background-position: 0 0, 9px 9px; }
+.stage[data-scene="backrooms"] .stars, .stage[data-scene="backrooms"] .moon { display: none; }
+/* the carpet: flat to the wall (no curved rim), a fine pile, lighter under the lights, darker toward the front */
+.stage[data-scene="backrooms"] .floor { border-radius: 0; box-shadow: none;
+  background: radial-gradient(60% 70% at 50% 0%, rgba(255, 244, 190, 0.22), transparent 70%), linear-gradient(180deg, #C9B36A 0%, #C4AD63 50%, #B89F57 100%); }
+.stage[data-scene="backrooms"] .floor::after { content: ""; position: absolute; inset: 0; opacity: 0.55;
+  background-image: radial-gradient(rgba(70, 50, 10, 0.13) 0.8px, transparent 1.3px), radial-gradient(rgba(255, 240, 190, 0.14) 0.8px, transparent 1.3px),
+    radial-gradient(30% 50% at 22% 60%, rgba(90, 66, 14, 0.10), transparent 70%), radial-gradient(26% 46% at 70% 30%, rgba(90, 66, 14, 0.08), transparent 70%);
+  background-size: 5px 5px, 5px 5px, auto, auto; background-position: 0 0, 2.5px 2.5px, 0 0, 0 0; }
+/* no rug, and no stains: the operator did not want them (2026-09-24); the carpet is bare */
+.stage[data-scene="backrooms"] .rug { display: none; }
+/* the pet's ground shadow is the house plum, which reads wrong on a yellow carpet: a carpet tone here (sahur has no shadow) */
+.stage[data-scene="backrooms"] .pet #shadow > * { fill: #6E5C2A; }
+.stage .scn-ceiling, .stage .scn-partition, .stage .scn-opening { transition: filter 900ms ease; }
+.stage .scn-partition { filter: drop-shadow(2px 0 0 rgba(0, 0, 0, 0.06)); }
+/* the panels: a lit face that buzzes (a slow, slight flicker; one of them is going), glowing onto the tiles around it */
+.stage .scn-ceiling .lit, .stage .scn-opening .lit { filter: drop-shadow(0 0 7px rgba(243, 247, 216, 0.85)); animation: fluoro 7.3s linear infinite; }
+.stage .scn-ceiling .lit-2 { animation-duration: 9.1s; animation-delay: -3.2s; }
+.stage .scn-ceiling .lit-3 { animation-duration: 8.2s; animation-delay: -5.6s; }
+.stage .scn-ceiling .lit-4 { animation-duration: 6.7s; animation-delay: -1.1s; }
+.stage .scn-ceiling .lit-5 { animation: fluoro-bad 5.9s linear infinite; animation-delay: -2.4s; }
+.stage .scn-ceiling .lit-6 { animation-duration: 10.3s; animation-delay: -7.7s; }
+.stage .scn-opening .lit { animation-duration: 8.8s; animation-delay: -4.4s; filter: drop-shadow(0 0 5px rgba(243, 247, 216, 0.7)); }
+@keyframes fluoro { 0%, 100% { opacity: 1; } 3% { opacity: 0.84; } 4% { opacity: 1; } 41% { opacity: 0.92; } 43% { opacity: 1; } 44% { opacity: 0.88; } 45% { opacity: 1; } 77% { opacity: 0.94; } 78% { opacity: 1; } }
+@keyframes fluoro-bad { 0%, 100% { opacity: 1; } 6% { opacity: 0.62; } 7% { opacity: 1; } 8% { opacity: 0.7; } 9.5% { opacity: 1; } 52% { opacity: 0.86; } 53% { opacity: 1; } 54% { opacity: 0.58; } 55% { opacity: 0.96; } 82% { opacity: 0.8; } 84% { opacity: 1; } }
+/* the light falls off toward the edges of the frame */
+.stage .br-vignette { position: absolute; inset: 0; background: radial-gradient(88% 78% at 50% 44%, transparent 58%, rgba(60, 42, 4, 0.20) 100%); }
+/* night: the lights turn down and go green, the room with them; the panels keep a sickly glow */
+.stage[data-scene="backrooms"][data-night="on"] { background: #6d6a3c; }
+.stage[data-scene="backrooms"][data-night="on"] .wall, .stage[data-scene="backrooms"][data-night="on"] .floor, .stage[data-scene="backrooms"][data-night="on"] .rug,
+.stage[data-scene="backrooms"][data-night="on"] .scn-partition, .stage[data-scene="backrooms"][data-night="on"] .scn-opening { filter: brightness(0.5) saturate(0.72) hue-rotate(16deg); }
+.stage[data-scene="backrooms"][data-night="on"] .dots { opacity: 0.6; }
+.stage[data-scene="backrooms"][data-night="on"] .scn-ceiling { filter: brightness(0.66) saturate(0.8) hue-rotate(16deg); }
+.stage[data-scene="backrooms"][data-night="on"] .scn-ceiling .lit, .stage[data-scene="backrooms"][data-night="on"] .scn-opening .lit { filter: drop-shadow(0 0 8px rgba(190, 220, 140, 0.8)); }
+.stage[data-scene="backrooms"][data-night="on"] .scn-ceiling [fill="#F3F7D8"], .stage[data-scene="backrooms"][data-night="on"] .scn-opening [fill="#F3F7D8"] { fill: #DDF5B4; }
+.stage[data-scene="backrooms"][data-night="on"] .scn-ceiling [fill="#D4D0A6"], .stage[data-scene="backrooms"][data-night="on"] .scn-opening [fill="#D4D0A6"] { fill: #AEBB86; }
+.stage[data-scene="backrooms"][data-night="on"] .scn-ceiling [stroke="#FFFFFF"], .stage[data-scene="backrooms"][data-night="on"] .scn-opening [stroke="#FFFFFF"] { stroke: #F2FFD6; }
+.stage[data-scene="backrooms"][data-night="on"] .br-vignette { background: radial-gradient(84% 74% at 50% 44%, transparent 50%, rgba(20, 24, 4, 0.36) 100%); }
+@media (prefers-reduced-motion: reduce) { .stage .scn-ceiling .lit, .stage .scn-opening .lit { animation: none; } }
+
+/* ---- the Western Wall (the Jewish pack's room): the plaza in front of the Wall. The Wall and its notes, plants and
+   doves are drawn (kotelwall.svg and friends, Scenery.tsx); the sky and the plaza's stone are CSS. By day Jerusalem's
+   blue over sunlit limestone; by night a deep blue sky and the Wall floodlit gold from below, as it is. */
+.stage[data-scene="kotel"] { background: #6FB0E6; }
+.stage[data-scene="kotel"] .wall { background: linear-gradient(180deg, #4E94DA 0px, #74B3EA 40px, #A9D2F3 78px, #C9E2F5 110px); }
+.stage[data-scene="kotel"] .dots, .stage[data-scene="kotel"] .rug { display: none; }
+.stage[data-scene="kotel"] .moon { right: 64px; top: 4px; width: 40px; height: 40px; }
+/* the plaza: pale stone, a little shadowed where it meets the Wall, brighter toward us; flat to the Wall, no rim */
+.stage[data-scene="kotel"] .floor { border-radius: 0; box-shadow: none;
+  background: linear-gradient(180deg, #C6B28A 0%, #D6C5A0 18%, #E0D1B0 55%, #E6D9BB 100%); }
+.stage[data-scene="kotel"] .pet #shadow > * { fill: #7C6848; }
+.stage .scn-kotelwall, .stage .scn-kotelplaza, .stage .scn-perch, .stage .kotel-dusk, .stage .kotel-flood { transition: filter 900ms ease, opacity 900ms ease; }
+.stage .kotel-dusk, .stage .kotel-flood { position: absolute; left: 0; top: 54px; width: 600px; height: 312px; opacity: 0; pointer-events: none; }   /* the Wall, from its top down to the plaza */
+.stage .kotel-dusk { background: linear-gradient(180deg, rgba(34, 18, 6, 0.66) 0%, rgba(40, 22, 8, 0.34) 30%, rgba(40, 22, 8, 0.06) 62%, rgba(40, 22, 8, 0) 80%); mix-blend-mode: multiply; }
+.stage .kotel-flood { background:
+    radial-gradient(30% 70% at 12% 104%, rgba(255, 196, 110, 0.75), transparent 74%),
+    radial-gradient(30% 70% at 50% 104%, rgba(255, 204, 120, 0.8), transparent 74%),
+    radial-gradient(30% 70% at 88% 104%, rgba(255, 196, 110, 0.75), transparent 74%),
+    linear-gradient(0deg, rgba(255, 170, 80, 0.35), rgba(255, 170, 80, 0) 70%);
+  mix-blend-mode: soft-light; }
+.stage .kotel-vignette { position: absolute; inset: 0; background: radial-gradient(92% 82% at 50% 46%, transparent 62%, rgba(80, 58, 24, 0.14) 100%); transition: background 900ms ease; }
+/* the doves: one roosting in a niche, one on the top; now and then a pair crosses the sky */
+.stage .scn-perch #dovehead { transform-box: fill-box; transform-origin: 30% 90%; animation: dove-bob 6.2s ease-in-out infinite; }
+.stage .scn-perch-b #dovehead { animation-duration: 7.9s; animation-delay: -3.1s; }
+@keyframes dove-bob { 0%, 38%, 52%, 100% { transform: none; } 42% { transform: translate(1px, 1.5px) rotate(14deg); } 46% { transform: none; } 49% { transform: translate(1px, 1.5px) rotate(14deg); } 70% { transform: rotate(-6deg); } 80% { transform: rotate(-6deg); } }
+.stage .scn-dove { top: 0; left: 0; }
+.stage .scn-dove #wl, .stage .scn-dove #wr { transform-box: fill-box; animation: dove-flap 0.24s ease-in-out infinite alternate; }
+.stage .scn-dove #wl { transform-origin: 100% 100%; }
+.stage .scn-dove #wr { transform-origin: 0% 100%; }
+@keyframes dove-flap { from { transform: scaleY(1); } to { transform: scaleY(-0.55); } }
+.stage .scn-dove-0 { animation: dove-fly-0 26s linear infinite; animation-delay: -2s; }
+.stage .scn-dove-1 { animation: dove-fly-1 26s linear infinite; animation-delay: -2s; }
+@keyframes dove-fly-0 { 0% { transform: translate(-70px, 78px); } 7% { transform: translate(110px, 52px); } 14% { transform: translate(300px, 40px); } 21% { transform: translate(480px, 46px); } 28%, 100% { transform: translate(680px, 30px); } }
+@keyframes dove-fly-1 { 0%, 1.2% { transform: translate(-70px, 92px); } 8.2% { transform: translate(90px, 70px); } 15.2% { transform: translate(270px, 58px); } 22.2% { transform: translate(450px, 66px); } 29.2%, 100% { transform: translate(680px, 48px); } }
+/* night: a deep blue sky with the stars; the Wall floodlit warm gold from below, the dark coming down from the top */
+.stage[data-scene="kotel"][data-night="on"] { background: #0C1636; }
+.stage[data-scene="kotel"][data-night="on"] .wall { filter: none; background: linear-gradient(180deg, #050A1E 0px, #0C1638 44px, #172656 90px, #172656 100%); }
+.stage[data-scene="kotel"][data-night="on"] .floor { filter: none; background: linear-gradient(180deg, #9C7746 0%, #7C5F3A 16%, #56432C 50%, #33291E 100%); }
+.stage[data-scene="kotel"][data-night="on"] .scn-kotelwall { filter: brightness(0.98) sepia(0.4) saturate(1.5) hue-rotate(3deg) contrast(1.06); }   /* golden, not orange: the orange log still stands out */
+.stage[data-scene="kotel"][data-night="on"] .scn-perch { filter: brightness(0.82) sepia(0.3) saturate(1.3); }
+.stage[data-scene="kotel"][data-night="on"] .scn-kotelplaza { filter: brightness(0.62) sepia(0.4); opacity: 0.8; }
+.stage[data-scene="kotel"][data-night="on"] .kotel-dusk, .stage[data-scene="kotel"][data-night="on"] .kotel-flood { opacity: 1; }
+.stage[data-scene="kotel"][data-night="on"] .scn-dove { display: none; }
+.stage[data-scene="kotel"][data-night="on"] .kotel-vignette { background: radial-gradient(90% 80% at 50% 50%, transparent 58%, rgba(6, 8, 26, 0.32) 100%); }
+.stage[data-scene="kotel"][data-night="on"] .pet #shadow > * { fill: #1E170F; }
+@media (prefers-reduced-motion: reduce) {
+  .stage .scn-perch #dovehead, .stage .scn-dove, .stage .scn-dove #wl, .stage .scn-dove #wr { animation: none; }
+  .stage .scn-dove { display: none; }
+}
+
+/* ---- the Majlis (the Habibi pack's room): the Arab welcome room, Dubai through its window. The wall, the screens, the
+   seating, the carpets, the lanterns, the coffee, the incense and the view are drawn (majlis*.svg, Scenery.tsx); the sky
+   in the window and the marble floor are CSS. By day the desert light: a clear blue sky with clouds drifting behind the
+   towers, gulls and a plane passing, the fountain playing, the sun moving on the mashrabiya. By night the room goes warm
+   and dim, the lanterns flicker and throw their pattern on the plaster, the city lights up and twinkles, the full moon is
+   out, and the tall tower's facade lights up in a colour sweep now and then.
+   Motion: transform and opacity only, and ONLY on HTML elements of their own (Scenery.tsx), never inside an SVG: an
+   animated SVG element repaints its drawing every frame (measured: 9 repaints a frame with the fountain, the wings,
+   the flames and the wisps inside their drawings, 2 with them outside); an element of its own is only composited.
+   Day-only and night-only motions are display:none in the other half, so they cost nothing there, and everything is
+   off under prefers-reduced-motion. */
+.stage[data-scene="majlis"] { background: #E9D5B0; }
+.stage[data-scene="majlis"] .wall { background: linear-gradient(180deg, #4F8FD2 50px, #7FB3E6 110px, #B7D5EE 170px, #DCE4E6 220px, #EEDCBD 272px); }
+.stage[data-scene="majlis"] .dots, .stage[data-scene="majlis"] .rug, .stage[data-scene="majlis"] .moon { display: none; }
+.stage[data-scene="majlis"] .floor { border-radius: 0; box-shadow: none; background: linear-gradient(180deg, #BFA986 0%, #D7C4A2 22%, #E3D3B5 60%, #E8DAC0 100%); }
+.stage[data-scene="majlis"] .pet #shadow > * { fill: #0E1F1C; }
+.stage .scn-mjwall, .stage .scn-mjseat, .stage .scn-mjrug, .stage .scn-mjtray, .stage .scn-mjincense, .stage .mj-glow, .stage .mj-vignette, .stage .mj-sun { transition: filter 900ms ease, opacity 900ms ease, background 900ms ease; }
+.stage .scn-mjsky path, .stage .scn-mjsky ellipse, .stage .scn-mjsky circle { transition: fill 900ms ease, stroke 900ms ease, opacity 900ms ease; }
+.stage .scn-mjsky .mj-lit, .stage .scn-mjsky .mj-moon { opacity: 0; }
+.stage .mj-vignette { position: absolute; inset: 0; background: radial-gradient(92% 82% at 50% 46%, transparent 62%, rgba(90, 54, 20, 0.14) 100%); }
+/* by day the window's light falls into the room, over the seating and onto the rug */
+.stage .mj-sun { position: absolute; left: 110px; top: 290px; width: 380px; height: 190px; pointer-events: none; mix-blend-mode: soft-light;
+  background: radial-gradient(50% 58% at 50% 34%, rgba(255, 246, 220, 0.8), rgba(255, 240, 205, 0.36) 55%, rgba(255, 236, 196, 0) 100%); }
+
+/* outside the window: clouds drift behind the towers, gulls and a plane cross in front of them; the wall, drawn after
+   them, hides each one outside the window's opening, so they come out from behind the frame and go back behind it */
+.stage .mj-cloud { animation: mj-cloud 96s linear infinite; }
+.stage .mj-cloud-1 { animation-duration: 132s; animation-delay: -70s; }
+@keyframes mj-cloud { from { transform: translateX(0); } to { transform: translateX(330px); } }
+.stage .mj-flock { animation: mj-fly-r 19s linear infinite; animation-delay: -3s; }
+.stage .mj-bird-near { animation: mj-fly-l 13s linear infinite; animation-delay: -9s; }
+.stage .mj-bird-far { animation: mj-fly-far 27s linear infinite; animation-delay: -17s; }
+@keyframes mj-fly-r { 0% { transform: translate(0, 0); } 12% { transform: translate(70px, -4px); } 24% { transform: translate(150px, 2px); } 36% { transform: translate(230px, -6px); } 48%, 100% { transform: translate(310px, -2px); } }
+@keyframes mj-fly-l { 0% { transform: translate(0, 0); } 10% { transform: translate(-80px, 6px); } 20% { transform: translate(-160px, 2px); } 30% { transform: translate(-240px, 9px); } 40%, 100% { transform: translate(-320px, 5px); } }
+@keyframes mj-fly-far { 0% { transform: translate(0, 0); } 30% { transform: translate(150px, -8px); } 60%, 100% { transform: translate(310px, -2px); } }
+.stage .mj-bird .mj-flap { transform-origin: 50% 66.7%; animation: mj-flap 0.44s ease-in-out infinite alternate; }
+.stage .mj-bird .mj-flap-1 { animation-duration: 0.5s; animation-delay: -0.2s; }
+.stage .mj-bird .mj-flap-2 { animation-duration: 0.38s; animation-delay: -0.1s; }
+.stage .mj-bird .mj-gliding .mj-flap { animation: mj-glide 2.6s ease-in-out infinite; }
+@keyframes mj-flap { from { transform: scaleY(1); } to { transform: scaleY(-0.5); } }
+@keyframes mj-glide { 0%, 45%, 100% { transform: scaleY(0.85); } 55%, 75% { transform: scaleY(-0.45); } 65%, 85% { transform: scaleY(1); } }
+.stage .mj-plane { animation: mj-plane 52s linear infinite; animation-delay: -12s; }
+@keyframes mj-plane { 0% { transform: translate(0, 0); } 70%, 100% { transform: translate(340px, -5px); } }
+.stage .mj-plane .mj-planenight, .stage .mj-plane .mj-planeblink { display: none; }
+.stage .mj-plane .mj-planeblink { border-radius: 50%; background: #FF3B30; }
+
+/* the fountain: every 26 s the jets rise from the lake in front of the tall tower, sway and fall, the mist rolling at their foot */
+.stage .mj-jets { transform-origin: 50% 100%; animation: mj-jet 26s ease-in-out infinite; animation-delay: 4s; }
+.stage .mj-jets-1 { animation-name: mj-jet-b; animation-delay: 4.5s; }
+.stage .mj-mist { transform-origin: 50% 100%; animation: mj-mist 26s ease-in-out infinite; animation-delay: 4s; }
+@keyframes mj-jet { 0% { transform: scaleY(0.03); opacity: 0; } 2% { opacity: 0.95; } 6% { transform: scaleY(1); } 10% { transform: scaleY(0.9) skewX(-7deg); } 14% { transform: scaleY(1.05) skewX(6deg); }
+  18% { transform: scaleY(0.94) skewX(-5deg); } 22% { transform: scaleY(1) skewX(3deg); opacity: 0.95; } 27% { transform: scaleY(0.03); opacity: 0; } 100% { transform: scaleY(0.03); opacity: 0; } }
+@keyframes mj-jet-b { 0% { transform: scaleY(0.03); opacity: 0; } 2% { opacity: 0.95; } 6% { transform: scaleY(1); } 10% { transform: scaleY(1.04) skewX(7deg); } 14% { transform: scaleY(0.92) skewX(-6deg); }
+  18% { transform: scaleY(1.04) skewX(5deg); } 22% { transform: scaleY(0.96) skewX(-3deg); opacity: 0.95; } 27% { transform: scaleY(0.03); opacity: 0; } 100% { transform: scaleY(0.03); opacity: 0; } }
+@keyframes mj-mist { 0%, 3% { transform: scaleX(0.5); opacity: 0; } 10% { transform: scaleX(0.95); opacity: 0.5; } 24% { transform: scaleX(1.1); opacity: 0.4; } 32%, 100% { transform: scaleX(1.2); opacity: 0; } }
+/* the night-only lights over the view: the LED sweep up the tall tower (clipped to its outline, Scenery.tsx), a few
+   twinkling lights, the red beacon on the spire */
+.stage .mj-led, .stage .mj-tw, .stage .mj-beacon { display: none; }
+.stage .mj-ledband { position: absolute; left: 0; top: 183px; width: 32px; height: 70px; opacity: 0.85;
+  background: linear-gradient(180deg, rgba(107, 232, 255, 0), #6BE8FF 30%, #B784FF 55%, #FFD37A 80%, rgba(255, 211, 122, 0)); }
+.stage .mj-tw { border-radius: 50%; background: #FFF3C4; }
+.stage .mj-beacon { border-radius: 50%; background: #FF3B30; }
+
+/* the light through the mashrabiya by day: soft patches of sun sliding slowly over the lattice, as if palms moved outside */
+.stage .mj-dapple { position: absolute; top: 86px; width: 90px; height: 112px; overflow: hidden; pointer-events: none; mix-blend-mode: soft-light;
+  border-radius: 45px 45px 0 0 / 26px 26px 0 0; }
+.stage .mj-dapple-l { left: 31px; }
+.stage .mj-dapple-r { left: 479px; }
+.stage .mj-dapple-in { position: absolute; left: -45px; top: -30px; width: 180px; height: 170px; animation: mj-dapple 11s ease-in-out infinite alternate;
+  background: radial-gradient(22px 16px at 30% 30%, rgba(255, 252, 235, 0.95), transparent), radial-gradient(28px 20px at 64% 52%, rgba(255, 252, 235, 0.9), transparent),
+    radial-gradient(18px 14px at 42% 76%, rgba(255, 252, 235, 0.85), transparent), radial-gradient(24px 18px at 78% 22%, rgba(255, 252, 235, 0.8), transparent); }
+.stage .mj-dapple-r .mj-dapple-in { animation-duration: 13.5s; animation-delay: -5s; }
+@keyframes mj-dapple { 0% { transform: translate(0, 0); } 35% { transform: translate(14px, 6px); } 70% { transform: translate(-8px, 12px); } 100% { transform: translate(10px, -4px); } }
+
+/* in the room: steam from the dallah's spout, smoke from the incense, each wisp on its own clock */
+.stage .mj-steam { transform-origin: 50% 94%; animation: mj-steam 3.6s ease-out infinite; }
+@keyframes mj-steam { 0% { transform: scale(0.6, 0.25); opacity: 0; } 18% { opacity: 0.9; } 55% { transform: scale(1, 1) skewX(-6deg); opacity: 0.75; } 100% { transform: translateY(-7px) scale(1.2, 1.12) skewX(6deg); opacity: 0; } }
+.stage .mj-smoke { transform-origin: 40% 97%; animation: mj-smoke 5.2s ease-in-out infinite; }
+.stage .mj-smoke-1 { animation-duration: 6.4s; animation-delay: -2.1s; }
+.stage .mj-smoke-1 svg { transform: scaleX(-1); }
+@keyframes mj-smoke { 0% { transform: translateY(4px) scaleX(0.9); opacity: 0.2; } 30% { opacity: 0.9; } 60% { transform: translateY(-4px) scaleX(1.12) skewX(-6deg); opacity: 0.8; } 100% { transform: translateY(-10px) scaleX(1.3) skewX(4deg); opacity: 0; } }
+
+/* the lanterns: each sways a touch on its chain; its flame flickers on one irregular clock (a different one for each
+   lantern) with a quicker quiver folded into it; the glow on the wall and its light pattern run on the SAME clock as that
+   lantern's flame, so the flame and the light it throws move together (the wall glow is shown at night only) */
+.stage .scn-mjlantern { transform-origin: 50% 8.2%; animation: mj-sway 5.3s ease-in-out infinite alternate; animation-delay: -1s; }
+.stage .scn-mjlantern-r { animation-duration: 6.1s; animation-delay: -3.4s; }
+@keyframes mj-sway { from { transform: rotate(-1deg); } to { transform: rotate(1.1deg); } }
+.stage .scn-mjlantern .mj-flame { transform-origin: 50% 100%; animation: mj-flame-a 2.73s linear infinite; }
+.stage .scn-mjlantern-r .mj-flame { animation-name: mj-flame-b; animation-duration: 3.41s; }
+.stage .mj-glow { position: absolute; top: 7px; width: 300px; height: 300px; opacity: 0; pointer-events: none; mix-blend-mode: screen; }   /* centred on each lantern's glass (153 / 447, 157) */
+.stage .mj-glow-l { left: 3px; }
+.stage .mj-glow-r { left: 297px; }
+.stage .mj-glow .mj-flick { position: absolute; inset: 0;
+  background: radial-gradient(closest-side, rgba(255, 200, 110, 0.9), rgba(255, 176, 86, 0.42) 28%, rgba(255, 160, 76, 0.14) 62%, rgba(255, 150, 70, 0) 100%); }
+.stage .mj-glow .mj-specks { position: absolute; inset: 0; }
+.stage .mj-glow .mj-specks svg { display: block; width: 100%; height: 100%; }
+.stage .mj-glow-r .mj-specks { transform: scaleX(-1); }   /* the room is symmetric about x 300: the right lantern's pattern is the left's, mirrored */
+@keyframes mj-flick-a { 0.0% { opacity: 1.00; } 6.3% { opacity: 0.94; } 10.9% { opacity: 0.74; } 18.0% { opacity: 0.96; } 22.8% { opacity: 1.00; } 30.9% { opacity: 0.67; } 37.0% { opacity: 0.95; } 42.2% { opacity: 0.96; } 51.2% { opacity: 0.96; } 58.2% { opacity: 0.88; } 63.9% { opacity: 0.90; } 71.6% { opacity: 0.78; } 76.4% { opacity: 0.90; } 83.4% { opacity: 0.83; } 89.8% { opacity: 0.71; } 100.0% { opacity: 1.00; } }
+@keyframes mj-flame-a { 0.0% { opacity: 1.00; transform: scale(1.020, 0.949) skewX(-3deg); } 5.7% { opacity: 1.00; transform: scale(1.007, 1.067) skewX(3deg); } 11.4% { opacity: 0.93; transform: scale(0.966, 0.898) skewX(-3deg); } 17.0% { opacity: 1.00; transform: scale(1.005, 1.065) skewX(3deg); } 22.7% { opacity: 1.00; transform: scale(1.019, 0.948) skewX(-3deg); } 28.4% { opacity: 0.94; transform: scale(0.969, 1.028) skewX(3deg); } 34.1% { opacity: 0.96; transform: scale(0.979, 0.911) skewX(-3deg); } 39.7% { opacity: 1.00; transform: scale(1.010, 1.070) skewX(3deg); } 45.4% { opacity: 1.00; transform: scale(1.011, 0.940) skewX(-3deg); } 51.1% { opacity: 1.00; transform: scale(1.012, 1.073) skewX(3deg); } 56.8% { opacity: 1.00; transform: scale(0.997, 0.927) skewX(-3deg); } 62.5% { opacity: 1.00; transform: scale(0.996, 1.056) skewX(3deg); } 68.1% { opacity: 0.97; transform: scale(0.984, 0.915) skewX(-3deg); } 73.8% { opacity: 0.97; transform: scale(0.983, 1.043) skewX(3deg); } 79.5% { opacity: 0.98; transform: scale(0.991, 0.921) skewX(-3deg); } 85.2% { opacity: 0.95; transform: scale(0.975, 1.033) skewX(3deg); } 90.8% { opacity: 0.92; transform: scale(0.963, 0.895) skewX(-3deg); } 96.5% { opacity: 1.00; transform: scale(0.998, 1.058) skewX(3deg); } 100% { opacity: 1; transform: scale(1.02, 0.949) skewX(-3deg); } }
+@keyframes mj-flame-an { 0.0% { opacity: 1.00; transform: scale(1.020, 0.949) skewX(-3deg); } 5.7% { opacity: 1.00; transform: scale(1.007, 1.067) skewX(3deg); } 11.4% { opacity: 0.93; transform: scale(0.966, 0.898) skewX(-3deg); } 17.0% { opacity: 1.00; transform: scale(1.005, 1.065) skewX(3deg); } 22.7% { opacity: 1.00; transform: scale(1.019, 0.948) skewX(-3deg); } 28.4% { opacity: 0.94; transform: scale(0.969, 1.028) skewX(3deg); } 34.1% { opacity: 0.96; transform: scale(0.979, 0.911) skewX(-3deg); } 39.7% { opacity: 1.00; transform: scale(1.010, 1.070) skewX(3deg); } 45.4% { opacity: 1.00; transform: scale(1.011, 0.940) skewX(-3deg); } 51.1% { opacity: 1.00; transform: scale(1.012, 1.073) skewX(3deg); } 56.8% { opacity: 1.00; transform: scale(0.997, 0.927) skewX(-3deg); } 62.5% { opacity: 1.00; transform: scale(0.996, 1.056) skewX(3deg); } 68.1% { opacity: 0.97; transform: scale(0.984, 0.915) skewX(-3deg); } 73.8% { opacity: 0.97; transform: scale(0.983, 1.043) skewX(3deg); } 79.5% { opacity: 0.98; transform: scale(0.991, 0.921) skewX(-3deg); } 85.2% { opacity: 0.95; transform: scale(0.975, 1.033) skewX(3deg); } 90.8% { opacity: 0.92; transform: scale(0.963, 0.895) skewX(-3deg); } 96.5% { opacity: 1.00; transform: scale(0.998, 1.058) skewX(3deg); } 100% { opacity: 1; transform: scale(1.02, 0.949) skewX(-3deg); } }
+@keyframes mj-flick-b { 0.0% { opacity: 1.00; } 8.7% { opacity: 0.87; } 15.2% { opacity: 0.73; } 21.0% { opacity: 0.85; } 31.3% { opacity: 0.66; } 36.1% { opacity: 0.72; } 43.0% { opacity: 0.89; } 50.1% { opacity: 0.80; } 59.6% { opacity: 0.97; } 64.4% { opacity: 0.84; } 69.1% { opacity: 0.82; } 77.2% { opacity: 0.90; } 87.5% { opacity: 0.78; } 94.8% { opacity: 0.72; } 100.0% { opacity: 1.00; } }
+@keyframes mj-flame-b { 0.0% { opacity: 1.00; transform: scale(1.020, 0.949) skewX(-3deg); } 5.4% { opacity: 1.00; transform: scale(1.003, 1.063) skewX(3deg); } 10.9% { opacity: 0.96; transform: scale(0.982, 0.913) skewX(-3deg); } 16.3% { opacity: 0.93; transform: scale(0.966, 1.024) skewX(3deg); } 21.7% { opacity: 0.97; transform: scale(0.984, 0.915) skewX(-3deg); } 27.1% { opacity: 0.92; transform: scale(0.962, 1.020) skewX(3deg); } 32.6% { opacity: 0.89; transform: scale(0.949, 0.883) skewX(-3deg); } 38.0% { opacity: 0.94; transform: scale(0.970, 1.028) skewX(3deg); } 43.4% { opacity: 0.99; transform: scale(0.995, 0.925) skewX(-3deg); } 48.8% { opacity: 0.96; transform: scale(0.979, 1.038) skewX(3deg); } 54.3% { opacity: 0.99; transform: scale(0.992, 0.923) skewX(-3deg); } 59.7% { opacity: 1.00; transform: scale(1.013, 1.073) skewX(3deg); } 65.1% { opacity: 0.97; transform: scale(0.984, 0.915) skewX(-3deg); } 70.5% { opacity: 0.97; transform: scale(0.984, 1.043) skewX(3deg); } 76.0% { opacity: 0.99; transform: scale(0.996, 0.926) skewX(-3deg); } 81.4% { opacity: 0.98; transform: scale(0.988, 1.047) skewX(3deg); } 86.8% { opacity: 0.94; transform: scale(0.974, 0.906) skewX(-3deg); } 92.2% { opacity: 0.92; transform: scale(0.964, 1.021) skewX(3deg); } 97.7% { opacity: 0.99; transform: scale(0.993, 0.923) skewX(-3deg); } 100% { opacity: 1; transform: scale(1.02, 0.949) skewX(-3deg); } }
+@keyframes mj-flame-bn { 0.0% { opacity: 1.00; transform: scale(1.020, 0.949) skewX(-3deg); } 5.4% { opacity: 1.00; transform: scale(1.003, 1.063) skewX(3deg); } 10.9% { opacity: 0.96; transform: scale(0.982, 0.913) skewX(-3deg); } 16.3% { opacity: 0.93; transform: scale(0.966, 1.024) skewX(3deg); } 21.7% { opacity: 0.97; transform: scale(0.984, 0.915) skewX(-3deg); } 27.1% { opacity: 0.92; transform: scale(0.962, 1.020) skewX(3deg); } 32.6% { opacity: 0.89; transform: scale(0.949, 0.883) skewX(-3deg); } 38.0% { opacity: 0.94; transform: scale(0.970, 1.028) skewX(3deg); } 43.4% { opacity: 0.99; transform: scale(0.995, 0.925) skewX(-3deg); } 48.8% { opacity: 0.96; transform: scale(0.979, 1.038) skewX(3deg); } 54.3% { opacity: 0.99; transform: scale(0.992, 0.923) skewX(-3deg); } 59.7% { opacity: 1.00; transform: scale(1.013, 1.073) skewX(3deg); } 65.1% { opacity: 0.97; transform: scale(0.984, 0.915) skewX(-3deg); } 70.5% { opacity: 0.97; transform: scale(0.984, 1.043) skewX(3deg); } 76.0% { opacity: 0.99; transform: scale(0.996, 0.926) skewX(-3deg); } 81.4% { opacity: 0.98; transform: scale(0.988, 1.047) skewX(3deg); } 86.8% { opacity: 0.94; transform: scale(0.974, 0.906) skewX(-3deg); } 92.2% { opacity: 0.92; transform: scale(0.964, 1.021) skewX(3deg); } 97.7% { opacity: 0.99; transform: scale(0.993, 0.923) skewX(-3deg); } 100% { opacity: 1; transform: scale(1.02, 0.949) skewX(-3deg); } }
+
+/* night: the room warm and dim, the city dark with its windows lit, the moon out, the lights twinkling, the tall tower's
+   facade swept with colour every 18 s and the red light on its spire blinking; the birds have gone to roost */
+.stage[data-scene="majlis"][data-night="on"] { background: #140C1C; }
+.stage[data-scene="majlis"][data-night="on"] .wall { filter: none; background: linear-gradient(180deg, #050922 50px, #0C143C 110px, #18204E 170px, #34285A 222px, #6A3A50 258px, #8A4A45 276px); }
+.stage[data-scene="majlis"][data-night="on"] .floor { filter: none; background: linear-gradient(180deg, #4E3C2A 0%, #5E4832 30%, #6A5238 70%, #6E563B 100%); }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjwall, .stage[data-scene="majlis"][data-night="on"] .scn-mjseat { filter: brightness(0.56) sepia(0.5) saturate(1.45) hue-rotate(-6deg); }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjrug, .stage[data-scene="majlis"][data-night="on"] .scn-mjtray, .stage[data-scene="majlis"][data-night="on"] .scn-mjincense { filter: brightness(0.6) sepia(0.4) saturate(1.3) hue-rotate(-6deg); }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjwall .mj-screen { fill: #2A2748; }
+.stage[data-scene="majlis"][data-night="on"] .mj-sun, .stage[data-scene="majlis"][data-night="on"] .mj-dapple, .stage[data-scene="majlis"][data-night="on"] .mj-cloud, .stage[data-scene="majlis"][data-night="on"] .mj-bird { display: none; }
+.stage[data-scene="majlis"][data-night="on"] .mj-steam svg, .stage[data-scene="majlis"][data-night="on"] .mj-smoke svg { opacity: 0.6; }
+.stage[data-scene="majlis"][data-night="on"] .mj-plane .mj-planeday { display: none; }
+.stage[data-scene="majlis"][data-night="on"] .mj-plane .mj-planenight { display: inline; }
+.stage[data-scene="majlis"][data-night="on"] .mj-plane .mj-planeblink { display: block; animation: mj-beacon 1.3s steps(1, end) infinite; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#AFC1D3"] { fill: #2B3563; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#93AAC2"] { fill: #1F2850; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#7C95B1"] { fill: #161D40; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#C3D3E3"] { fill: #3C4A86; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [stroke="#C3D3E3"] { stroke: #3C4A86; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#6B83A0"] { fill: #0B1028; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#9FC0DA"] { fill: #1B2552; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [stroke="#DDE8F1"], .stage[data-scene="majlis"][data-night="on"] .scn-mjsky [stroke="#E6EEF5"] { stroke: #3A4A7A; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#EEF1F4"] { fill: #BDB4E6; }   /* the sail, lit */
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#C7D0DA"] { fill: #8090BE; }   /* the torus, lit */
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [stroke="#9EABBA"] { stroke: #5A6796; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#7FA36B"] { fill: #213A2B; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [fill="#7FA8CC"] { fill: #111B3C; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky [stroke="#C9DDEE"] { stroke: #34467A; }
+.stage[data-scene="majlis"][data-night="on"] .mj-jets [fill="#FFFFFF"] { fill: #FFF1CF; }
+.stage[data-scene="majlis"][data-night="on"] .mj-jets [stroke="#FFFFFF"] { stroke: #FFF1CF; }
+.stage[data-scene="majlis"][data-night="on"] .mj-mist [fill="#FFFFFF"] { fill: #CFC6E6; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky .mj-haze { opacity: 0; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjsky .mj-lit, .stage[data-scene="majlis"][data-night="on"] .scn-mjsky .mj-moon { opacity: 1; }
+.stage[data-scene="majlis"][data-night="on"] .mj-beacon { display: block; animation: mj-beacon 2.4s steps(1, end) infinite; }
+@keyframes mj-beacon { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0.12; } }
+.stage[data-scene="majlis"][data-night="on"] .mj-tw { display: block; animation: mj-twinkle 2.2s ease-in-out infinite alternate; }
+.stage[data-scene="majlis"][data-night="on"] .mj-tw-1 { animation-duration: 3.1s; animation-delay: -1s; }
+.stage[data-scene="majlis"][data-night="on"] .mj-tw-2 { animation-duration: 1.7s; animation-delay: -0.4s; }
+.stage[data-scene="majlis"][data-night="on"] .mj-tw-3 { animation-duration: 2.6s; animation-delay: -1.8s; }
+.stage[data-scene="majlis"][data-night="on"] .mj-tw-4 { animation-duration: 3.6s; animation-delay: -2.2s; }
+.stage[data-scene="majlis"][data-night="on"] .mj-tw-5 { animation-duration: 1.9s; animation-delay: -0.9s; }
+@keyframes mj-twinkle { from { opacity: 0.15; } to { opacity: 1; } }
+.stage[data-scene="majlis"][data-night="on"] .mj-led { display: block; }
+.stage[data-scene="majlis"][data-night="on"] .mj-ledband { animation: mj-led 18s linear infinite; animation-delay: 2s; }
+@keyframes mj-led { 0% { transform: translateY(0); } 32%, 100% { transform: translateY(-253px); } }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjlantern .mj-glass { fill: #FFC86A; }   /* warm amber, so the white-hot flame reads inside it */
+.stage[data-scene="majlis"][data-night="on"] .mj-glow { opacity: 1; }
+/* the wall glow flickers at night only; the flame changes to an identical copy of its animation at the same moment, so
+   the two start together and stay in step (a flame that had run all day would be at some other point of its clock) */
+.stage[data-scene="majlis"][data-night="on"] .mj-glow-l .mj-flick { animation: mj-flick-a 2.73s linear infinite; }
+.stage[data-scene="majlis"][data-night="on"] .mj-glow-r .mj-flick { animation: mj-flick-b 3.41s linear infinite; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjlantern-l .mj-flame { animation-name: mj-flame-an; }
+.stage[data-scene="majlis"][data-night="on"] .scn-mjlantern-r .mj-flame { animation-name: mj-flame-bn; }
+.stage[data-scene="majlis"][data-night="on"] .mj-vignette { background: radial-gradient(90% 80% at 50% 50%, transparent 56%, rgba(12, 6, 20, 0.36) 100%); }
+.stage[data-scene="majlis"][data-night="on"] .pet #shadow > * { fill: #0A1412; }
+@media (prefers-reduced-motion: reduce) {
+  .stage .mj-cloud, .stage .mj-bird, .stage .mj-bird .mj-flap, .stage .mj-plane, .stage .mj-plane .mj-planeblink, .stage .mj-jets, .stage .mj-mist,
+  .stage .mj-dapple-in, .stage .mj-steam, .stage .mj-smoke, .stage .scn-mjlantern, .stage .scn-mjlantern .mj-flame,
+  .stage .mj-glow, .stage .mj-glow .mj-flick, .stage .mj-beacon, .stage .mj-tw, .stage .mj-ledband { animation: none !important; }
+  .stage .mj-bird, .stage .mj-plane, .stage .mj-cloud, .stage .mj-led { display: none !important; }
+  .stage .mj-jets, .stage .mj-mist { opacity: 0; }
+}
+
+/* ---- the emo bedroom (the emo pack's room): a teenager's room in 2006, on a rainy day. The wall, the posters, the
+   curtains, the bed, the nightstand, the lava lamp, the desk with its old monitor, the rug and the view are drawn
+   (emoroom*.svg, Scenery.tsx); the sky in the window and the carpet are CSS. By day a dim room in the grey light of the
+   rain; by night only the fairy lights, the screen, the lava lamp and the candle, each throwing its own light.
+   Motion as in the Majlis: transform and opacity on small elements of their own, never inside a drawing; night-only
+   and day-only light costs nothing in the other half (opacity 0 on a still element, or not animated), and everything
+   stops under prefers-reduced-motion. */
+.stage[data-scene="emoroom"] { background: #140B1D; }
+.stage[data-scene="emoroom"] .wall { background: linear-gradient(180deg, #6E7586 72px, #8A8F9D 142px, #A2A5AF 212px); }   /* the sky in the window: rain-grey */
+.stage[data-scene="emoroom"] .dots, .stage[data-scene="emoroom"] .rug, .stage[data-scene="emoroom"] .moon, .stage[data-scene="emoroom"] .stars { display: none; }
+.stage[data-scene="emoroom"] .floor { border-radius: 0; box-shadow: none; background: linear-gradient(180deg, #2B2035 0%, #241A2D 40%, #1C1423 100%); }
+.stage[data-scene="emoroom"] .pet #shadow > * { fill: #07040B; }
+.stage .scn-erwall, .stage .scn-erbed, .stage .scn-erstand, .stage .scn-erdesk, .stage .scn-errug, .stage .er-out, .stage .er-outlit, .stage .er-winlight, .stage .er-shaft,
+.stage .er-wash, .stage .er-lights, .stage .er-lamp, .stage .er-lavaglow, .stage .er-crtglow, .stage .er-candleglow, .stage .er-vignette, .stage .er-fall { transition: filter 900ms ease, opacity 900ms ease, background 900ms ease; }
+.stage .scn-erwall .er-curtlit { transition: opacity 900ms ease; }
+.stage .er-outlit, .stage .er-wash, .stage .er-lamp { opacity: 0; }
+
+/* the window: rain falling past outside, beads on the glass (emoroombeads.svg), drops running down it now and then (all
+   clipped to the glass) */
+.stage .er-glass { overflow: hidden; }
+.stage .er-fall { position: absolute; left: -40px; right: -40px; top: -30px; bottom: -30px; transform: rotate(9deg); opacity: 0.85; }
+.stage .er-fall-in { position: absolute; left: 0; right: 0; top: -120px; bottom: 0;
+  background-image:
+    radial-gradient(0.6px 6.5px at 4px 8px, rgba(232, 238, 248, 0.7), transparent),
+    radial-gradient(0.5px 5px at 15px 27px, rgba(232, 238, 248, 0.55), transparent),
+    radial-gradient(0.45px 4px at 9px 47px, rgba(232, 238, 248, 0.4), transparent);
+  background-size: 22px 40px, 29px 60px, 17px 60px;
+  animation: er-fall 0.4s linear infinite; }
+@keyframes er-fall { from { transform: translateY(0); } to { transform: translateY(120px); } }
+.stage .er-run { position: absolute; width: 2.4px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(180deg, rgba(214, 224, 242, 0), rgba(214, 224, 242, 0.32) 55%, rgba(240, 246, 255, 0.9) 86%, rgba(150, 160, 186, 0.75));
+  animation: er-run 8s linear infinite; }
+/* a drop on a window does not slide: it holds, lets go, catches, and runs */
+@keyframes er-run { 0% { transform: translateY(0); opacity: 0; } 5% { opacity: 1; } 16% { transform: translateY(16px); } 27% { transform: translateY(19px); } 41% { transform: translateY(52px); }
+  53% { transform: translateY(56px); } 79% { transform: translateY(132px); opacity: 1; } 88%, 100% { transform: translateY(168px); opacity: 0; } }
+/* the streetlamp outside, lit at night (its glow clipped to the window with the rest) */
+.stage .er-lamp { position: absolute; left: 72px; top: 68px; width: 44px; height: 44px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 222, 150, 0.95), rgba(255, 184, 96, 0.34) 45%, rgba(255, 170, 80, 0)); }
+
+/* the fairy lights: every bulb's glow on a clock of its own, in one of three irregular patterns; faint by day */
+.stage .er-lights { position: absolute; inset: 0; opacity: 0.5; }
+.stage .er-bulb { position: absolute; width: 18px; height: 18px; border-radius: 50%; animation: er-tw-a 4s ease-in-out infinite; }
+.stage .er-bulb-0, .stage .er-bulb-2 { background: radial-gradient(closest-side, #FFF9EA 0 20%, rgba(255, 218, 152, 0.8) 34%, rgba(255, 196, 120, 0.24) 62%, rgba(255, 190, 110, 0)); }
+.stage .er-bulb-1 { background: radial-gradient(closest-side, #FFF0F6 0 20%, rgba(255, 122, 172, 0.82) 34%, rgba(255, 96, 160, 0.24) 62%, rgba(255, 90, 150, 0)); }
+.stage .er-bulb-3 { background: radial-gradient(closest-side, #F8F0FF 0 20%, rgba(204, 160, 255, 0.82) 34%, rgba(186, 136, 255, 0.24) 62%, rgba(180, 130, 255, 0)); }
+@keyframes er-tw-a { 0%, 100% { opacity: 1; } 13% { opacity: 0.78; } 21% { opacity: 1; } 47% { opacity: 0.9; } 52% { opacity: 0.5; } 56% { opacity: 0.95; } 80% { opacity: 0.84; } }
+@keyframes er-tw-b { 0%, 100% { opacity: 0.86; } 18% { opacity: 1; } 33% { opacity: 0.7; } 40% { opacity: 1; } 64% { opacity: 0.92; } 71% { opacity: 0.42; } 74% { opacity: 1; } }
+@keyframes er-tw-c { 0%, 100% { opacity: 1; } 30% { opacity: 0.9; } 36% { opacity: 0.58; } 38.5% { opacity: 1; } 70% { opacity: 0.8; } 85% { opacity: 1; } }
+
+/* the light of the day: the window's grey on the wall round it and on the floor in front of it */
+.stage .er-winlight { position: absolute; left: 120px; top: 10px; width: 360px; height: 320px; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(46% 44% at 50% 42%, rgba(168, 180, 210, 0.2), rgba(150, 160, 192, 0.07) 58%, rgba(150, 160, 192, 0) 78%); }
+.stage .er-shaft { position: absolute; left: 140px; top: 360px; width: 320px; height: 110px; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(50% 62% at 50% 24%, rgba(176, 188, 220, 0.15), rgba(176, 188, 220, 0) 76%); }
+/* the fairy lights' warm wash on the top of the wall (night) */
+.stage .er-wash { position: absolute; left: 0; top: 10px; width: 600px; height: 150px; pointer-events: none; mix-blend-mode: screen;
+  background: linear-gradient(180deg, rgba(255, 176, 196, 0) 0%, rgba(255, 166, 188, 0.2) 28%, rgba(255, 150, 176, 0.07) 64%, rgba(255, 150, 176, 0) 100%); }
+
+/* the lava lamp: purple water, pink wax rising and sinking, a pool of it at the bottom; its glow on the wall */
+.stage .er-lava { background: linear-gradient(180deg, #6B3696 0%, #50247E 55%, #3A1862 100%); }
+.stage .er-pool { position: absolute; left: 2px; top: 40px; width: 16px; height: 10px; border-radius: 50% 50% 30% 30% / 70% 70% 30% 30%;
+  background: radial-gradient(circle at 45% 30%, #FFA8C8, #FF5C93 60%, #D93274); }
+.stage .er-blob { position: absolute; border-radius: 50%; background: radial-gradient(circle at 38% 32%, #FFB6CF, #FF5C93 58%, #DF3A7A); }
+.stage .er-blob-0 { left: 5px; top: 31px; width: 9px; height: 10px; animation: er-blob-a 19s ease-in-out infinite alternate; }
+.stage .er-blob-1 { left: 9px; top: 6px; width: 7px; height: 8px; animation: er-blob-b 23s ease-in-out infinite alternate; animation-delay: -7s; }
+.stage .er-blob-2 { left: 4px; top: 22px; width: 6px; height: 6px; animation: er-blob-c 16s ease-in-out infinite alternate; animation-delay: -11s; }
+.stage .er-blob-3 { left: 11px; top: 36px; width: 5px; height: 6px; animation: er-blob-d 27s ease-in-out infinite alternate; animation-delay: -3s; }
+@keyframes er-blob-a { 0% { transform: translateY(0) scale(1.1, 0.85); } 30% { transform: translateY(-9px) scale(0.86, 1.18); } 70% { transform: translateY(-22px) scale(0.95, 1.06); } 100% { transform: translateY(-27px) scale(1.08, 0.9); } }
+@keyframes er-blob-b { 0% { transform: translate(0, 0) scale(1, 1); } 40% { transform: translate(-2px, 9px) scale(0.92, 1.12); } 100% { transform: translate(-3px, 24px) scale(1.1, 0.88); } }
+@keyframes er-blob-c { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(4px, -10px) scale(0.85, 1.2); } 100% { transform: translate(6px, -18px) scale(1.05); } }
+@keyframes er-blob-d { 0% { transform: translate(0, 0) scale(1.2, 0.7); } 35% { transform: translate(-1px, -6px) scale(0.9, 1.25); } 100% { transform: translate(-3px, -31px) scale(1, 1); } }
+.stage .er-lavaglow { position: absolute; left: 106px; top: 196px; width: 170px; height: 170px; pointer-events: none; mix-blend-mode: screen; opacity: 0.3;
+  background: radial-gradient(closest-side, rgba(255, 98, 156, 0.55), rgba(214, 70, 170, 0.2) 48%, rgba(200, 60, 160, 0)); }   /* centred on the glass (191, 281) */
+
+/* the old monitor: the light of its screen, a bar rolling down the glass now and then */
+.stage .er-scanbox { overflow: hidden; }
+.stage .er-scan { position: absolute; left: 0; right: 0; top: -10px; height: 9px; background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0)); animation: er-scan 7.5s linear infinite; }
+@keyframes er-scan { 0% { transform: translateY(0); } 60%, 100% { transform: translateY(72px); } }
+.stage .er-crtglow { position: absolute; left: 359px; top: 147px; width: 260px; height: 200px; pointer-events: none; mix-blend-mode: screen; opacity: 0.22;
+  background: radial-gradient(closest-side, rgba(196, 214, 255, 0.5), rgba(150, 172, 240, 0.2) 50%, rgba(150, 172, 240, 0)); }   /* centred on the screen (489, 247) */
+/* the candle on the skull: its flame, and the light it throws */
+.stage .er-flame { transform-origin: 50% 92%; animation: er-flame 2.3s linear infinite; }
+@keyframes er-flame { 0%, 100% { transform: scale(1, 1) skewX(0); opacity: 1; } 11% { transform: scale(0.96, 1.08) skewX(3deg); } 23% { transform: scale(1.03, 0.94) skewX(-2deg); opacity: 0.92; }
+  37% { transform: scale(0.97, 1.05) skewX(2deg); } 49% { transform: scale(1.02, 0.97) skewX(-3deg); opacity: 1; } 62% { transform: scale(0.95, 1.1) skewX(1deg); }
+  76% { transform: scale(1.03, 0.92) skewX(-2deg); opacity: 0.9; } 88% { transform: scale(0.98, 1.04) skewX(2deg); } }
+.stage .er-candleglow { position: absolute; left: 532px; top: 204px; width: 80px; height: 80px; pointer-events: none; mix-blend-mode: screen; opacity: 0.25;
+  background: radial-gradient(closest-side, rgba(255, 206, 120, 0.55), rgba(255, 170, 80, 0.16) 55%, rgba(255, 160, 70, 0)); }
+.stage .er-vignette { position: absolute; inset: 0; background: radial-gradient(92% 82% at 50% 46%, rgba(10, 4, 16, 0) 58%, rgba(10, 4, 16, 0.34) 100%); }
+
+/* night: the room goes dark and the lights take over: the fairy lights brighter and wider with their wash on the wall,
+   the lava lamp, the screen and the candle each glowing on the wall round them and flickering a little; outside, the
+   street dark with a few windows lit and the streetlamp on; the rain on the glass catches that light */
+.stage[data-scene="emoroom"][data-night="on"] { background: #07040B; }
+.stage[data-scene="emoroom"][data-night="on"] .wall { filter: none; background: linear-gradient(180deg, #0A0D20 72px, #131934 142px, #1C2240 212px); }
+.stage[data-scene="emoroom"][data-night="on"] .floor { filter: none; background: linear-gradient(180deg, #160F1C 0%, #120C18 50%, #0D0812 100%); }
+.stage[data-scene="emoroom"][data-night="on"] .scn-erwall, .stage[data-scene="emoroom"][data-night="on"] .scn-erbed, .stage[data-scene="emoroom"][data-night="on"] .scn-erstand,
+.stage[data-scene="emoroom"][data-night="on"] .scn-erdesk { filter: brightness(0.34) saturate(0.85); }
+.stage[data-scene="emoroom"][data-night="on"] .scn-errug { filter: brightness(0.3) saturate(0.8); }
+.stage[data-scene="emoroom"][data-night="on"] .er-out { filter: brightness(0.3) saturate(0.6) hue-rotate(14deg); }
+.stage[data-scene="emoroom"][data-night="on"] .er-outlit, .stage[data-scene="emoroom"][data-night="on"] .er-wash, .stage[data-scene="emoroom"][data-night="on"] .er-lamp { opacity: 1; }
+.stage[data-scene="emoroom"][data-night="on"] .er-fall { opacity: 0.45; }
+.stage[data-scene="emoroom"][data-night="on"] .er-beads, .stage[data-scene="emoroom"][data-night="on"] .er-run { filter: brightness(0.55); }
+.stage[data-scene="emoroom"][data-night="on"] .er-winlight, .stage[data-scene="emoroom"][data-night="on"] .er-shaft { opacity: 0; }
+.stage[data-scene="emoroom"][data-night="on"] .scn-erwall .er-curtlit { opacity: 0.25; }
+.stage[data-scene="emoroom"][data-night="on"] .er-lights { opacity: 1; }
+.stage[data-scene="emoroom"][data-night="on"] .er-bulb { transform: scale(1.7); }
+.stage[data-scene="emoroom"][data-night="on"] .er-lavaglow { opacity: 1; animation: er-pulse 7.3s ease-in-out infinite alternate; }
+.stage[data-scene="emoroom"][data-night="on"] .er-crtglow { opacity: 1; animation: er-crt 4.1s linear infinite; }
+.stage[data-scene="emoroom"][data-night="on"] .er-candleglow { opacity: 1; animation: er-candle 2.3s linear infinite; }
+@keyframes er-pulse { from { opacity: 0.82; } to { opacity: 1; } }
+@keyframes er-crt { 0%, 100% { opacity: 1; } 31% { opacity: 0.94; } 33% { opacity: 1; } 62% { opacity: 0.96; } 64% { opacity: 0.9; } 66% { opacity: 1; } }
+@keyframes er-candle { 0%, 100% { opacity: 1; } 23% { opacity: 0.84; } 49% { opacity: 1; } 76% { opacity: 0.8; } }
+.stage[data-scene="emoroom"][data-night="on"] .er-vignette { background: radial-gradient(90% 80% at 50% 50%, rgba(6, 2, 10, 0) 52%, rgba(6, 2, 10, 0.5) 100%); }
+.stage[data-scene="emoroom"][data-night="on"] .pet #shadow > * { fill: #030205; }
+@media (prefers-reduced-motion: reduce) {
+  .stage .er-fall-in, .stage .er-run, .stage .er-bulb, .stage .er-blob, .stage .er-scan, .stage .er-flame, .stage .er-lavaglow, .stage .er-crtglow, .stage .er-candleglow { animation: none !important; }
+  .stage .er-fall, .stage .er-run, .stage .er-scan { display: none !important; }
+}

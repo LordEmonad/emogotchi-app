@@ -1,0 +1,61 @@
+/* Emonad (Emonadgotchi, the sixth pet) on the site: every page style that names him (the six-pet layouts, his cards'
+   colour). Loaded at the start only in a build with his switch on (main.tsx), because a stylesheet cannot be switched off
+   by the build's constant the way the code is. His drawing's own styles are emonadgotchi.css, his mint page's mint.css.
+   The tripled classes outrank the four- and five-pet rules (thiccums/site.css, r3tards/site.css), which arrive in
+   stylesheets of their own in no fixed order. */
+
+/* Get a pet: six cards (frok, Sahur, Thiccums, the r3tard, Emonad, the cat). Two across in three rows; from 1040 three
+   across in two rows (the r3tard's five-card rules centred the last two: undone). */
+@media (min-width: 740px) {
+  .adopt-grid.adopt-grid.adopt-grid:has(.adopt-card[data-pet="emonad"]) .adopt-card.adopt-card[data-pet="cat"] { grid-column: auto; }
+}
+@media (min-width: 1040px) {
+  .adopt-grid.adopt-grid.adopt-grid:has(.adopt-card[data-pet="emonad"]) .adopt-card.adopt-card.adopt-card { grid-column: span 2; }
+}
+.adopt-card[data-pet="emonad"] { border-color: rgba(196,160,242,0.42); }
+.adopt-card[data-pet="emonad"] h2 { color: #D9C2F7; }
+
+/* the home page's pet cards: six. Two across in three rows; from 1000 three across in two */
+@media (min-width: 720px) {
+  .pets-three.pets-three.pets-three:has(.pet-card[data-pet="emonad"]) .pet-card.pet-card.pet-card { grid-column: auto; }
+}
+@media (min-width: 1000px) {
+  .pets-three.pets-three.pets-three:has(.pet-card[data-pet="emonad"]) .pet-card.pet-card.pet-card { grid-column: span 2; }
+}
+.pet-card[data-pet="emonad"] { border-color: rgba(196,160,242,0.38); }
+.pet-card[data-pet="emonad"] h2 { color: #D9C2F7; }
+
+/* the stats page's hero tiles with six pets: thirteen tiles. Tiles 1-6 are the pets, 7-9 care / active / names, 10-12
+   the three stunt counts, 13 the items. From 1000: the six pets in one row, then care, active, names and items four
+   across, then the stunts three across. From 720: the pets three across, the four two across, the stunts three across. */
+@media (min-width: 720px) {
+  .stats-kpis.is-six { grid-template-columns: repeat(6, 1fr); }
+  .stats-kpis.is-six > * { grid-column: span 2; }
+  .stats-kpis.is-six > :nth-child(7), .stats-kpis.is-six > :nth-child(8), .stats-kpis.is-six > :nth-child(9), .stats-kpis.is-six > :nth-child(13) { grid-column: span 3; }
+  .stats-kpis.is-six > :nth-child(13) { order: 1; }
+  .stats-kpis.is-six > :nth-child(10), .stats-kpis.is-six > :nth-child(11), .stats-kpis.is-six > :nth-child(12) { order: 2; }
+}
+@media (min-width: 1000px) {
+  .stats-kpis.is-six { grid-template-columns: repeat(12, 1fr); }
+  .stats-kpis.is-six > * { grid-column: span 2; }
+  /* the pets three across in two rows (six in one row left each tile ~95px: its portrait sat on the name and the number) */
+  .stats-kpis.is-six > :nth-child(-n+6) { grid-column: span 4; }
+  .stats-kpis.is-six > :nth-child(7), .stats-kpis.is-six > :nth-child(8), .stats-kpis.is-six > :nth-child(9), .stats-kpis.is-six > :nth-child(13) { grid-column: span 3; }
+  .stats-kpis.is-six > :nth-child(10), .stats-kpis.is-six > :nth-child(11), .stats-kpis.is-six > :nth-child(12) { grid-column: span 4; }
+}
+/* on a phone (two across): care and wallets, names and items, then the stunts with the last one alone across the row
+   (the items tile came last on its own after the stunts, splitting names from the rest) */
+@media (max-width: 719px) {
+  .stats-kpis.stats-kpis.is-six > :nth-child(13) { order: 1; grid-column: auto; }
+  .stats-kpis.stats-kpis.is-six > :nth-child(10), .stats-kpis.stats-kpis.is-six > :nth-child(11), .stats-kpis.stats-kpis.is-six > :nth-child(12) { order: 2; }
+  .stats-kpis.stats-kpis.is-six > :nth-child(12) { grid-column: 1 / -1; }
+}
+
+/* the records with six pets: nine tiles, three across in three rows (four across left the ninth alone on a row); on a
+   phone two across, the ninth across the row */
+@media (min-width: 720px) {
+  .stats-records.stats-records:has(> :nth-child(9):last-child) { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 719px) {
+  .stats-records.stats-records:has(> :nth-child(9):last-child) > :nth-child(9) { grid-column: 1 / -1; }
+}

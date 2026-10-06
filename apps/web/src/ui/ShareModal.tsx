@@ -8,16 +8,18 @@
  * The animated card plays straight away on a canvas. Encoding it to a file can only happen in real
  * time, so that waits until someone actually asks to save or post it.
  */
+import { fallbackName } from '../pets';
 import { useEffect, useRef, useState } from 'react';
 import type { CatView } from '@emo-pets/chain';
 import { shareText } from './shareCard';
-import { LOOPS, loopSeconds, playShareLoop, recordShareVideo, type Loop } from './shareVideo';
+import { hasClips, loopSeconds, loopsOf, playShareLoop, recordShareVideo, type Loop } from './shareVideo';
 
 type Props = { cat: CatView; blob: Blob; onClose: () => void };
 
 export function ShareModal({ cat, blob, onClose }: Props) {
   const [moving, setMoving] = useState(false);
-  const [loop, setLoop] = useState<Loop>(LOOPS[0]!);
+  const loops = loopsOf(cat.col);
+  const [loop, setLoop] = useState<Loop>(loops[0]!);
   const [progress, setProgress] = useState(0);
   const [recording, setRecording] = useState(false);
   const [secs, setSecs] = useState(0);
@@ -38,7 +40,7 @@ export function ShareModal({ cat, blob, onClose }: Props) {
       .then((s) => { if (gone) s(); else stop = s; })
       .catch((e) => { setNote((e as Error).message.slice(0, 90)); setMoving(false); })
       .finally(() => { if (!gone) setLoadingClip(false); });
-    void loopSeconds(loop, cat.crowned).then(setSecs).catch(() => setSecs(0));
+    void loopSeconds(loop, cat.crowned, cat.col).then(setSecs).catch(() => setSecs(0));
     return () => { gone = true; stop?.(); };
   }, [moving, loop, cat]);
 
@@ -89,7 +91,7 @@ export function ShareModal({ cat, blob, onClose }: Props) {
     else { await copy(); composer(); }
   };
 
-  const title = cat.name || `Emogotchi #${cat.id}`;
+  const title = cat.name || fallbackName(cat.col, cat.id);
   const about = secs ? ` — about ${secs}s` : '';
   const hint = loadingClip && !recording
     ? `Loading ${loop.label.toLowerCase()}…`
@@ -105,13 +107,15 @@ export function ShareModal({ cat, blob, onClose }: Props) {
           <h2 id="share-title">{title}</h2>
           <button className="modal-x" onClick={onClose} aria-label="Close">✕</button>
         </div>
-        <div className="share-toggle">
-          <button className={`chip-btn ${!moving ? 'is-on' : ''}`} onClick={() => setMoving(false)} disabled={recording}>Still</button>
-          <button className={`chip-btn ${moving ? 'is-on' : ''}`} onClick={() => setMoving(true)} disabled={recording}>Animated</button>
-        </div>
+        {hasClips(cat.col) && (   /* only the pets whose clips are recorded (shareVideo.ts CLIP_DIR); the others' cards are stills */
+          <div className="share-toggle">
+            <button className={`chip-btn ${!moving ? 'is-on' : ''}`} onClick={() => setMoving(false)} disabled={recording}>Still</button>
+            <button className={`chip-btn ${moving ? 'is-on' : ''}`} onClick={() => setMoving(true)} disabled={recording}>Animated</button>
+          </div>
+        )}
         {moving && (
           <div className="share-loops">
-            {LOOPS.map((l) => (
+            {loops.map((l) => (
               <button key={l.key} className={`chip-btn ${loop.key === l.key ? 'is-on' : ''}`} onClick={() => setLoop(l)} disabled={recording} title={l.blurb}>{l.label}</button>
             ))}
           </div>

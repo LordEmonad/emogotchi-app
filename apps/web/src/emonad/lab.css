@@ -1,0 +1,52 @@
+/* Emonad's lab (dev only). Its own page: dark like his room, the panel under the stage. */
+.emolab {
+  --emo-bg: #0f0a13;
+  --emo-ink: #efe6f6;
+  --emo-dim: #a594b4;
+  --emo-line: #3a2a47;
+  --emo-chip: #1e1527;
+  --emo-on: #7a5389;
+  min-height: 100vh;
+  background: var(--emo-bg);
+  color: var(--emo-ink);
+  padding: 20px 16px 48px;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.emolab-head { max-width: 1200px; margin: 0 auto 12px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.emolab-head h1 { margin: 0; font-size: 28px; letter-spacing: 0.01em; }
+.emolab-head p { margin: 0; color: var(--emo-dim); font-size: 14px; }
+.emolab-stage { max-width: 1200px; margin: 0 auto; border-radius: 14px; overflow: hidden; border: 1px solid var(--emo-line); line-height: 0; }
+.emolab-stage svg { width: 100%; height: auto; display: block; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.emolab-stage .emonad { cursor: pointer; }
+.emolab-bones line { stroke: #ff3d7f; stroke-width: 2; opacity: 0.85; }
+.emolab-bones circle { fill: #ff3d7f; stroke: #fff; stroke-width: 1.5; }
+.emolab-bones { pointer-events: none; }
+.emolab-watch { max-width: 1200px; margin: 12px auto 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.emolab-watchbtn {
+  appearance: none; border: 1px solid #a07ab3; background: linear-gradient(#8d62a0, #6a4580); color: #fff; border-radius: 999px;
+  padding: 12px 22px; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; line-height: 1.2;
+  box-shadow: 0 4px 18px rgba(122, 83, 137, 0.35);
+}
+.emolab-watchbtn:hover { filter: brightness(1.08); }
+.emolab-watchbtn.on { background: #2a1d33; border-color: #6d5480; box-shadow: none; }
+.emolab-beat { flex: 1 1 260px; min-height: 20px; color: var(--emo-ink); font-size: 15px; }
+.emolab-panel { max-width: 1200px; margin: 10px auto 0; display: grid; gap: 10px; }
+.emolab-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.emolab-k { width: 64px; flex: 0 0 64px; color: var(--emo-dim); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; }
+.emolab .chip {
+  appearance: none; border: 1px solid var(--emo-line); background: var(--emo-chip); color: var(--emo-ink);
+  border-radius: 999px; padding: 7px 13px; font: inherit; font-size: 14px; cursor: pointer; line-height: 1.2;
+}
+.emolab .chip:hover:not(:disabled) { border-color: #6d5480; }
+.emolab .chip.on { background: var(--emo-on); border-color: #a07ab3; }
+.emolab .chip:disabled { opacity: 0.45; cursor: default; }
+.emolab .chip.big { padding: 10px 18px; font-weight: 600; }
+.emolab-hint { color: var(--emo-dim); font-size: 13px; }
+@media (max-width: 640px) {
+  .emolab-k { width: 100%; flex-basis: 100%; }
+  .emolab-head h1 { font-size: 24px; }
+  .emolab .chip { padding: 9px 13px; }
+  .emolab-watchbtn { width: 100%; padding: 14px 18px; }
+  .emolab-beat { flex-basis: 100%; text-align: center; }
+}

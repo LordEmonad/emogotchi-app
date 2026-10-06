@@ -1,0 +1,86 @@
+/* ==== r3tards (r3tards.svg: the floating face on a stick figure; LAB ONLY, dev builds only) ====
+   Loaded by the lab's chunk alone, so none of this is in a production build. Every pivot is pinned to a view-box point
+   (r3tards.py: NECK, SHOULDER, HIP, FLOOR), so nothing a group holds can move it. The `…rim` groups are the twins that hold
+   each part's pale edge, one layer under all the ink (r3tards.py build): they pivot exactly where their parts do. */
+.pet.r3tards #head, .pet.r3tards #headrim, .pet.r3tards #crown, .pet.r3tards #halo,
+.pet.r3tards #witchhat, .pet.r3tards #witchhatrim, .pet.r3tards #emohair, .pet.r3tards #emohairrim, .pet.r3tards #kippah, .pet.r3tards #kippahrim,
+.pet.r3tards #keffiyeh, .pet.r3tards #keffiyehrim, .pet.r3tards #pumpkin, .pet.r3tards #pumpkinrim, .pet.r3tards #pumpkinin,
+.pet.r3tards #beanie, .pet.r3tards #beanierim { transform-box: view-box; transform-origin: 100px 111px; }   /* the neck: where the spine runs up behind the lower lip */
+.pet.r3tards #body, .pet.r3tards #arms, .pet.r3tards #bodyrim, .pet.r3tards #armsrim, .pet.r3tards #armsover { transform-box: view-box; transform-origin: 100px 160px; }   /* the hips */
+.pet.r3tards #legL, .pet.r3tards #legR, .pet.r3tards #legLrim, .pet.r3tards #legRrim, .pet.r3tards #legLover { transform-box: view-box; transform-origin: 100px 122.5px; } /* the arms turn about the shoulder */
+.pet.r3tards #footL, .pet.r3tards #footR, .pet.r3tards #footLrim, .pet.r3tards #footRrim { transform-box: view-box; transform-origin: 100px 160px; } /* the legs about the hip */
+.pet.r3tards #figure, .pet.r3tards #cat { transform-box: view-box; transform-origin: 100px 212px; }
+.pet.r3tards #shadow { transform-box: view-box; transform-origin: 100px 212.6px; }
+/* The rig scales #mouth-open (down for a chew, up for a yawn or a scream). On a line drawing that is a fat or a pinched
+   line and a mouth cut off by the lips, so on him it is switched off: an important declaration outranks an animation.
+   His open mouth is drawn at its one size, and the yawn has a mouth of its own (#mouth-gape, moves.ts yawn). */
+.pet.r3tards #mouth-open { transform: none !important; }
+.pet.r3tards [data-twin="mouth-open"] .hoop { transform: none !important; }   /* (so its rings stay put too: rig.ts followLip) */
+/* the yawn's jaw drops from the corners of the mouth (moves.ts jaw) */
+.pet.r3tards #mouth-gape, .pet.r3tards #mouth-gaperim { transform-box: view-box; transform-origin: 100px 78.3px; }
+/* ---- the shop's items on him (r3items.py). He has no head: everything worn there sits on the brows, where the crown floats. ----
+   Each piece's pale edge is a twin of the piece, in the edge layer; where pet.css hides a piece under another, its twin goes too. */
+.pet.r3tards .rig.hatted #kippahrim, .pet.r3tards .rig.pumpkinhead #kippahrim, .pet.r3tards .rig.haskeffiyeh #kippahrim,
+.pet.r3tards .rig.pumpkinhead #payotrim, .pet.r3tards .rig.pumpkinhead #emohairrim,
+.pet.r3tards .rig.hatted #keffiyehrim, .pet.r3tards .rig.pumpkinhead #keffiyehrim { visibility: hidden; }
+/* under the keffiyeh the emo hair shows only in the face's opening (its top stood out over the hood) */
+/* (in the layered drawing, pet/layers.ts, a part that is a box is clipped on the drawing inside it: [data-of]) */
+.pet.r3tards svg.rig.haskeffiyeh:not(.hatted):not(.pumpkinhead) #emohair, .pet.r3tards .petroot.haskeffiyeh:not(.hatted):not(.pumpkinhead) [data-of="emohair"] { clip-path: url(#r3kfopen); }
+.pet.r3tards .rig.haskeffiyeh #emohairrim { visibility: hidden; }
+/* what is worn on a head sits down on the line over his eyes and takes the place of his two brows */
+.pet.r3tards .rig.hatted .r3brow, .pet.r3tards .rig.hashair .r3brow, .pet.r3tards .rig.haskeffiyeh .r3brow, .pet.r3tards .rig.hasmummy .r3brow,
+.pet.r3tards .rig.haskippah:not(.zombie) .r3brow { display: none; }   /* (a zombie has a forehead: his brows are on it) */
+/* the pumpkin is worn whole over the face: nothing of the face shows past it (a brow's end, the yawn's jaw) */
+.pet.r3tards svg.rig.pumpkinhead #head, .pet.r3tards svg.rig.pumpkinhead #headrim,
+.pet.r3tards .petroot.pumpkinhead [data-of="head"], .pet.r3tards .petroot.pumpkinhead [data-of="headrim"] { clip-path: url(#r3pkclip); }
+/* on the emo hair the hat and the kippah ride up onto the mop; a zombie's brain is where they would sit, so the kippah
+   perches on it, cocked (the hat is big enough to cover it) */
+/* under the witch hat the hair comes out from under the brim (the hat is on his head, not on top of the mop) */
+.pet.r3tards svg.rig.hatted.hashair #emohair, .pet.r3tards .petroot.hatted.hashair [data-of="emohair"] { clip-path: url(#r3underhat); }
+.pet.r3tards .rig.hatted #emohairrim { visibility: hidden; }
+/* the kippah's own seat (r3items.py KX, KY): what moves it turns it about that point */
+.pet.r3tards .kippahpose { transform-box: view-box; transform-origin: 99px 58px; }
+/* on the emo hair the kippah sits ON the mop, down on its crown (the top of the hair runs across it, so it is worn, not
+   balanced there). Floating over the hair it was "goofy"; tucked behind the mop it "looks like its behind the emo hair
+   not on it" (the operator, both). */
+.pet.r3tards .rig.hashair .kippahpose { transform: translate(-1px, -29.5px) rotate(-7deg); }
+.pet.r3tards .rig.zombie .kippahpose { transform: translate(3px, -39.5px) rotate(3deg); }
+.pet.r3tards .rig.zombie.hashair .kippahpose { transform: translate(-1px, -29.5px) rotate(-7deg); }
+.pet.r3tards .rig.hasmummy .kippahpose { transform: translate(1px, -33.5px) rotate(-3deg); }   /* on top of the wrapped head */
+.pet.r3tards .rig.hasmummy.hashair .kippahpose { transform: translate(-1px, -29.5px) rotate(-7deg); }
+.pet.r3tards .rig.haskeffiyeh .r3dome { display: none; }         /* the hood takes the wrapped head's place (its top stood out over the cloth) */
+.pet.r3tards .rig.hashair .zbrain, .pet.r3tards .rig.haskeffiyeh .zbrain { display: none; }   /* the hair and the hood cover the brain (it stood out over them) */
+/* under the hair, the head a zombie or a mummy has shows only inside the mop and below it */
+.pet.r3tards .rig.hashair #zombieskull, .pet.r3tards .rig.hashair #zombieheadrim,
+.pet.r3tards .rig.hashair #mummyhead .r3dome, .pet.r3tards .rig.hashair #mummyin, .pet.r3tards .rig.hashair #mummyheadrim { clip-path: url(#r3inhair); }
+/* the bisht's lining is its own brown (his black sticks must read against it): crowned, it is the gold camel wool's light side */
+.pet.r3tards .bisht.gold [fill="#5A4732"] { fill: #E2BC6C; }
+/* the zombie: the lips go a dead green, the whites yellow, the hearts in his eyes sickly */
+.pet.r3tards .rig.zombie path[fill="#965E4C"] { fill: #7C8E5E; }
+.pet.r3tards .rig.zombie .eye path[fill="#FFFFFF"] { fill: #E6E3C2; }
+.pet.r3tards .rig.zombie .eye .pupil path[fill="#FFFFFF"] { fill: #FFFFFF; }
+.pet.r3tards .rig.zombie .eye .pupil path[fill="#EA5FF5"] { fill: #B9C94A; }
+/* his eyelids (purple, the reference's background): a zombie's are his dead skin, a ghost's pale with it. A mummy keeps
+   his (hidden in the dark of the wrappings, his shut eyes were black lines on black) */
+.pet.r3tards .rig.zombie .r3lid path { fill: #7F9160; }
+/* the mummy: whatever of the lips is drawn outside the bandages is linen too (the slit the idle mouth leaves, the patch
+   under a smile or a frown, the yawn's jaw: brown showed through the wrappings); gold on a pharaoh */
+.pet.r3tards .rig.hasmummy #head path[fill="#965E4C"] { fill: #EFE6C8; }
+.pet.r3tards .rig:has(#mummyhead.gold) #head path[fill="#965E4C"] { fill: #E0B54E; }
+.pet.r3tards .mummy.gold path[stroke="#A8956A"] { stroke: #9A7420; }
+.pet.r3tards .rig.ghost .r3lid path { fill: #B9A3CF; }
+/* a dead zombie is a ghost first: its skin pales with the lips */
+.pet.r3tards .rig.ghost path[fill="#95A673"] { fill: #E3D3E0; }
+.pet.r3tards .rig.ghost [fill="#6F8254"] { fill: #C9B4CC; }
+/* the ghost: the lips pale, the line goes a dusk plum, the legs stay (a stick with no legs is a lollipop) */
+.pet.r3tards .rig.ghost path[fill="#965E4C"] { fill: #D9BFD3; }
+.pet.r3tards .rig.ghost #footL, .pet.r3tards .rig.ghost #footR { opacity: 1; }
+
+/* the lab's showreel line, under the action buttons */
+.r3-reel-note { margin: 10px 0 0; text-align: center; font-size: 13px; opacity: 0.8; }
+
+/* the emo pack (DEV only: /emopack). The beanie sits on the line over his eyes like his other hats: his brows go under it,
+   and so do the emo hair (and its edge), the mummy's wrapped head top and a zombie's brain; the witch hat and the pumpkin
+   cover it, edge and all. */
+.pet.r3tards .rig.hasbeanie .r3brow, .pet.r3tards .rig.hasbeanie .r3dome { display: none; }
+.pet.r3tards .rig.hasbeanie #emohairrim, .pet.r3tards .rig.hatted #beanierim, .pet.r3tards .rig.pumpkinhead #beanierim { visibility: hidden; }

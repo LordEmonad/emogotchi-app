@@ -2,6 +2,11 @@
    Motion lives in rig.ts (Web Animations, additive). This file only sets the
    transform boxes and origins every part animates around. */
 .pet svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* lite (the rabbit r1, layers.ts): the drawing as a stack of GPU layer boxes and drawing fragments, all the drawing's box.
+   `.rig` is the rig's root in both modes (the svg, or this stack's `.petroot`), so the recolour rules below reach both. */
+.pet { position: relative; }
+.pet .petroot { position: relative; width: 100%; height: 100%; }
+.pet .lyr, .pet .wrap, .pet .slot, .pet .frag { position: absolute; inset: 0; }   /* a layer is promoted only while a slot animates: 20 pre-promoted layers cost the r1 5 ms a frame */
 .pet #cat, .pet #figure, .pet #shadow, .pet #eyeL, .pet #eyeR, .pet #tail, .pet #fringe, .pet #crown, .pet #crownlift,
 .pet #earL, .pet #earR, .pet #head, .pet #headstack, .pet #body, .pet #pendant, .pet .pupil, .pet .lid,
 .pet #legL, .pet #legR, .pet #footL, .pet #footR, .pet #glintL, .pet #glintC, .pet #glintR, .pet #sweat, .pet #tear,
@@ -14,7 +19,7 @@
 .pet #fringe { transform-origin: 20% 10%; }
 .pet #crown, .pet #crownlift { transform-origin: 50% 70%; }
 /* the head unit (face, back hair, crown) pivots at the neck; one shared point so nothing detaches */
-.pet #head, .pet #headstack, .pet #crown, .pet #witchhat { transform-box: view-box; transform-origin: 100px 132px; }
+.pet #head, .pet #headstack, .pet #crown, .pet #witchhat, .pet #pumpkin, .pet #kippah { transform-box: view-box; transform-origin: 100px 132px; }
 .pet #body { transform-origin: 50% 100%; }
 .pet #cat, .pet #figure { transform-origin: 50% 100%; }
 .pet #shadow { transform-origin: 50% 50%; }
@@ -23,6 +28,11 @@
 .pet #legL { transform-origin: 30% 14%; }
 .pet #legR { transform-origin: 70% 14%; }
 .pet #footL, .pet #footR { transform-origin: 50% 50%; }
+/* the cat's legs and right ear pinned to the same points their bare boxes give (30% 14%, 70% 14%, 15% 95%): a costume
+   piece inside them (mummy bands, zombie scars, the ear's bandage) widens the box and would move the pivot */
+.pet.cat #legL { transform-box: view-box; transform-origin: 72.04px 155.36px; }
+.pet.cat #legR { transform-box: view-box; transform-origin: 127.44px 154.61px; }
+.pet.cat #earR { transform-box: view-box; transform-origin: 123.93px 59.29px; }
 .pet #glintL, .pet #glintC, .pet #glintR { transform-origin: 50% 50%; }
 .pet #sweat, .pet #tear { transform-origin: 50% 0%; }
 .pet #pendant { transform-origin: 50% 0%; }
@@ -31,18 +41,42 @@
 .pet[data-crown="off"] #crown { display: none; }
 .pet #halo { transform-box: fill-box; transform-origin: 50% 50%; }
 
+/* the zombie reskin: `.zombie` on the svg recolours by fill like the ghost. Mossy grey fur, a deader plum in
+   the hair, a bruised nose, a sickly yellow-green iris; the collar, wristbands and pendant keep their colour */
+.pet .rig.zombie path[fill="#F8F8FF"] { fill: #B4C8AC; }
+.pet .rig.zombie path[stroke="#F8F8FF"] { stroke: #B4C8AC; }   /* the front legs are tubes: a fur-coloured stroke, not a fill */
+.pet .rig.zombie #dirt path[fill="#502858"] { fill: #3A2A1C; }   /* grime shows as mud on the grey-green fur, not as a faint plum */
+.pet .rig.zombie path[fill="#502858"] { fill: #3B2C47; }
+.pet .rig.zombie path[fill="#724278"] { fill: #5A4A6C; }
+.pet .rig.zombie path[fill="#E84D7F"] { fill: #8E5C79; }
+.pet .rig.zombie path[fill="#EAC6EA"] { fill: #C7B3C8; }
+.pet .rig.zombie .eye .pupil path[fill="#906096"] { fill: #B9C94A; }
+.pet .rig.zombie .eye .pupil path[fill="#B894D8"] { fill: #DCE58A; }
+/* and the frog: grey-green skin, bruised lips, yellowed eye whites (the highlights in the pupils stay white) */
+.pet.frog .rig.zombie path[fill="#5A8E43"] { fill: #77897E; }
+.pet.frog .rig.zombie path[fill="#A05649"] { fill: #6B4E6E; }
+.pet.frog .rig.zombie .eye path[fill="#FFFFFF"] { fill: #E6E3C2; }
+.pet.frog .rig.zombie .eye .pupil path[fill="#FFFFFF"] { fill: #FFFFFF; }
+/* (these come before the ghost rules on purpose: a dead zombie is a ghost first) */
+
 /* ==== ghost (dead) ==== */
-.pet svg { transition: filter 800ms ease; }
-.pet svg #figure path { transition: fill 800ms ease; }
-.pet svg #figure, .pet svg #footL, .pet svg #footR, .pet svg #shadow { transition: opacity 800ms ease; }
-.pet svg.ghost { filter: drop-shadow(0 0 18px rgba(184, 148, 216, 0.55)); }
-.pet svg.ghost #figure { opacity: 0.86; }
-.pet svg.ghost #footL, .pet svg.ghost #footR, .pet svg.ghost #shadow { opacity: 0; }
-.pet svg.ghost path[fill="#F8F8FF"] { fill: #EAC6EA; }
-.pet svg.ghost path[fill="#502858"] { fill: #906096; }
-.pet svg.ghost path[fill="#724278"] { fill: #B894D8; }
-.pet svg.ghost path[fill="#906096"] { fill: #B894D8; }
-.pet svg.ghost path[fill="#E84D7F"] { fill: #EAC6EA; }
+.pet .rig { transition: filter 800ms ease; }
+.pet #figure path { transition: fill 800ms ease; }
+.pet #figure, .pet #footL, .pet #footR, .pet #shadow { transition: opacity 800ms ease; }
+.pet .rig.ghost { filter: drop-shadow(0 0 18px rgba(184, 148, 216, 0.55)); }
+.pet .rig.ghost #figure { opacity: 0.86; }
+.pet .rig.ghost #footL, .pet .rig.ghost #footR, .pet .rig.ghost #shadow { opacity: 0; }
+.pet .rig.ghost path[fill="#F8F8FF"] { fill: #EAC6EA; }
+.pet .rig.ghost path[fill="#502858"] { fill: #906096; }
+.pet .rig.ghost path[fill="#724278"] { fill: #B894D8; }
+.pet .rig.ghost path[fill="#906096"] { fill: #B894D8; }
+.pet .rig.ghost path[fill="#E84D7F"] { fill: #EAC6EA; }
+/* the zombie's sewn patch, the frog's robe patch and hem rips pale with the ghost too */
+.pet .rig.ghost path[fill="#93AD8C"] { fill: #C9BAD2; }
+.pet .rig.ghost path[fill="#55664F"] { fill: #A8C0A0; }
+.pet .rig.ghost path[fill="#2E3B2A"] { fill: #8FA68A; }
+.pet .rig.zombie.ghost path[stroke="#F8F8FF"] { stroke: #F8F8FF; }           /* the legs go back to the plain ghost's */
+.pet.frog .rig.zombie.ghost .eye path[fill="#FFFFFF"] { fill: #FFFFFF; }     /* and the eyes to white */
 
 /* A crowned cat in a costume wears the golden version of it: the crown itself would be hidden under a
    hat, so the hat carries the status instead. Same drawing, recoloured by fill, like the ghost. The
@@ -51,3 +85,195 @@
 .pet #witchhat.gold path[fill="#502858"] { fill: #D4A646; }
 .pet #witchhat.gold path[stroke="#724278"] { stroke: #A8741F; }
 .pet #witchhat.gold path[stroke="#EAC6EA"] { stroke: #FFFFFF; }
+/* the emo hair's gold: the fringe in the crown's gold, its strands in the darker base gold */
+.pet #emohair.gold path[fill="#502858"] { fill: #E8D89B; }
+.pet #emohair.gold path[stroke="#724278"] { stroke: #A8741F; }
+
+/* ==== the Halloween outfits (pumpkin, mummy, zombie) ==== */
+/* the jack-o'-lantern hides the crown like the hat does, so crowned it goes gold: flesh in the crown's pale gold,
+   ribs and stem in the base gold, the carved face lit white */
+/* (a deep gilded gold, not the crown's pale one: next to the golden emo hair the two must not melt into one mass).
+   Matched on any element, not just paths: the frog's pumpkin is unbaked ellipses */
+.pet #pumpkin.gold [fill="#F08A24"] { fill: #E0AE3E; }
+.pet #pumpkin.gold [fill="#DD7A1F"] { fill: #C9962F; }
+.pet #pumpkin.gold [stroke="#C9651A"] { stroke: #9C6A16; }
+.pet #pumpkin.gold [fill="#3E6B2E"] { fill: #9C6A16; }
+.pet #pumpkin.gold [stroke="#3E6B2E"] { stroke: #9C6A16; }
+.pet #pumpkin.gold [fill="#6BB84A"] { fill: #F2D27A; }
+/* a crowned mummy is a pharaoh: gold wrappings with a turquoise stripe (the crown's own gem), so the crown still
+   stands out against them */
+.pet .mummy.gold path[fill="#EFE6C8"] { fill: #E0B54E; }
+.pet .mummy.gold path[stroke="#D9CBA3"] { stroke: #2D7D8A; }
+/* a crowned zombie is sewn with gold thread */
+.pet .zombie.gold path[stroke="#111111"] { stroke: #D4A646; }
+/* the pumpkin is worn over the whole head: the cat's ears and back hair are inside it, and the head is clipped to the
+   pumpkin's outline so nothing on the face pokes out past it; the carved holes show the face as it is */
+.pet .rig.pumpkinhead #headstack { display: none; }
+.pet.cat svg.rig.pumpkinhead #head, .pet.cat .petroot.pumpkinhead [data-of="head"] { clip-path: url(#pkclip); }
+.pet.cat .rig.pumpkinhead #fringe { visibility: hidden; }   /* no fringe inside the pumpkin: both eyes look out (operator's call) */
+.pet .rig.pumpkinhead #emohair { visibility: hidden; }        /* the frog's emo hair is inside the pumpkin as well */
+.pet.frog svg.rig.pumpkinhead #head, .pet.frog .petroot.pumpkinhead [data-of="head"] { clip-path: url(#frogpkclip); }
+/* a ghost's pumpkin goes pale */
+.pet .rig.ghost #pumpkin [fill="#F08A24"] { fill: #F2CBA6; }
+.pet .rig.ghost #pumpkin [fill="#DD7A1F"] { fill: #E3B690; }
+.pet .rig.ghost #pumpkin.gold [fill="#F08A24"] { fill: #F0DDA8; }   /* a crowned ghost keeps a pale gold */
+.pet .rig.ghost #pumpkin.gold [fill="#DD7A1F"] { fill: #E6CF94; }
+
+
+/* ==== the frog (frog.svg) ====
+   Same ids, different body: the pivots move. The head unit turns at the neck, the arms hang from the
+   shoulders, the cloak's corner (#tail) swings from where it leaves the robe. */
+.pet.frog #cat { transform-box: view-box; transform-origin: 100px 212px; transition: transform 200ms ease-in-out; }   /* the turn: a mirror, eased */
+.pet.frog #body, .pet.frog #bodysq, .pet.frog #arms, .pet.frog #armssq { transform-box: view-box; transform-origin: 100px 212px; }   /* the arms are a second body group, drawn over the head */                                            /* bows from the base of the robe */
+.pet.frog #head, .pet.frog #crown, .pet.frog #witchhat, .pet.frog #emohair, .pet.frog #pumpkin, .pet.frog #kippah { transform-box: view-box; transform-origin: 98px 86px; }
+.pet.frog #legL { transform-box: view-box; transform-origin: 74.25px 96.5px; }      /* LEGL_PIVOT: the sleeve's top (60% 3% of its bare box), pinned so a costume piece wider than the arm cannot move it; #camera shares it */
+.pet.frog #legLsq { transform-box: view-box; transform-origin: 65.16px 96.5px; }   /* the same point through frog.py's pinch() */
+.pet #robeback, .pet #robebacksq, .pet #sleeveLsq, .pet #sleeveRsq, .pet #emohair { transform-box: fill-box; }
+.pet.frog #camera { transform-box: view-box; transform-origin: 74.25px 96.5px; }   /* the near sleeve's pivot (60% 3% of its box, measured), so the camera turns with the sleeve */
+.pet.frog #camlevel { transform-box: view-box; transform-origin: 83px 154px; }     /* the camera's own centre at rest: turned back by the arm's angle so it stays level */
+/* the near eye carries the inked rims of both eyes, so both scale about one shared point or the rims come away from the
+   whites; the point is on the brow, because the head's outline is drawn over the whites' top edge and eyes that grow
+   upward slide under it and show it as a line across them */
+.pet.frog #eyeL, .pet.frog #eyeR { transform-box: view-box; transform-origin: 146px 40px; }   /* the near eye's top-front corner: the whites grow down and back, never past the snout's line */
+.pet.frog #legR, .pet.frog #legRsq { transform-box: view-box; transform-origin: 124px 103px; }
+.pet.frog #tail { transform-box: view-box; transform-origin: 62px 181px; }   /* the cloak tip flutters from its base */
+.pet.frog #footL, .pet.frog #footR { transform-origin: 50% 40%; }
+.pet.frog .rig.ghost path[fill="#5A8E43"] { fill: #BFD9B2; }
+.pet.frog .rig.ghost path[fill="#A05649"] { fill: #DDB8B1; }
+.pet.frog .rig.ghost path[fill="#3B1718"] { fill: #8C6A6B; }
+
+/* ==== Tung Tung Tung Sahur (sahur.svg) ====
+   A log with a face. The head unit is the top of the log and pivots where the log is cut (its "neck", y=96); the
+   arms hang from the log's walls at the shoulders and the legs swing from hips inside the log. The pivots are
+   pinned to view-box points: the bat widens the near arm's box and would move a fill-box origin. */
+/* he is a rigid log: the head unit, the body, the arms and the crown all turn together about the hips (the rig puts
+   them all in `heads` on him and nothing in `bodies`), so the seam between the log's two halves never moves; the
+   legs are not in #body and stay planted */
+.pet.sahur #head, .pet.sahur #crown, .pet.sahur #body, .pet.sahur #arms, .pet.sahur #witchhat, .pet.sahur #emohair, .pet.sahur #pumpkin, .pet.sahur #kippah, .pet.sahur #robeback { transform-box: view-box; transform-origin: 100px 134px; }
+.pet.sahur svg.rig.pumpkinhead #head, .pet.sahur .petroot.pumpkinhead [data-of="head"] { clip-path: url(#sahurpkclip); }   /* the pumpkin is worn over the top of the log: nothing of the head shows past it but through the holes */
+.pet.sahur #foreR { transform-box: view-box; transform-origin: 125.2px 108px; }      /* the free arm's elbow: the forearm folds here */
+.pet.sahur #bowllevel, .pet.sahur #bowlfront { transform-box: view-box; transform-origin: 124.5px 150px; }  /* the held bowl's rim centre: the rig counter-turns both halves so it stays level */
+/* the arms turn about the shoulder joints ON the walls (x 81.1 / 118.9 at y 80.2, `wall_x` in sahur.py); they were pinned 1.6
+   outside the log, so a raised arm's root swept round a point off the body and the join opened (2026-09-25) */
+.pet.sahur #legL { transform-box: view-box; transform-origin: 81.1px 80.2px; }
+.pet.sahur #legR { transform-box: view-box; transform-origin: 118.9px 80.2px; }
+.pet.sahur #footL { transform-box: view-box; transform-origin: 93px 132px; }
+.pet.sahur #footR { transform-box: view-box; transform-origin: 107px 132px; }
+/* the zombie on him: rotten grey-green wood (the cylinder gradients swapped for their green twins), yellowed eye whites, a sickly iris */
+.pet.sahur .rig.zombie [fill="url(#sahurlogU)"] { fill: url(#sahurlogZ); }
+.pet.sahur .rig.zombie [fill="url(#sahurlimb)"] { fill: url(#sahurlimbZ); }
+.pet.sahur .rig.zombie [fill="url(#sahurarmR)"] { fill: url(#sahurarmRZ); }
+.pet.sahur .rig.zombie [fill="#D2822E"] { fill: #7E8E5A; }   /* the thumbs are plain wood, not a gradient */
+.pet.sahur .rig.zombie [fill="url(#sahureyewhite)"] { fill: url(#sahureyewhiteZ); }
+.pet.sahur .rig.zombie .eye .pupil [fill="#5A3010"] { fill: #8FA020; }
+.pet.sahur .rig.zombie .eye .pupil [fill="#8E5C2A"] { fill: #C9D65A; }
+/* (these come before his ghost rules on purpose: a dead zombie is a ghost first) */
+/* his legs live in the foot groups (the whole leg swings from the hip), so a ghost keeps them: a floating log with its legs dangling, not a legless one */
+.pet.sahur .rig.ghost #footL, .pet.sahur .rig.ghost #footR { opacity: 0.86; }
+/* his wood is gradients (the log, the limbs, the bat are cylinders): a ghost pales them by their url fill */
+.pet.sahur .rig.ghost [fill="url(#sahurlog)"], .pet.sahur .rig.ghost [fill="url(#sahurlogU)"], .pet.sahur .rig.ghost [fill="url(#sahurlimb)"], .pet.sahur .rig.ghost [fill="url(#sahurarmR)"] { fill: #EBCBA8; }
+.pet.sahur .rig.ghost [fill="#5E6A48"] { fill: #A8C0A0; }   /* the zombie's sewn patch pales with the ghost too */
+.pet.sahur .rig.ghost [fill="url(#sahurbat)"] { fill: #DDB48F; }
+.pet.sahur .rig.ghost [fill="url(#sahurcapglow)"], .pet.sahur .rig.ghost [fill="url(#sahurlit)"], .pet.sahur .rig.ghost [fill="url(#sahurshade)"] { opacity: 0.35; }
+/* a ghost's wood pales; the arms and legs are tubes, a wood-coloured stroke */
+.pet.sahur .rig.ghost [fill="#D2822E"] { fill: #EBCBA8; }
+.pet.sahur .rig.ghost [stroke="#D2822E"] { stroke: #EBCBA8; }
+.pet.sahur .rig.ghost [fill="#E9B26A"] { fill: #F3E0C4; }
+.pet.sahur .rig.ghost [fill="#B8661F"] { fill: #DDB48F; }
+.pet.sahur .rig.ghost [fill="#7A3A16"] { fill: #C9A48C; }
+.pet.sahur .rig.ghost [fill="#3B1718"] { fill: #8C6A6B; }
+/* the Jewish pack on him: the kippah sits on the flat top of the log; on the emo hair it rides up onto the hair's crown
+   (`.hashair`, rig.ts setHair), and a zombie's cap is split with the brain out, so it perches on the brain, cocked */
+.pet.sahur .kippahpose { transform-box: fill-box; transform-origin: 50% 100%; }
+.pet.sahur .rig.hashair .kippahpose { transform: translateY(-9px); }
+.pet.sahur .rig.zombie .kippahpose { transform: translate(3px, -12px) rotate(7deg); }
+.pet.sahur .rig.zombie.hashair .kippahpose { transform: translateY(-10px); }   /* the hair covers the brain: back on the hair */
+
+/* ==== the Jewish pack (kippah + payot, Star of David) ====
+   The kippah: white with the flag's two blue stripes near the rim and a blue Star of David on top (#FDFDFB white,
+   #0038B8 blue, #D5DCEA shade). Crowned it is the golden kippah and the crown is hidden (rig.ts gild), like the emo
+   hair. The payot are the pet's own hair colour (#502858 / #724278), so the ghost and zombie rules above already
+   recolour them. The pendant is silver and blue; crowned it is gold. Per-character rules go under each section. */
+.pet .rig.hatted #kippah, .pet .rig.pumpkinhead #kippah, .pet .rig.pumpkinhead #payot { visibility: hidden; }
+/* (a deep gilded gold like the golden pumpkin's, not the crown's pale one: that read as white against the Western
+   Wall's stone and melted into the golden emo hair) */
+.pet #kippah.gold [fill="#FDFDFB"] { fill: #E0AE3E; }
+.pet #kippah.gold [fill="#D5DCEA"] { fill: #C9962F; }
+.pet .rig.ghost #kippah [fill="#0038B8"] { fill: #9DB0E4; }
+.pet .rig.ghost #kippah [stroke="#0038B8"] { stroke: #9DB0E4; }
+.pet #davidstar.gold [fill="#DDE3EC"], .pet #davidstarsq.gold [fill="#DDE3EC"] { fill: #E8D89B; }
+.pet #davidstar.gold [fill="#A9B3C4"], .pet #davidstarsq.gold [fill="#A9B3C4"] { fill: #D4A646; }
+.pet #davidstar.gold [stroke="#A9B3C4"], .pet #davidstarsq.gold [stroke="#A9B3C4"] { stroke: #A8741F; }
+.pet .rig.ghost #davidstar [fill="#0038B8"], .pet .rig.ghost #davidstarsq [fill="#0038B8"] { fill: #9DB0E4; }
+/* the chain is a silver stroke and the star's blue inlay a blue one */
+.pet #davidstar.gold [stroke="#DDE3EC"], .pet #davidstarsq.gold [stroke="#DDE3EC"] { stroke: #E8D89B; }
+.pet .rig.ghost #davidstar [stroke="#0038B8"], .pet .rig.ghost #davidstarsq [stroke="#0038B8"] { stroke: #9DB0E4; }
+/* frok: the kippah is drawn twice in frog.svg, on his head and on the emo hair's bigger crown (`.hashair`, rig.ts
+   setHair); his payot are outlined strokes, not fills, so the hair's zombie and ghost colours are restated for strokes
+   (zombie first: a dead zombie is a ghost first) */
+.pet.frog .rig.hashair #kippah .kiphead { display: none; }   /* (.kiphair is display="none" in the file) */
+.pet.frog .rig.hashair #kippah .kiphair { display: inline; }
+.pet.frog .rig.zombie #payot [stroke="#502858"] { stroke: #3B2C47; }
+.pet.frog .rig.zombie #payot [stroke="#724278"] { stroke: #5A4A6C; }
+.pet.frog .rig.ghost #payot [stroke="#502858"] { stroke: #906096; }
+.pet.frog .rig.ghost #payot [stroke="#724278"] { stroke: #B894D8; }
+/* cat: the star hangs on the collar's ring in place of the $EMO tag */
+.pet.cat .rig.hasstar #emotag { display: none; }
+
+/* the Habibi pack's head-unit pieces pivot with the head (the same points as each character's #kippah) */
+.pet #keffiyeh, .pet #keffiyehback { transform-box: view-box; transform-origin: 100px 132px; }
+.pet.frog #keffiyeh, .pet.frog #keffiyehback, .pet.frog #keffiyehdrape { transform-box: view-box; transform-origin: 98px 86px; }
+.pet.sahur #keffiyeh, .pet.sahur #keffiyehback, .pet.sahur #bishtback { transform-box: view-box; transform-origin: 100px 134px; }
+/* ==== the Habibi pack (keffiyeh + agal, bisht) ====
+   The keffiyeh is the red-and-white shemagh (#FAF6F0 cotton, #E4D8CF folds, #C8102E / #9E0B24 check) held on by the agal
+   (#1C1A1A cord, #4A4646 light). Two layers in the head unit: #keffiyehback behind the head, #keffiyeh over it. It covers
+   the cat's ears and back hair; the witch hat and the pumpkin cover it (and the ears come back under the hat); it takes the
+   kippah's place if both are on (the site allows one head piece at a time). Crowned, the agal is gold (the crown's seat is
+   under it: rig.ts gild hides the crown), the gold-thread agal of the old rulers. A ghost's shemagh pales. */
+.pet .rig.haskeffiyeh:not(.hatted) #headstack { display: none; }
+.pet .rig.hatted #keffiyeh, .pet .rig.hatted #keffiyehback, .pet .rig.hatted #keffiyehdrape, .pet .rig.pumpkinhead #keffiyeh, .pet .rig.pumpkinhead #keffiyehback, .pet .rig.pumpkinhead #keffiyehdrape { visibility: hidden; }
+.pet .rig.haskeffiyeh #kippah { visibility: hidden; }
+.pet .rig.haskeffiyeh .zbrain { display: none; }   /* a zombie's brain is under the cloth (it poked up through the top of it) */
+.pet.frog svg.rig.haskeffiyeh #emohair { clip-path: url(#frogkfhairclip); }   /* the frok's emo hair shows only in the face's opening */
+.pet.cat svg.rig.haskeffiyeh:not(.hatted):not(.pumpkinhead) #fringe { clip-path: url(#kffaceclip); }   /* the cat's own fringe shows only on her face, tucked under the cloth */
+/* the bisht: warm black wool (#221C17, #3A3129 sheen, #15110E folds) with gold zari (#D9A93C, #A5761C, #F6DC8E) down its
+   open front and at the cuffs. Crowned, it is the golden bisht: a gold camel wool and a brighter gold (every outfit has
+   its golden version; the crown stays in view above it, like the mummy's). A ghost's stays dark, like the witch's robe. */
+.pet .bisht.gold [fill="#221C17"] { fill: #B98A3E; }
+.pet .bisht.gold [stroke="#221C17"] { stroke: #B98A3E; }   /* the cat's sleeves are tubes: a stroke */
+.pet .bisht.gold [stroke="#3A3129"] { stroke: #E2BC6C; }
+.pet .bisht.gold [fill="#3A3129"] { fill: #E2BC6C; }
+.pet .bisht.gold [stroke="#15110E"] { stroke: #7E5A1C; }
+.pet .bisht.gold [fill="#D9A93C"] { fill: #F4D77E; }
+.pet .bisht.gold [fill="#A5761C"], .pet .bisht.gold [stroke="#A5761C"] { fill: #B8862A; }
+.pet .bisht.gold [stroke="#A5761C"] { stroke: #B8862A; }
+.pet #keffiyeh.gold [fill="#1C1A1A"] { fill: #D4A646; }
+.pet #keffiyeh.gold [stroke="#4A4646"] { stroke: #FFF3C4; }
+.pet .rig.ghost [fill="#FAF6F0"] { fill: #F3E2F3; }
+.pet .rig.ghost [fill="#E4D8CF"] { fill: #DCC6E0; }
+.pet .rig.ghost [fill="#C8102E"] { fill: #D59BBF; }
+.pet .rig.ghost [fill="#9E0B24"] { fill: #BD86AE; }
+.pet .rig.ghost [stroke="#C8102E"] { stroke: #D59BBF; }
+.pet .rig.ghost [stroke="#9E0B24"] { stroke: #BD86AE; }
+
+/* ==== the emo pack (beanie, emo clothes, wristbands, eyeliner; DEV only until it is an item: /emopack) ====
+   The beanie is black knit (#1D1921, ribs #2F2934, fold #0E0B11) with black emo hair under it (#15121A, strands #3D3545)
+   and a pink broken-heart patch. It is a head piece (one of beanie / kippah / keffiyeh on the site); it covers the emo hair
+   item, and on the cat her own plum mop and her ears (her hair under it is black). The witch hat and the pumpkin cover it.
+   Crowned, the crown sits on top of the hat (rig.ts BEANIE_CROWN) and the patch is gold. A ghost's beanie stays black, its
+   heart pales with every pink. The clothes are black with purple stripes (the ghost's purple rule pales them) and a
+   checkerboard in their own black and white (#141118 / #F4F2F7, never the fur's white); crowned, the stripes are gold. */
+.pet #beanie, .pet #beanieback { transform-box: view-box; transform-origin: 100px 132px; }
+.pet.frog #beanie, .pet.frog #beanieback { transform-box: view-box; transform-origin: 98px 86px; }
+.pet.sahur #beanie, .pet.sahur #beanieback, .pet.sahur #emofitback { transform-box: view-box; transform-origin: 100px 134px; }
+.pet .rig.hasbeanie #emohair, .pet .rig.hasbeanie .zbrain { display: none; }
+.pet .rig.hatted #beanie, .pet .rig.hatted #beanieback, .pet .rig.pumpkinhead #beanie, .pet .rig.pumpkinhead #beanieback { visibility: hidden; }
+.pet.cat .rig.hasbeanie:not(.hatted):not(.pumpkinhead) #headstack, .pet.cat .rig.hasbeanie:not(.hatted):not(.pumpkinhead) #fringe { display: none; }
+.pet #beanie.gold [fill="#E84D7F"] { fill: #E0AE3E; }
+.pet .emofit.gold .emostripe { display: none; }
+.pet .emofit.gold .emogold { display: inline; }
+/* the lip rings: a pair for every mouth (a twin of it: it shows and fades with it), shown while the piercings are worn;
+   crowned, gold hoops. rig.ts followLip moves each hoop with the lip when a mouth is scaled. */
+.pet .rig:not(.haspiercings) .lipring { display: none !important; }
+.pet .rig.goldpierce .lipring [stroke="#C9CED8"] { stroke: #E0AE3E; }
+

@@ -13,11 +13,13 @@ export function SiteFooter({ extra }: { extra?: React.ReactNode }) {
       <span>An <a href="https://emonad.lol">Emonad</a> thing · $EMO on Monad</span>
       <nav className="foot-right" aria-label="Site">
         <a href="/">Home</a>
-        {chainCfg?.drop && <a href="/claim">Claim</a>}
-        {chainCfg && <a href="/cats">All cats</a>}
+        <a href="/adopt">Get a pet</a>
+        {chainCfg && <a href="/pets">Pet gallery</a>}
+        <a href="/emotown">Emotown</a>
+        {chainCfg && <a href="/nft">Art</a>}
         <a href="/leaderboard">Leaderboard</a>
+        {chainCfg && <a href="/stats">Stats</a>}
         <a href="/faq">FAQ</a>
-        <a href="/nft">NFT</a>
         {marketplace() && <a href={marketplace()!} target="_blank" rel="noreferrer">OpenSea</a>}
         {explorer && <a href={explorer} target="_blank" rel="noreferrer">Contract</a>}
         {extra}

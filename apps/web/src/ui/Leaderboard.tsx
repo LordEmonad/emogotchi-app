@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import type { Collection } from '@emo-pets/chain';
 import { Icon } from './Icon';
+import { PETS, fallbackName, knownPets } from '../pets';
 import { NftArt, type NftState } from './NftArt';
-import { CHAIN_MODE, chainClient } from '../game/chain';
+import { CHAIN_MODE, chainClient, chainCfg } from '../game/chain';
 import { shortAddr } from '../wallet';
 import { BurnBar } from './BurnBar';
 
@@ -10,7 +12,7 @@ import { BurnBar } from './BurnBar';
  * ties broken by the longer streak. Names are the cat's on-chain name if it has one, else the
  * owner's wallet name, else the short address. Data here is a mock until the indexer exists.
  */
-type Row = { rank: number; name: string; named: boolean; owner: string; score: number; streak: number; burned: number; state: NftState };
+type Row = { rank: number; id?: number; name: string; named: boolean; owner: string; ownerAddr?: string; score: number; streak: number; burned: number; state: NftState; abuses?: number };
 
 const MOCK: Row[] = [
   { rank: 1, name: 'Muffin', named: true, owner: 'lordemo.mon', score: 97.4, streak: 41, burned: 2_418_000, state: 'happy' },
@@ -30,34 +32,41 @@ const MOCK: Row[] = [
 const fmt = (n: number) => n.toLocaleString();
 
 /** Live: the contract's crown list, each cat's state read for its name, owner and mood. */
-function useLiveRows(): { rows: Row[] | null; error: string | null } {
+function useLiveRows(col: Collection): { rows: Row[] | null; error: string | null } {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const client = chainClient;
     if (!client) return;
     let dead = false;
+    setRows(null);
     const load = async () => {
       try {
-        const list = await client.crownList();
-        const views = await Promise.all(list.map((e) => client.cat(e.id)));
+        const list = await client.crownList(col);
+        const views = await client.catsByIds(list.map((e) => e.id), col);
         const built = views
           .map((v) => ({ v, live: list.find((e) => e.id === v.id)! }))
           .filter(({ v }) => v.alive)
           .sort((a, b) => b.live.score - a.live.score || b.live.streak - a.live.streak)
-          .map(({ v, live }, i) => ({ rank: i + 1, name: v.name || `Emogotchi #${v.id}`, named: !!v.name, owner: shortAddr(v.owner), score: live.score, streak: v.streak, burned: Math.round(Number(v.monPaid / 1_000_000_000_000_000n) / 1000 * 0.8), state: v.mood as NftState }));
+          .map(({ v, live }, i) => ({ rank: i + 1, id: v.id, name: v.name || fallbackName(col, v.id), named: !!v.name, owner: shortAddr(v.owner), ownerAddr: v.owner.toLowerCase(), score: live.score, streak: v.streak, burned: Math.round(Number(v.monPaid / 1_000_000_000_000_000n) / 1000 * 0.8), state: v.mood as NftState, abuses: (__R3TARDS__ && col === 'r3tards') || (__EMONAD__ && col === 'emonad') ? v.pets : v.screenshots + v.slaps + v.squeezes + v.burns + v.tungs + (__THICCUMS__ ? v.bounces ?? 0 : 0) }));   // (a r3tard has no stunt: his column is how often he has been petted)
         if (!dead) { setRows(built); setError(null); }
       } catch (e) { if (!dead) setError((e as Error).message); }
     };
     void load();
     const id = setInterval(() => void load(), 15000);
     return () => { dead = true; clearInterval(id); };
-  }, []);
+  }, [col]);
   return { rows, error };
 }
 
 export function Leaderboard({ me }: { me?: string | null }) {
-  const liveRows = useLiveRows();
+  const pets = knownPets();
+  const [col, setCol] = useState<Collection>('cat');
+  const frok = col !== 'cat';   // a free pet: his column is his stunts, not MON burned
+  const P = PETS[col];
+  const PET = P.one; const MANY = P.many;
+  const img = (state: NftState) => `/nft/${P.portraits}${state}-1024.png`;
+  const liveRows = useLiveRows(col);
   const data: Row[] = CHAIN_MODE ? (liveRows.rows ?? []) : MOCK;
   const top = data.slice(0, 3); const rest = data.slice(3);
   // live: everyone in the list wears the crown. Demo: the top 100, ties at the 100th place too
@@ -67,9 +76,11 @@ export function Leaderboard({ me }: { me?: string | null }) {
   return (
     <main className="lb">
       <div className="lb-head">
-        <h1>Best kept cats</h1>
-        <p>Care score is your cat's average meters over the last 7 days, live. The 100 best kept cats wear the crown right now: pass the 100th and you take it. A cat needs a week of care history before it can rank. The longer streak breaks ties. Named cats show their name; the rest show their owner's wallet name.</p>
-        <div className="lb-tabs" role="tablist"><button className="is-on" role="tab">This week</button><button role="tab">All time</button><button role="tab">Most burned</button></div>
+        <h1>Best kept {MANY}</h1>
+        <p>Care score is your {PET}'s average meters over the last 7 days, live. The 100 best kept {MANY} wear the crown right now: pass the 100th and you take it. A {PET} needs a week of care history before it can rank. The longer streak breaks ties. Named {MANY} show their name; the rest show their owner's wallet name.</p>
+        {pets.length > 1
+          ? <div className="lb-tabs" role="tablist">{pets.map((c) => <button key={c} className={col === c ? 'is-on' : ''} role="tab" aria-selected={col === c} onClick={() => setCol(c)}>{PETS[c].label}</button>)}</div>
+          : <div className="lb-tabs" role="tablist"><button className="is-on" role="tab">This week</button><button role="tab">All time</button><button role="tab">Most burned</button></div>}
       <BurnBar />
       </div>
 
@@ -77,30 +88,30 @@ export function Leaderboard({ me }: { me?: string | null }) {
         {[top[1], top[0], top[2]].map((r, i) => r && (
           <li key={r.name} className={`podium-card place-${crowned(r) ? 1 : i === 0 ? 2 : 3}`}>
             <span className="podium-rank">{crowned(r) ? `#${r.rank} · wears the crown` : `#${r.rank}`}</span>
-            {crowned(r) ? <div className="podium-img podium-live"><NftArt state={r.state} crown /></div> : <img className="podium-img" src={`/nft/${r.state}-1024.png`} alt="" width={512} height={512} />}
+            {crowned(r) ? <div className="podium-img podium-live"><NftArt state={r.state} crown character={P.character} /></div> : <img className="podium-img" src={img(r.state)} alt="" width={512} height={512} />}
             <span className="podium-name">{r.name}</span>
-            <span className="podium-owner tnum">{r.named ? r.owner : 'unnamed'}</span>
+            {r.named && r.ownerAddr ? <a className="podium-owner tnum" href={`/u/${r.ownerAddr}`}>{r.owner}</a> : <span className="podium-owner tnum">{r.named ? r.owner : 'unnamed'}</span>}
             <span className="podium-score tnum">{r.score.toFixed(1)}</span>
-            <span className="podium-meta tnum"><Icon name="flame" size={12} /> {fmt(r.burned)} · {r.streak}d</span>
+            <span className="podium-meta tnum">{frok ? <><Icon name={col === 'sahur' ? 'tung' : __THICCUMS__ && col === 'thiccums' ? 'sparkle' : (__R3TARDS__ && col === 'r3tards') || (__EMONAD__ && col === 'emonad') ? 'heart' : 'pow'} size={12} /> {fmt(r.abuses ?? 0)}</> : <><Icon name="flame" size={12} /> {fmt(r.burned)}</>} · {r.streak}d</span>
           </li>
         ))}
       </ol>
 
       <div className="lb-table" role="table">
-        <div className="lb-row lb-th" role="row"><span>#</span><span>Cat</span><span className="hide-sm">Owner</span><span>Score</span><span className="hide-sm">Streak</span><span>Burned</span></div>
+        <div className="lb-row lb-th" role="row"><span>#</span><span>{col === 'cat' ? 'Cat' : PET}</span><span className="hide-sm">Owner</span><span>Score</span><span className="hide-sm">Streak</span><span>{col === 'sahur' ? 'Tungs' : __THICCUMS__ && col === 'thiccums' ? 'Bounces' : (__R3TARDS__ && col === 'r3tards') || (__EMONAD__ && col === 'emonad') ? 'Petted' : frok ? 'Abused' : 'Burned'}</span></div>
         {rest.map((r) => (
           <div key={r.name} className={`lb-row ${me && r.owner === me ? 'is-me' : ''}`} role="row">
             <span className="tnum lb-rank">{r.rank}{crowned(r) && <span className="lb-crown" title="Wears the crown">♛</span>}</span>
-            <span className="lb-cat"><img src={`/nft/${r.state}-1024.png`} alt="" width={64} height={64} /><span className="lb-name">{r.name}{!r.named && <small>unnamed</small>}</span></span>
-            <span className="tnum hide-sm lb-owner">{r.owner}</span>
+            <span className="lb-cat"><img src={img(r.state)} alt="" width={64} height={64} /><span className="lb-name">{r.name}{!r.named && <small>unnamed</small>}</span></span>
+            {r.ownerAddr ? <a className="tnum hide-sm lb-owner" href={`/u/${r.ownerAddr}`}>{r.owner}</a> : <span className="tnum hide-sm lb-owner">{r.owner}</span>}
             <span className="tnum lb-score">{r.score.toFixed(1)}</span>
             <span className="tnum hide-sm">{r.streak}d</span>
-            <span className="tnum lb-burn"><Icon name="flame" size={12} /> {fmt(r.burned)}</span>
+            <span className="tnum lb-burn">{frok ? <><Icon name={col === 'sahur' ? 'tung' : __THICCUMS__ && col === 'thiccums' ? 'sparkle' : (__R3TARDS__ && col === 'r3tards') || (__EMONAD__ && col === 'emonad') ? 'heart' : 'pow'} size={12} /> {fmt(r.abuses ?? 0)}</> : <><Icon name="flame" size={12} /> {fmt(r.burned)}</>}</span>
           </div>
         ))}
       </div>
       {CHAIN_MODE
-        ? <p className="lb-note">{liveRows.error ? `Could not read the contract: ${liveRows.error}` : liveRows.rows === null ? 'Reading the crown list from the contract…' : data.length === 0 ? 'No cat wears the crown yet. A cat needs a week of care history before it can rank.' : 'Live from the contract: every cat here wears the crown right now. Scores are the live 7-day average.'}</p>
+        ? <p className="lb-note">{liveRows.error ? `Could not read the contract: ${liveRows.error}` : liveRows.rows === null ? 'Reading the crown list from the contract…' : data.length === 0 ? `No ${PET} wears the crown yet. A ${PET} needs a week of care history before it can rank.` : `Live from the contract: every ${PET} here wears the crown right now. Scores are the live 7-day average.`}</p>
         : <p className="lb-note">Live once the contract and indexer are up. Numbers here are placeholders.</p>}
     </main>
   );

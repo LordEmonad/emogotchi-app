@@ -1,0 +1,430 @@
+/* ==== Emotown ==== */
+.town-boot { position: fixed; inset: 0; background: #120a22; }
+.town { position: fixed; inset: 0; overflow: hidden; background: #120a22; user-select: none; -webkit-user-select: none; cursor: grab; timeline-scope: --town; }
+.town:active { cursor: grabbing; }
+/* the street scrolls natively (compositor-thread scrolling: the platform's own momentum and rubber band, smooth
+   whatever the page is drawing); no scrollbar, no swipe-back navigation at its ends */
+.town-scroll { position: absolute; inset: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; overscroll-behavior-y: none; touch-action: pan-x; scroll-timeline: --town inline; -webkit-overflow-scrolling: touch; }
+.town-scroll::-webkit-scrollbar { display: none; }
+.town-sizer { position: relative; height: 100%; overflow: clip; }   /* exactly the street's width: nothing drawn past its ends may lengthen the scroll */
+.town-street { position: absolute; left: 0; top: 0; }
+/* the parallax, tied to the scroll where the browser can do it on the compositor: progress 0..1 is scrollLeft 0..--span.
+   The keyframes are plain numbers, no var(): each layer's box is exactly --span wide (its drawing overflows it), so a
+   translate of -16% / -42% of its own width is that share of the scroll. An engine may refuse to run an animation whose
+   keyframes read a custom property on its scrolling thread (Safari juddered with calc(var(--span) * -0.42), 2026-09-27). */
+.town.has-timeline .para-far, .town.has-timeline .para-mid { width: var(--span); height: 1px; }
+.town.has-timeline .para-far { animation: para-far linear both; animation-timeline: --town; }
+.town.has-timeline .para-mid { animation: para-mid linear both; animation-timeline: --town; }
+@keyframes para-far { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-16%, 0, 0); } }
+@keyframes para-mid { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-42%, 0, 0); } }
+/* WebKit: the layers inside the scroller, pushed back in depth (Emotown.tsx PARA). perspective-origin at the scroller's
+   top-left corner, and each layer scaled about its own top-left, so a layer's drawing lands at exactly its size and
+   height and only its sideways speed changes. */
+.town-scroll.para3d-on { perspective: 1px; perspective-origin: 0 0; }
+.para3d { position: absolute; left: 0; top: 0; height: 100%; overflow: hidden; transform-origin: 0 0; pointer-events: none; }
+.town-sky { position: absolute; inset: 0; overflow: hidden; background: #07040f; }
+.sky-stars { position: absolute; inset: 0 0 20% 0; background-size: 1600px 900px; background-repeat: repeat-x; background-position: 0 0; }
+.sky-twinkle { position: absolute; border-radius: 50%; background: #FFF4DA; box-shadow: 0 0 6px 1px rgba(255, 236, 200, 0.8); animation: sky-twinkle 3s ease-in-out infinite; }
+@keyframes sky-twinkle { 0%, 100% { opacity: 0.25; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.15); } }
+.sky-moon { position: absolute; right: 9%; top: 7%; width: min(15vh, 150px); aspect-ratio: 1; border-radius: 50%; box-shadow: 0 0 60px 18px rgba(234, 214, 255, 0.16), 0 0 180px 60px rgba(190, 150, 240, 0.12); }
+.sky-moon-disc { position: absolute; inset: 0; border-radius: 50%; background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.55), transparent 42%),
+    radial-gradient(circle at 62% 58%, rgba(150, 120, 190, 0.35) 0 9%, transparent 10%),
+    radial-gradient(circle at 38% 66%, rgba(150, 120, 190, 0.3) 0 6%, transparent 7%),
+    radial-gradient(circle at 70% 32%, rgba(150, 120, 190, 0.28) 0 5%, transparent 6%),
+    radial-gradient(circle at 50% 50%, #F4EAFB 0%, #E4D2F2 55%, #CDB6E6 100%);
+  box-shadow: inset -10px -8px 22px rgba(120, 80, 170, 0.35), 0 0 0 2px rgba(0,0,0,0.6); }
+.sky-shoot { position: absolute; left: 20%; top: 12%; width: 130px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255, 244, 220, 0.95)); transform: rotate(-18deg); opacity: 0; animation: sky-shoot 13s ease-in infinite; animation-delay: 4s; }
+.sky-shoot-2 { left: 58%; top: 6%; animation-duration: 21s; animation-delay: 11s; }
+@keyframes sky-shoot { 0%, 94% { opacity: 0; transform: rotate(-18deg) translateX(0); } 95% { opacity: 1; } 100% { opacity: 0; transform: rotate(-18deg) translateX(260px); } }
+.sky-horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 45%; background: radial-gradient(90% 60% at 50% 100%, rgba(232, 77, 127, 0.18), transparent 70%); }
+@media (prefers-reduced-motion: reduce) { .sky-twinkle, .sky-shoot { animation: none; } .sky-shoot { display: none; } }
+.town-far .strip, .town-mid .strip { position: absolute; display: block; }
+.town-pavement, .town-kerb { position: absolute; background-repeat: repeat-x; background-size: 480px 100%; }
+.tb, .tp { position: absolute; }
+.tb img, .tp img { display: block; width: 100%; height: 100%; pointer-events: none; -webkit-user-drag: none; }
+.tp { pointer-events: none; }
+.pool { position: absolute; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 196, 120, 0.22), rgba(255, 170, 90, 0.08) 60%, transparent); mix-blend-mode: screen; pointer-events: none; }
+
+/* text and light on the buildings (their own units) */
+.sign { position: absolute; display: flex; align-items: center; justify-content: center; pointer-events: none; white-space: nowrap; font-family: var(--font-sans); font-weight: 800; letter-spacing: 0.06em; line-height: 1; }
+.sign.neon-pink { color: #FFE1EC; text-shadow: 0 0 2px #fff, 0 0 6px #FF6FA0, 0 0 14px #E84D7F, 0 0 30px #E84D7F; }
+.sign.neon-lav { color: #F6EAFF; text-shadow: 0 0 2px #fff, 0 0 6px #D9B8FF, 0 0 14px #B894D8, 0 0 30px #9C6BD8; }
+.sign.neon-gold { color: #FFF6D8; text-shadow: 0 0 2px #fff, 0 0 6px #FFD98C, 0 0 14px #F2B14A, 0 0 28px #F2B14A; }
+.sign.neon-red { color: #FFE0DA; text-shadow: 0 0 2px #fff, 0 0 6px #FF6A5A, 0 0 14px #E8312A, 0 0 28px #E8312A; }
+.sign.neon-green { color: #F2FFE0; text-shadow: 0 0 2px #fff, 0 0 6px #B8F07A, 0 0 14px #6BB84A, 0 0 28px #6BB84A; }
+.sign.painted { color: #F3E6C4; font-weight: 700; letter-spacing: 0.1em; text-shadow: 0 2px 0 rgba(0,0,0,0.55); }
+.sign.plaque { color: #3A2410; font-weight: 700; letter-spacing: 0.08em; text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5); }
+.sign.flicker span { animation: sign-flicker 7s linear infinite; }
+@keyframes sign-flicker { 0%, 100% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: 0.35; } 43% { opacity: 1; } 45% { opacity: 0.5; } 46% { opacity: 1; } 78% { opacity: 1; } 79% { opacity: 0.6; } 80% { opacity: 1; } }
+.glow { position: absolute; pointer-events: none; mix-blend-mode: screen; border-radius: 12px; }
+.glow-warm { background: radial-gradient(closest-side, rgba(255, 214, 140, 0.55), rgba(255, 170, 90, 0.18) 65%, transparent); }
+.glow-green { background: radial-gradient(closest-side, rgba(190, 240, 120, 0.5), rgba(107, 184, 74, 0.18) 65%, transparent); }
+.glow-cool { background: radial-gradient(closest-side, rgba(200, 230, 255, 0.45), rgba(150, 190, 240, 0.14) 65%, transparent); }
+.glow.round { border-radius: 50%; }
+@media (prefers-reduced-motion: reduce) { .sign.flicker span { animation: none; } }
+.town-layer { position: absolute; left: 0; right: 0; height: 0; }
+.town-cam { position: absolute; left: 0; top: 0; will-change: transform; }
+.town-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.town-ground { position: absolute; left: -40px; right: -40px; top: 706px; bottom: 0; background: linear-gradient(180deg, #2a1846, #1a0f2e); }
+.bld { position: absolute; top: 300px; height: 406px; background: #2d1a4a; border: 3px solid #000; border-bottom: 0; border-radius: 10px 10px 0 0; display: flex; align-items: flex-start; justify-content: center; }
+.bld span { margin-top: 30px; font: 700 34px var(--font-sans); color: #EAC6EA; }
+/* the plane is drawn over the still street, door tags included: taps go through it (a pet's .catbody takes its own back),
+   or the tags could not be pressed where the plane lay over them ("at court", 2026-09-29) */
+.town-plane { position: absolute; inset: 0; will-change: transform; pointer-events: none; }
+.town-static { position: absolute; inset: 0; will-change: transform; }
+
+/* a pet: the pocket room (the room's layers, scaled onto the street) */
+.town .pocket { position: absolute; left: 0; top: 0; width: 600px; height: 460px; transform-origin: 0 0; pointer-events: none; }
+.town .pocket-room.stage { position: absolute; inset: 0; width: 600px; height: 460px; overflow: visible; border-radius: 0; background: none; isolation: auto; touch-action: none; }
+.town .pocket .catbody { cursor: pointer; }
+/* the room promotes its one pet and every prop to a layer up front; a street of them would be a hundred layers kept
+   up to date every frame, so here they are promoted only while they actually animate (the browser does that itself) */
+.town .pocket-room .cathost, .town .pocket-room .prop { will-change: auto; }
+.town .pocket-mark { position: absolute; width: 190px; height: 44px; margin: -22px 0 0 -95px; border-radius: 50%; opacity: 0; transition: opacity 240ms ease; background: radial-gradient(closest-side, rgba(234, 198, 234, 0.55), rgba(232, 77, 127, 0.18) 60%, transparent); }
+.town .pocket.is-selected .pocket-mark { opacity: 1; }
+.town .pocket.is-mine .pocket-mark { opacity: 0.75; background: radial-gradient(closest-side, rgba(255, 244, 218, 0.55), rgba(232, 77, 127, 0.25) 60%, transparent); }
+.town .pocket.is-mine .pocket-tag { box-shadow: 0 0 0 2px #E84D7F; }
+.town .pocket.is-mine .pocket-tag::before { content: '★'; color: #FFD98C; }
+.town-mine-btn { color: #FFE6A8; border-color: rgba(232, 77, 127, 0.45); }
+/* a ghost's glow: the room gives it a drop-shadow filter, which repaints the whole drawing every frame it floats; on a
+   street of them that is too dear, so here it is a soft light behind it instead */
+.town .pet .rig.ghost { filter: none; }
+.town .pocket-aura { position: absolute; width: 300px; height: 300px; margin: -150px 0 0 -150px; border-radius: 50%; opacity: 0; pointer-events: none; background: radial-gradient(closest-side, rgba(184, 148, 216, 0.42), rgba(184, 148, 216, 0.12) 55%, transparent); transition: opacity 800ms ease; }
+.town .pocket.is-ghost .pocket-aura { opacity: 1; }
+.town .pocket-tag { position: absolute; left: 50%; transform: translate(-50%, -100%); white-space: nowrap; pointer-events: none; font: 700 26px/1 var(--font-sans); color: #F8F8FF; padding: 8px 14px; border-radius: 999px; background: rgba(18, 10, 34, 0.78); box-shadow: 0 0 0 2px rgba(234, 198, 234, 0.35); opacity: 0; transition: opacity 200ms ease; display: flex; align-items: center; gap: 8px; }
+.town .pocket-tag .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #000; }
+.town .pocket .catbody:hover .pocket-tag, .town .pocket.is-selected .pocket-tag, .town .pocket.is-mine .pocket-tag { opacity: 1; }
+.town .room-flash { border-radius: 50%; background: radial-gradient(closest-side, #fff, rgba(255,255,255,0.4) 50%, transparent) !important; inset: -60px 40px !important; }
+.town .town-banner { position: absolute; white-space: nowrap; font: 800 34px/1 var(--font-sans); color: #1a0f2e; background: #E8D89B; padding: 10px 22px; border-radius: 10px; box-shadow: 0 0 0 3px #000, 0 10px 30px rgba(232, 216, 155, 0.45); pointer-events: none; }
+
+/* the heads-up bits */
+.town-ui { position: absolute; z-index: 10; }
+.town-hud { left: 16px; top: 14px; display: flex; align-items: center; gap: 12px; }
+.town-brand { font: 800 22px/1 var(--font-sans); color: #F8F8FF; text-decoration: none; letter-spacing: -0.01em; }
+.town-count { font: 600 13px/1 var(--font-sans); color: rgba(248, 248, 255, 0.8); display: flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; background: rgba(18, 10, 34, 0.6); }
+.town-count .live { width: 8px; height: 8px; border-radius: 50%; background: #6BB84A; box-shadow: 0 0 8px #6BB84A; animation: town-live 1.6s ease-in-out infinite; }
+@keyframes town-live { 50% { opacity: 0.35; } }
+.town-note { font: 500 12px var(--font-sans); color: rgba(248, 248, 255, 0.5); }
+
+/* ---- the interface ---- */
+.town-ui { font-family: var(--font-sans); color: #F8F8FF; cursor: auto; }
+.town-top-right { right: 14px; top: 12px; display: flex; align-items: center; gap: 8px; }
+.town-home, .town-find-btn { font: 600 13px/1 var(--font-sans); color: rgba(248, 248, 255, 0.86); text-decoration: none; padding: 9px 13px; border-radius: 999px; background: rgba(18, 10, 34, 0.66); border: 1px solid rgba(234, 198, 234, 0.16); cursor: pointer; }
+.town-home:hover, .town-find-btn:hover { background: rgba(40, 22, 70, 0.8); }
+.town-find-btn { position: static; }
+.town-find { position: static; width: min(300px, calc(100vw - 150px)); }
+.town-find input { width: 100%; box-sizing: border-box; font: 500 14px var(--font-sans); color: #F8F8FF; background: rgba(18, 10, 34, 0.92); border: 1px solid rgba(234, 198, 234, 0.3); border-radius: 12px; padding: 10px 34px 10px 12px; outline: none; }
+.town-find input:focus { border-color: #E84D7F; }
+.town-find .tf-x { position: absolute; right: 10px; top: 7px; background: none; border: 0; color: rgba(248,248,255,0.6); font-size: 20px; cursor: pointer; }
+.town-find { position: relative; }
+.town-find ul { list-style: none; margin: 6px 0 0; padding: 4px; background: rgba(18, 10, 34, 0.96); border: 1px solid rgba(234, 198, 234, 0.2); border-radius: 12px; position: absolute; left: 0; right: 0; }
+.town-find li button { width: 100%; text-align: left; background: none; border: 0; color: #F8F8FF; font: 600 14px var(--font-sans); padding: 9px 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.town-find li button:hover { background: rgba(232, 77, 127, 0.18); }
+.town-find li em { font-style: normal; font-weight: 500; color: rgba(248, 248, 255, 0.5); font-size: 12px; margin-left: auto; }
+.town-find .tf-none { margin: 6px 0 0; padding: 10px 12px; font-size: 13px; color: rgba(248,248,255,0.6); background: rgba(18, 10, 34, 0.92); border-radius: 10px; position: absolute; left: 0; right: 0; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.8); }
+
+.town-card { right: 16px; top: 62px; width: 340px; max-height: calc(100% - 150px); overflow: auto; box-sizing: border-box; padding: 16px; border-radius: 18px; background: rgba(16, 9, 30, 0.97); border: 1px solid rgba(234, 198, 234, 0.18); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55); animation: tc-in 260ms cubic-bezier(.2,.9,.3,1.1) both; overscroll-behavior: contain; touch-action: pan-y; }
+@keyframes tc-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+.tc-close { position: absolute; right: 10px; top: 8px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(248,248,255,0.08); color: #F8F8FF; font-size: 20px; line-height: 1; cursor: pointer; }
+.tc-close:hover { background: rgba(248,248,255,0.16); }
+.tc-head { display: flex; gap: 12px; align-items: center; padding-right: 26px; }
+.tc-portrait { width: 84px; height: 84px; border-radius: 16px; object-fit: cover; flex: none; background: #24123f; box-shadow: 0 0 0 2px #000, 0 0 0 3px rgba(234,198,234,0.2); }
+.tc-title h2 { margin: 0; font-size: 20px; line-height: 1.15; font-weight: 800; letter-spacing: -0.01em; word-break: break-word; }
+.tc-sub { margin: 4px 0 0; font-size: 12.5px; color: rgba(248, 248, 255, 0.62); display: flex; align-items: center; gap: 6px; }
+.tc-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.chip { font: 700 11px/1 var(--font-sans); padding: 5px 8px; border-radius: 999px; background: rgba(248, 248, 255, 0.1); color: rgba(248, 248, 255, 0.85); }
+.chip-happy, .chip-content { background: rgba(107, 184, 74, 0.2); color: #B8F09A; }
+.chip-hungry, .chip-sad { background: rgba(232, 77, 127, 0.22); color: #FFB3CB; }
+.chip-grubby, .chip-bored, .chip-sleepy { background: rgba(242, 177, 74, 0.2); color: #FFD98C; }
+.chip-sleeping { background: rgba(150, 170, 255, 0.18); color: #C9D2FF; }
+.chip-dead { background: rgba(234, 198, 234, 0.16); color: #EAC6EA; }
+.chip-crown, .chip-gold { background: rgba(232, 216, 155, 0.2); color: #F4E6B0; }
+.tc-meters { margin-top: 14px; display: grid; gap: 7px; }
+.tc-meter { display: grid; grid-template-columns: 54px 1fr 28px; align-items: center; gap: 8px; font-size: 12px; color: rgba(248,248,255,0.7); }
+.tc-meter i { height: 8px; border-radius: 99px; background: rgba(248, 248, 255, 0.09); overflow: hidden; }
+.tc-meter b { display: block; height: 100%; border-radius: 99px; transition: width 600ms ease; }
+.tc-meter em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; color: rgba(248,248,255,0.85); }
+.tc-nums { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tc-nums div { background: rgba(248, 248, 255, 0.05); border-radius: 12px; padding: 9px 8px; text-align: center; }
+.tc-nums b { display: block; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tc-nums span { font-size: 11px; color: rgba(248, 248, 255, 0.55); }
+.tc-record { margin: 12px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 10px; }
+.tc-record div { display: flex; justify-content: space-between; gap: 6px; padding: 4px 0; border-bottom: 1px solid rgba(248, 248, 255, 0.06); font-size: 12px; }
+.tc-record dt { color: rgba(248, 248, 255, 0.55); }
+.tc-record dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tc-line { margin: 9px 0 0; font-size: 12.5px; color: rgba(248, 248, 255, 0.85); display: flex; gap: 8px; }
+.tc-line span { color: rgba(248, 248, 255, 0.5); min-width: 52px; }
+.tc-line a, .tc-foot a { color: #EAC6EA; }
+.tc-actions { display: flex; gap: 8px; margin-top: 14px; }
+.tc-btn { flex: 1; text-align: center; font: 700 13px/1 var(--font-sans); padding: 11px 12px; border-radius: 12px; border: 1px solid rgba(234, 198, 234, 0.25); background: rgba(248, 248, 255, 0.06); color: #F8F8FF; text-decoration: none; cursor: pointer; }
+.tc-btn.primary { background: #E84D7F; border-color: #E84D7F; }
+.tc-btn.on { background: rgba(107, 184, 74, 0.25); border-color: #6BB84A; }
+.tc-foot { margin: 12px 0 0; font-size: 11px; color: rgba(248, 248, 255, 0.45); display: flex; align-items: center; gap: 6px; }
+.live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #6BB84A; box-shadow: 0 0 8px #6BB84A; animation: town-live 1.6s ease-in-out infinite; }
+
+.town-ticker { left: 16px; bottom: 62px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 6px; pointer-events: none; }
+.tk { pointer-events: auto; display: flex; align-items: center; gap: 8px; font: 600 13px/1.2 var(--font-sans); color: #F8F8FF; background: rgba(16, 9, 30, 0.82); border: 1px solid rgba(234, 198, 234, 0.14); border-radius: 999px; padding: 7px 12px 7px 9px; cursor: pointer; animation: tk-in 380ms cubic-bezier(.2,.9,.3,1.2) both; max-width: min(420px, calc(100vw - 32px)); text-align: left; }
+.tk:disabled { cursor: default; }
+.tk-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes tk-in { from { opacity: 0; transform: translateX(-16px); } }
+
+.town-map { left: 50%; bottom: 12px; transform: translateX(-50%); width: min(760px, calc(100% - 32px)); }
+.map-track { position: relative; height: 34px; border-radius: 12px; background: rgba(16, 9, 30, 0.8); border: 1px solid rgba(234, 198, 234, 0.16); cursor: pointer; touch-action: none; }
+.map-dots { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.map-mark { position: absolute; top: -13px; transform: translateX(-50%); font-size: 13px; line-height: 1; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8)); }
+.map-view { position: absolute; top: -2px; bottom: -2px; border-radius: 10px; border: 2px solid rgba(248, 248, 255, 0.85); box-shadow: 0 0 12px rgba(234, 198, 234, 0.35); pointer-events: none; box-sizing: border-box; }
+
+@media (max-width: 760px) {
+  .town-brand { font-size: 19px; }
+  .town-home { display: none; }
+  .town-card { left: 8px; right: 8px; width: auto; top: auto; bottom: 58px; max-height: 58vh; border-radius: 18px 18px 14px 14px; padding: 14px; }
+  .tc-portrait { width: 70px; height: 70px; }
+  .tc-record { grid-template-columns: repeat(2, 1fr); }
+  .town-ticker { left: 8px; right: 8px; bottom: 56px; }
+  .town-ticker .tk:nth-child(n+3) { display: none; }
+  .town-map { width: calc(100% - 16px); bottom: 8px; }
+  .town-card ~ .town-ticker, .town-ticker:has(~ .town-card) { display: none; }
+}
+
+/* ---- the civic heart ---- */
+.glow-red { background: radial-gradient(closest-side, rgba(255, 120, 110, 0.6), rgba(232, 60, 60, 0.18) 65%, transparent); }
+.glow.sway { animation: glow-sway 3.6s ease-in-out infinite; transform-origin: 50% 0; }
+@keyframes glow-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.clock { position: absolute; width: 0; height: 0; pointer-events: none; }
+.clock i { position: absolute; left: -1.6px; bottom: 0; width: 3.2px; border-radius: 3px; background: #1A0F2E; transform-origin: 50% 100%; animation: clock-turn linear infinite; box-shadow: 0 0 0 0.6px rgba(255, 240, 200, 0.4); }
+.clock i.h { width: 4.4px; left: -2.2px; animation-duration: 43200s; }
+.clock i.m { animation-duration: 3600s; }
+.clock b { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; background: #1A0F2E; }
+@keyframes clock-turn { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.glint { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; pointer-events: none; background: radial-gradient(closest-side, #fff, rgba(255, 240, 200, 0.6) 40%, transparent); animation: glint 5s ease-in-out infinite; mix-blend-mode: screen; }
+@keyframes glint { 0%, 70%, 100% { transform: scale(0.3); opacity: 0; } 80% { transform: scale(1.6) rotate(45deg); opacity: 1; } 90% { transform: scale(0.6); opacity: 0.4; } }
+.bubbles { position: absolute; border-radius: 50%; overflow: hidden; pointer-events: none; }
+.bubbles i { position: absolute; bottom: 30%; width: 7px; height: 7px; border-radius: 50%; border: 1.3px solid rgba(255, 255, 255, 0.85); animation: bubble-up 3.4s ease-in infinite; }
+@keyframes bubble-up { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-60px) scale(1.1); opacity: 0; } }
+.steam { position: absolute; width: 0; height: 0; pointer-events: none; }
+.steam i { position: absolute; left: -16px; top: -34px; width: 32px; height: 34px; border-radius: 50%; background: radial-gradient(closest-side, rgba(244, 238, 255, 0.34), rgba(244, 238, 255, 0.08) 60%, transparent); animation: steam 4.6s ease-out infinite; }
+.steam i:nth-child(2) { animation-delay: -1.4s; } .steam i:nth-child(3) { animation-delay: -2.8s; }
+@keyframes steam { 0% { transform: translate(0, 18px) scale(0.45, 0.6); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(22px, -80px) scale(2.4, 1.8); opacity: 0; } }
+.spray { position: absolute; pointer-events: none; }
+.spray i { position: absolute; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: #F4ECFF; box-shadow: 0 0 6px 2px rgba(220, 210, 255, 0.7); animation: spray 1.8s ease-in infinite; }
+@keyframes spray { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(0, 60px); opacity: 0; } }
+.crown-list { position: absolute; margin: 0; padding: 0; list-style: none; pointer-events: none; font-family: var(--font-sans); display: flex; flex-direction: column; justify-content: space-between; }
+.crown-list li { display: flex; align-items: baseline; gap: 5px; font-size: 12.5px; line-height: 17px; color: #F4E6B0; text-shadow: 0 0 6px rgba(242, 177, 74, 0.5); white-space: nowrap; }
+.crown-list .n { width: 10px; font-weight: 800; color: #F2B14A; }
+.crown-list .t { flex: 1; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+.crown-list .s { font-variant-numeric: tabular-nums; font-weight: 600; opacity: 0.85; }
+.crown-list .wait { opacity: 0.6; font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .glow.sway, .glint, .bubbles i, .steam i, .spray i { animation: none; } .steam, .spray, .bubbles i { display: none; } .clock i { animation-play-state: paused; } }
+
+/* ---- the backdrop and the lamps ---- */
+.town-far .strip, .town-mid .strip { position: absolute; background-repeat: repeat-x; background-size: auto 100%; }
+.hills-foot { position: absolute; background: #221338; }
+.beacon { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #FF5A6E; box-shadow: 0 0 10px 3px rgba(255, 90, 110, 0.7); animation: beacon 1.6s ease-in-out infinite; }
+.beacon.red { animation-duration: 1.2s; }
+@keyframes beacon { 0%, 100% { opacity: 0.15; } 45%, 60% { opacity: 1; } }
+.flood { position: absolute; width: 60px; height: 90px; margin: -86px 0 0 -30px; background: radial-gradient(50% 100% at 50% 100%, rgba(255, 224, 170, 0.28), transparent 70%); mix-blend-mode: screen; pointer-events: none; }
+.lamp-glow { position: absolute; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 230, 170, 0.75), rgba(255, 190, 110, 0.25) 35%, rgba(255, 170, 90, 0.08) 65%, transparent); mix-blend-mode: screen; pointer-events: none; }
+.lamp-pool { position: absolute; width: 300px; height: 90px; margin: -40px 0 0 -150px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 210, 150, 0.26), rgba(255, 180, 110, 0.09) 60%, transparent); mix-blend-mode: screen; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .beacon { animation: none; opacity: 0.8; } }
+
+/* ---- doors: who is inside ---- */
+.door-tag { position: absolute; transform: translate(-50%, -100%); z-index: 5; display: flex; flex-direction: column; align-items: center; }
+.door-tag > button { font: 700 13px/1 var(--font-sans); color: #FFF4DA; background: rgba(16, 9, 30, 0.86); border: 1.5px solid rgba(255, 217, 140, 0.55); border-radius: 999px; padding: 5px 10px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 14px rgba(255, 200, 120, 0.18); }
+.door-tag > button:hover { background: rgba(40, 22, 70, 0.92); }
+.door-list { list-style: none; margin: 8px 0 0; padding: 6px; max-height: 280px; overflow: auto; background: rgba(16, 9, 30, 0.97); border: 1px solid rgba(234, 198, 234, 0.25); border-radius: 14px; min-width: 200px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+.door-list button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; color: #F8F8FF; font: 600 16px var(--font-sans); padding: 8px 10px; border-radius: 9px; cursor: pointer; }
+.door-list button:hover { background: rgba(232, 77, 127, 0.2); }
+.door-list .more { font: 500 14px var(--font-sans); color: rgba(248,248,255,0.55); padding: 6px 10px; }
+
+/* ---- the furnace ---- */
+.glow-fire { background: radial-gradient(closest-side, rgba(255, 180, 90, 0.75), rgba(255, 110, 40, 0.25) 60%, transparent); }
+.glow-yellow { background: radial-gradient(closest-side, rgba(255, 246, 190, 0.55), rgba(240, 225, 140, 0.18) 60%, transparent); }
+.glow-pink { background: radial-gradient(closest-side, rgba(255, 150, 190, 0.45), rgba(232, 77, 127, 0.14) 60%, transparent); }
+.glow.flick { animation: flick 2.3s steps(1) infinite; }
+@keyframes flick { 0% { opacity: 1; } 18% { opacity: 0.82; } 26% { opacity: 1; } 51% { opacity: 0.9; } 57% { opacity: 1; } 73% { opacity: 0.78; } 80% { opacity: 1; } }
+.glow.pulse { animation: pulse 3.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.fire { position: absolute; border-radius: 100px 100px 0 0; pointer-events: none; mix-blend-mode: screen; background: radial-gradient(70% 60% at 50% 88%, rgba(255, 236, 160, 0.75), rgba(255, 150, 60, 0.4) 45%, rgba(255, 90, 40, 0.1) 75%, transparent); animation: fire-flick 0.9s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+@keyframes fire-flick { 0% { opacity: 0.7; transform: scaleY(0.96); } 40% { opacity: 1; transform: scaleY(1.03); } 70% { opacity: 0.8; } 100% { opacity: 0.95; transform: scaleY(1); } }
+.fire-pool { position: absolute; width: 420px; height: 110px; margin: -36px 0 0 -210px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 160, 80, 0.34), rgba(255, 110, 40, 0.1) 60%, transparent); mix-blend-mode: screen; pointer-events: none; animation: fire-flick 1.3s ease-in-out infinite alternate; }
+.embers { position: absolute; width: 0; height: 0; pointer-events: none; }
+.embers i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #FFD98C; box-shadow: 0 0 6px 2px rgba(255, 150, 60, 0.9); animation: ember 3s ease-out infinite; opacity: 0; }
+@keyframes ember { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(24px, -210px); opacity: 0; } }
+.embers i:nth-child(even) { animation-name: ember2; }
+@keyframes ember2 { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(-30px, -180px); opacity: 0; } }
+.smoke { position: absolute; width: 0; height: 0; pointer-events: none; }
+.smoke i { position: absolute; left: -30px; top: -50px; width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(closest-side, rgba(74, 52, 96, 0.8), rgba(74, 52, 96, 0.3) 60%, transparent); animation: smoke 9s ease-out infinite; }
+.smoke i:nth-child(2) { animation-delay: -2.25s; } .smoke i:nth-child(3) { animation-delay: -4.5s; } .smoke i:nth-child(4) { animation-delay: -6.75s; }
+@keyframes smoke { 0% { transform: translate(0, 20px) scale(0.5); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(120px, -220px) scale(3.2); opacity: 0; } }
+.burn-plate { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; pointer-events: none; font-family: var(--font-sans); }
+.burn-plate .lbl { font-size: 13px; font-weight: 700; letter-spacing: 0.26em; color: #FFD2A0; text-shadow: 0 0 6px rgba(255, 140, 60, 0.8); }
+.burn-plate .num { font-size: 36px; font-weight: 800; letter-spacing: 0.04em; color: #FFE3B0; font-variant-numeric: tabular-nums; text-shadow: 0 0 2px #fff, 0 0 8px #FF9A4A, 0 0 20px #FF6A20; }
+.furnace-flare .fire { animation: fire-roar 0.4s ease-in-out 8 alternate; }
+@keyframes fire-roar { from { opacity: 1; transform: scale(1.1, 1.25); filter: brightness(1.5); } to { opacity: 0.85; transform: scale(1, 1.05); } }
+.furnace-flare .burn-plate .num { animation: num-bump 0.6s ease-out; }
+@keyframes num-bump { 30% { transform: scale(1.18); } }
+.burn-float { position: absolute; transform: translate(-50%, 0); white-space: nowrap; font: 800 30px var(--font-sans); color: #FFE3B0; text-shadow: 0 0 2px #fff, 0 0 10px #FF9A4A, 0 0 24px #FF6A20; animation: burn-float 4s ease-out forwards; pointer-events: none; }
+@keyframes burn-float { 0% { transform: translate(-50%, 20px) scale(0.6); opacity: 0; } 12% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(-50%, -160px) scale(1); opacity: 0; } }
+
+/* ---- the spooky end ---- */
+.scn-eye { position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #E4F58A; box-shadow: 0 0 6px 2px rgba(200, 240, 120, 0.8); animation: eye-blink 6s steps(1) infinite; pointer-events: none; }
+.scn-eye.owl { background: #FFD98C; box-shadow: 0 0 5px 1px rgba(255, 210, 120, 0.8); animation-duration: 4.4s; }
+@keyframes eye-blink { 0%, 100% { opacity: 1; } 47% { opacity: 1; } 48% { opacity: 0; } 50% { opacity: 1; } 88% { opacity: 1; } 89% { opacity: 0; } 90% { opacity: 1; } }
+.candle { position: absolute; width: 10px; height: 14px; margin: -12px 0 0 -5px; border-radius: 50% 50% 45% 45%; background: radial-gradient(closest-side, rgba(255, 240, 180, 1), rgba(255, 180, 80, 0.55) 55%, transparent); animation: candle 0.8s ease-in-out infinite alternate; pointer-events: none; mix-blend-mode: screen; }
+@keyframes candle { from { transform: scale(0.85, 0.9); opacity: 0.8; } to { transform: scale(1.1, 1.12) translateY(-1px); opacity: 1; } }
+.pk, .web { position: absolute; pointer-events: none; }
+.pk svg, .web svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pk { filter: drop-shadow(0 0 10px rgba(255, 211, 107, 0.4)); }
+.pk #glow { animation: pumpkin-flicker 3.2s ease-in-out infinite; }
+.br-spill { position: absolute; width: 360px; height: 90px; margin: -30px 0 0 -180px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 246, 190, 0.4), rgba(240, 225, 140, 0.12) 60%, transparent); mix-blend-mode: screen; pointer-events: none; }
+.fluoro { position: absolute; border-radius: 3px; background: #F6FAE0; box-shadow: 0 0 10px 4px rgba(243, 247, 216, 0.75), 0 0 34px 10px rgba(243, 247, 216, 0.3); animation: fluoro-bad 5.9s linear infinite; pointer-events: none; }
+.tp.deadtree img { filter: drop-shadow(0 0 1.2px rgba(0,0,0,0.95)) drop-shadow(-1px 0 0 rgba(184,148,216,0.35)); }
+.plaque-text { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; pointer-events: none; font-family: var(--font-sans); color: #E8D89B; text-shadow: 0 1px 0 rgba(0,0,0,0.7); }
+.plaque-text b { font-size: 8.4px; letter-spacing: 0.08em; }
+.plaque-text span { font-size: 8px; font-weight: 600; opacity: 0.85; }
+.plaque-text em { font-style: normal; font-size: 8.6px; font-weight: 800; }
+.fairy { position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #FFF1C8; box-shadow: 0 0 6px 2px rgba(255, 220, 150, 0.85); animation: twinkle-f 2.4s ease-in-out infinite; pointer-events: none; }
+@keyframes twinkle-f { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fire, .fire-pool, .embers i, .smoke i, .glow.flick, .glow.pulse, .scn-eye, .candle, .fluoro, .fairy, .pk #glow { animation: none; } .embers, .smoke { display: none; } }
+.steam.soft i { background: radial-gradient(closest-side, rgba(120, 100, 150, 0.45), rgba(120, 100, 150, 0.1) 60%, transparent); animation-duration: 7s; }
+
+/* off-screen scenery (Emotown.tsx cull): its lights, flames and smoke stop and are not painted. The drawing itself (the
+   img) always shows: when it was hidden too, a fast swipe on a phone reached buildings before the page's script had
+   shown them, and they popped in (operator, 2026-09-27). The clock's hands keep running, or it would come back slow. */
+.tb[data-off], .tp[data-off] { visibility: hidden; }
+.tb[data-off] > img, .tp[data-off] > img { visibility: visible; }
+.tb[data-off] *, .tp[data-off] * { animation-play-state: paused !important; }
+.tb[data-off] .clock *, .tp[data-off] .clock * { animation-play-state: running !important; }
+.pet-donors { position: absolute; left: -4000px; top: 0; width: 200px; height: 230px; pointer-events: none; }   /* rendered, never hidden: see TownPet Donors */
+.pet-donors svg { width: 200px; height: 230px; }
+.town .pocket-room.reach .layer { -webkit-mask-image: linear-gradient(90deg, transparent 8%, #000 30%, #000 70%, transparent 92%); mask-image: linear-gradient(90deg, transparent 8%, #000 30%, #000 70%, transparent 92%); }
+
+/* ==== the time of day (data-tod on .town: dawn, day, dusk, night; time.ts) ==== */
+.sky-grad { position: absolute; inset: 0; opacity: 0; transition: opacity 3s ease; }
+.sky-night { background: linear-gradient(180deg, #07040f 0%, #120a26 30%, #25123f 58%, #43205f 80%, #6a2f6e 100%); }
+.sky-dusk { background: linear-gradient(180deg, #1c1236 0%, #3b1f5e 30%, #7a3a7a 55%, #d1667a 78%, #ffae78 100%); }
+.sky-dawn { background: linear-gradient(180deg, #2a2560 0%, #5b4a92 32%, #b07cb2 58%, #f4a9a8 80%, #ffd6a4 100%); }
+.sky-day { background: linear-gradient(180deg, #6f86d8 0%, #93a6ee 34%, #b9c1f4 60%, #e2d4f4 82%, #f7e2ee 100%); }
+.town[data-tod="night"] .sky-night, .town[data-tod="dusk"] .sky-dusk, .town[data-tod="dawn"] .sky-dawn, .town[data-tod="day"] .sky-day { opacity: 1; }
+.sky-stars, .sky-twinkle, .sky-shoot, .sky-moon { transition: opacity 3s ease, transform 3s ease; }
+.town[data-tod="day"] .sky-stars, .town[data-tod="day"] .sky-twinkle, .town[data-tod="day"] .sky-shoot { opacity: 0 !important; animation-play-state: paused; }
+.town[data-tod="dawn"] .sky-stars, .town[data-tod="dusk"] .sky-stars { opacity: 0.35; }
+.town[data-tod="day"] .sky-moon { opacity: 0; transform: translateY(40px); }
+.town[data-tod="dawn"] .sky-moon, .town[data-tod="dusk"] .sky-moon { opacity: 0.55; transform: translateY(22px); }
+.sky-sun { position: absolute; right: 14%; top: 9%; width: min(13vh, 130px); aspect-ratio: 1; border-radius: 50%; opacity: 0; transform: translateY(60px) scale(0.9); transition: opacity 3s ease, transform 3s ease, top 3s ease, background 3s ease;
+  background: radial-gradient(circle at 42% 40%, #FFFBE6 0%, #FFE9A8 45%, #FFD27A 100%); box-shadow: 0 0 0 2px rgba(0,0,0,0.55), 0 0 70px 26px rgba(255, 226, 150, 0.45), 0 0 200px 80px rgba(255, 210, 140, 0.22); }
+.town[data-tod="day"] .sky-sun { opacity: 1; transform: none; }
+.town[data-tod="dawn"] .sky-sun, .town[data-tod="dusk"] .sky-sun { opacity: 1; top: 40%; transform: none; background: radial-gradient(circle at 45% 40%, #FFF1C8 0%, #FFB27A 55%, #FF8A5C 100%); box-shadow: 0 0 0 2px rgba(0,0,0,0.5), 0 0 80px 30px rgba(255, 150, 100, 0.5), 0 0 220px 90px rgba(255, 140, 110, 0.25); }
+.town[data-tod="dawn"] .sky-sun { right: auto; left: 12%; }
+.sky-horizon { transition: opacity 3s ease; }
+.town[data-tod="day"] .sky-horizon { opacity: 0.3; }
+
+/* the street by daylight: the still layer is lifted (one tint over the facades and the paving, drawn once); the far
+   city and the hills fade into the day's haze; the lamps and the windows' glow step back; neon keeps its tubes */
+.time-tint { position: absolute; inset: 0 -500px; pointer-events: none; opacity: 0; transition: opacity 3s ease, background-color 3s ease; }
+.town[data-tod="day"] .time-tint { opacity: 1; background: rgba(255, 246, 236, 0.16); }
+.town[data-tod="dusk"] .time-tint { opacity: 1; background: rgba(255, 150, 120, 0.07); }
+.town[data-tod="dawn"] .time-tint { opacity: 1; background: rgba(255, 196, 176, 0.08); }
+.town-far, .town-mid { transition: opacity 3s ease; }
+.town[data-tod="day"] .town-far { opacity: 0.55; }
+.town[data-tod="day"] .town-mid { opacity: 0.85; }
+.town .glow, .town .lamp-glow, .town .lamp-pool, .town .pool, .town .flood, .town .br-spill, .town .fairy { transition: opacity 3s ease; }
+.town[data-tod="day"] .glow, .town[data-tod="day"] .lamp-glow, .town[data-tod="day"] .lamp-pool, .town[data-tod="day"] .pool, .town[data-tod="day"] .flood, .town[data-tod="day"] .br-spill, .town[data-tod="day"] .fairy { opacity: 0.12 !important; }
+.town[data-tod="dawn"] .lamp-glow, .town[data-tod="dawn"] .lamp-pool, .town[data-tod="dawn"] .flood { opacity: 0.45; }
+.town .sign { transition: opacity 3s ease, text-shadow 3s ease; }
+.town[data-tod="day"] .sign.neon-pink, .town[data-tod="day"] .sign.neon-lav, .town[data-tod="day"] .sign.neon-gold, .town[data-tod="day"] .sign.neon-red, .town[data-tod="day"] .sign.neon-green { text-shadow: 0 0 1px #fff, 0 0 5px rgba(255,255,255,0.35); opacity: 0.92; }
+.town[data-tod="day"] .beacon { opacity: 0.35; }
+
+/* ==== the seasons (data-season on .town; time.ts) ==== */
+/* the park's trees change with the year: their own drawings per season (town_seasons.py), picked in Street.tsx */
+/* winter: snow on every roofline (the white shadow above each drawing's silhouette), frost on the paving */
+.town[data-season="winter"] .tb img { filter: drop-shadow(0 -3.5px 0 #F2F0FF); }
+.town[data-season="winter"] .town-pavement::after, .town[data-season="winter"] .town-kerb::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(236, 234, 255, 0.5), rgba(226, 222, 250, 0.3) 60%, rgba(220, 216, 246, 0.36)); pointer-events: none; }
+.town[data-season="winter"] .hills-foot { background: #2a2244; }
+
+/* what is in the air */
+.weather { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 4; }
+.flake { position: absolute; top: -6%; animation: flake-fall linear infinite; will-change: transform; }
+.flake i { display: block; width: calc(11px * var(--s)); height: calc(7px * var(--s)); animation: flake-sway 2.8s ease-in-out infinite alternate; }
+@keyframes flake-fall { from { transform: translate3d(0, -6vh, 0); } to { transform: translate3d(0, 112vh, 0); } }
+@keyframes flake-sway { from { transform: translateX(calc(var(--sway) * -0.5)) rotate(-35deg); } to { transform: translateX(calc(var(--sway) * 0.5)) rotate(45deg); } }
+.weather-autumn .flake i { background: var(--c); border-radius: 0 85% 0 85%; box-shadow: inset 0 0 0 1.2px rgba(0, 0, 0, 0.45); }
+.weather-spring .flake i { background: var(--c); border-radius: 60% 0 60% 0; opacity: 0.92; box-shadow: inset 0 0 0 1px rgba(150, 60, 100, 0.35); }
+.weather-winter .flake i { width: calc(6px * var(--s)); height: calc(6px * var(--s)); border-radius: 50%; background: #F6F4FF; box-shadow: 0 0 4px rgba(255, 255, 255, 0.6); }
+.weather-winter .flake { animation-duration: calc(var(--s) * 9s + 5s) !important; }
+.fly { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #F2FFA8; box-shadow: 0 0 8px 3px rgba(220, 255, 120, 0.6); animation: fly-wander ease-in-out infinite alternate, fly-blink ease-in-out infinite; opacity: 0; transition: opacity 3s ease; }
+@keyframes fly-wander { 0% { transform: translate(0, 0); } 33% { transform: translate(40px, -26px); } 66% { transform: translate(-20px, -44px); } 100% { transform: translate(28px, 10px); } }
+@keyframes fly-blink { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+.town[data-tod="day"] .fly { animation-play-state: paused; visibility: hidden; }
+.town-when { text-transform: capitalize; }
+@media (prefers-reduced-motion: reduce) { .flake, .flake i, .fly { animation: none; } .weather { display: none; } }
+@media (max-width: 760px) { .town-when { display: none; } }
+
+/* your pets (Ui.tsx MyPets): a list, not a cycling star */
+.town-mine-btn.on { background: rgba(232, 77, 127, 0.22); }
+.town-mine { width: 330px; }
+.town-mine-list { list-style: none; margin: 0; padding: 0; }
+.town-mine-list button, .town-mine-list a { width: 100%; display: flex; align-items: center; gap: 11px; padding: 8px 8px; border: 0; border-radius: 12px; background: none; color: #F8F8FF; font: 500 13px/1.3 var(--font-sans); text-align: left; text-decoration: none; cursor: pointer; }
+.town-mine-list button:hover, .town-mine-list a:hover { background: rgba(248, 248, 255, 0.06); }
+.town-mine .tm-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.town-mine .tm-text b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.town-mine .tm-text small { font-size: 12px; color: rgba(248, 248, 255, 0.58); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.town-mine .tm-go { flex: none; color: rgba(248, 248, 255, 0.4); font-size: 16px; }
+.town-mine .tm-sub { margin: 14px 8px 2px; font-size: 13px; font-weight: 800; color: #F8F8FF; }
+.town-mine .tm-note { margin: 2px 8px 6px; font-size: 12px; line-height: 1.4; color: rgba(248, 248, 255, 0.55); }
+/* phones: the finder opens as a search bar across the top (beside the buttons it pushed them over the town's name), and
+   every close button is a comfortable thumb target */
+@media (max-width: 760px) {
+  .town-find { position: fixed; left: 10px; right: 10px; top: max(10px, env(safe-area-inset-top)); width: auto; z-index: 40; }
+  .town-find input { padding-top: 12px; padding-bottom: 12px; background: #150c28; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+  .town-find .tf-x { top: 6px; right: 6px; width: 36px; height: 36px; }
+}
+@media (pointer: coarse) {
+  .tc-close { width: 38px; height: 38px; font-size: 22px; }
+}
+/* caring for your own pet from its card (Care.tsx) */
+.tc-care { margin: 12px 0 4px; padding: 12px; border-radius: 14px; background: rgba(232, 77, 127, 0.08); border: 1px solid rgba(232, 77, 127, 0.28); }
+.tc-care h3 { margin: 0 0 9px; font: 800 13px var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: #FFB3CB; }
+.tc-care-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); gap: 6px; }
+.tc-care-grid.stunts { margin-top: 6px; }
+.tc-care-btn { display: grid; justify-items: center; gap: 2px; padding: 8px 4px 7px; border-radius: 12px; border: 1px solid rgba(234, 198, 234, 0.18); background: rgba(18, 10, 34, 0.7); color: #F8F8FF; font: 700 12.5px var(--font-sans); cursor: pointer; }
+.tc-care-btn:hover:not(:disabled) { background: rgba(232, 77, 127, 0.2); border-color: rgba(232, 77, 127, 0.55); }
+.tc-care-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tc-care-btn em { font-style: normal; font-weight: 600; font-size: 11px; color: rgba(248, 248, 255, 0.55); }
+.tc-care-note { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: rgba(248, 248, 255, 0.7); }
+.tc-care-status { display: flex; align-items: center; gap: 6px; margin: 9px 0 0; font-size: 12.5px; color: #F8F8FF; }
+.tc-care-err { margin: 8px 0 0; font-size: 12.5px; line-height: 1.4; color: #FF9DBA; }
+.tc-care-name { display: flex; gap: 6px; margin-top: 9px; }
+.tc-care-name input { flex: 1; min-width: 0; padding: 9px 11px; border-radius: 10px; border: 1px solid rgba(234, 198, 234, 0.3); background: rgba(8, 4, 16, 0.6); color: #F8F8FF; font: 600 14px var(--font-sans); }
+.tc-care-name .tc-btn { flex: none; }
+.tc-textbtn { padding: 0; border: 0; background: none; color: #EAC6EA; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.tc-textbtn:disabled { opacity: 0.5; }
+.tc-care-rename { display: block; margin-top: 10px; font-size: 12.5px; }
+.tc-care-connect { width: 100%; }
+.town-mine .tm-go-btn { flex: none; padding: 5px 10px; border-radius: 999px; background: rgba(232, 77, 127, 0.22); border: 1px solid rgba(232, 77, 127, 0.5); color: #F8F8FF; font: 700 12px var(--font-sans); }
+.tc-care-btn .icon.is-wide { width: 40px; height: 26px; }
+.town-brand .town-beta { margin-left: 8px; vertical-align: 4px; font-size: 10px; }
+.tc-care-send { display: block; margin-top: 8px; font-size: 12.5px; }
+/* the title keeps the top line and the buttons go under it when they cannot share it (Emotown.tsx measures) */
+.town.hud-stack .town-top-right { top: 54px; }
+.town.hud-stack .so-pop { top: 98px; }
+
+/* phones (the mobile pass, 2026-09-29): a door's tag is easy to hit without drawing it bigger over the street */
+@media (pointer: coarse) { .door-tag > button { position: relative; } .door-tag > button::after { content: ""; position: absolute; inset: -9px -4px; } }
+
+/* phones, gone over (2026-09-29) */
+@media (max-width: 760px) {
+  /* the street is drawn at --k (0.63 on a small phone), and the door tags and their lists with it: 8px names in rows too
+     thin to press. They are drawn at their own size instead, still standing on their door. */
+  .door-tag { transform: translate(-50%, -100%) scale(calc(1 / var(--k))); transform-origin: 50% 100%; }
+  /* an open list rises from the door with its button on top: short enough that the button stays under the top row */
+  .door-list { max-height: min(280px, 33vh); }
+  .town-find input { padding-right: 46px; }
+  .chip, .tc-nums span, .tc-foot, .tc-care-btn em { font-size: 11.5px; }
+}
+@media (pointer: coarse) {
+  .town-top-right .town-find-btn { min-width: 36px; justify-content: center; }
+  .town-brand { display: inline-block; padding: 8px 0; margin: -8px 0; }
+}

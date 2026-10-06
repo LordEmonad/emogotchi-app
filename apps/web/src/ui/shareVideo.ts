@@ -1,5 +1,6 @@
 /**
- * The animated share card: a looping video of the cat doing one of its real actions.
+ * The animated share card: a looping video of the pet doing one of its real actions (the cat's clips, and since
+ * 2026-10-01 the r3tard's: `CLIP_DIR` says which pets have a recorded set).
  *
  * The cat is an SVG rig driven by the browser's animation engine, and nothing can rasterise that
  * frame by frame at video speed inside a visitor's browser. The rig looks the same for every cat
@@ -13,6 +14,15 @@ import type { CatView } from '@emo-pets/chain';
 import { H, PORTRAIT, W, paintCard } from './shareCard';
 
 export type Loop = { key: string; label: string; blurb: string };
+
+/** Where each pet's recorded clips live under /anim (tools/record-anims.mjs [pet]); a pet not listed has stills only. */
+const CLIP_DIR: Partial<Record<CatView['col'], string>> = { cat: '', r3tards: 'r3tards/' };
+export const hasClips = (col: CatView['col']) => CLIP_DIR[col] !== undefined;
+/** What each action looks like on a pet whose moves differ from the cat's (the chip's tooltip and the hint line). */
+const BLURBS: Partial<Record<CatView['col'], Record<string, string>>> = {
+  r3tards: { feed: 'sits down behind the bowl and empties it', play: 'kicks the ball around the room', sleep: 'nods off on his feet, wakes up', walk: 'pacing his room, waiting for you' },
+};
+export const loopsOf = (col: CatView['col']): Loop[] => LOOPS.map((l) => ({ ...l, blurb: BLURBS[col]?.[l.key] ?? l.blurb }));
 
 /** Every action the cat actually performs in the room, in the order the game teaches them. */
 export const LOOPS: Loop[] = [
@@ -35,11 +45,22 @@ const MIN_MS = 6000;      // a very short action loops until the clip is worth p
 const ALL_RATE = 2;       // "Everything" back to back is a minute at life speed; twice as fast reads better
 const base = `${import.meta.env.BASE_URL || '/'}anim`.replace('//anim', '/anim');
 
-let index: Promise<Clip[]> | null = null;
-const manifest = () => (index ??= fetch(`${base}/anim.json`).then((r) => {
-  if (!r.ok) throw new Error('the animations are not on this server');
-  return r.json() as Promise<Clip[]>;
-}));
+const index = new Map<string, Promise<Clip[]>>();
+/** a pet's clips, each file given with its folder */
+const manifest = (col: CatView['col']) => {
+  const dir = CLIP_DIR[col];
+  if (dir === undefined) return Promise.reject(new Error('this pet has no recorded animations yet'));
+  let m = index.get(dir);
+  if (!m) {
+    m = fetch(`${base}/${dir}anim.json`).then((r) => {
+      if (!r.ok) throw new Error('the animations are not on this server');
+      return (r.json() as Promise<Clip[]>).then((all) => all.map((c) => ({ ...c, file: dir + c.file })));
+    });
+    m.catch(() => index.delete(dir));
+    index.set(dir, m);
+  }
+  return m;
+};
 
 /**
  * Off-screen videos. A detached <video> will not reliably play, so they live in a corner of the page
@@ -84,7 +105,7 @@ type Sequence = { draw: (x: CanvasRenderingContext2D) => void; total: number; re
 
 /** Load the clips a loop needs and start them playing, one after another. */
 async function startSequence(cat: CatView, loop: Loop): Promise<Sequence> {
-  const all = await manifest();
+  const all = await manifest(cat.col);
   const clips = plan(loop, cat.crowned).map((k) => pick(all, k));
   const videos = await Promise.all(clips.map((c) => loadVideo(c.file)));
   const rate = loop.key === 'all' ? ALL_RATE : 1;
@@ -181,8 +202,8 @@ export async function recordShareVideo(
 }
 
 /** Roughly how long a chosen loop will take to record, for the waiting message. */
-export async function loopSeconds(loop: Loop, crowned: boolean): Promise<number> {
-  const all = await manifest();
+export async function loopSeconds(loop: Loop, crowned: boolean, col: CatView['col'] = 'cat'): Promise<number> {
+  const all = await manifest(col);
   const rate = loop.key === 'all' ? ALL_RATE : 1;
   const clips = plan(loop, crowned).map((k) => pick(all, k));
   const one = clips.reduce((a, c) => a + c.duration / rate, 0);

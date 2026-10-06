@@ -1,0 +1,34 @@
+/* ==== Thiccums (thiccums.svg; the seal with the bouncy butt; LAB ONLY, dev builds only) ====
+   Loaded by the lab module alone, so none of this is in a production build. A white seal sitting on a big round butt,
+   seen from behind with his head turned to look up over his right shoulder. Every pivot is pinned to a view-box point
+   (thiccums.py: NECK, LEGL_PIVOT, ...), so a costume piece inside a group can never move its pivot. */
+.pet.thiccums #head, .pet.thiccums #crown, .pet.thiccums #witchhat, .pet.thiccums #emohair, .pet.thiccums #pumpkin, .pet.thiccums #kippah,
+.pet.thiccums #keffiyeh, .pet.thiccums #keffiyehback, .pet.thiccums #beanie { transform-box: view-box; transform-origin: 118.97px 113.49px; }
+.pet.thiccums #legL { transform-box: view-box; transform-origin: 73px 99px; }   /* the far flipper's shoulder, behind him under the chin on his left */
+.pet.thiccums #legR { transform-box: view-box; transform-origin: 170.01px 109.43px; }  /* the near flipper's shoulder, under the head */
+.pet.thiccums #fin { transform-box: view-box; transform-origin: 41.31px 186.66px; }   /* the fin's root, between its two creases on the stock (it is in #body) */
+.pet.thiccums #body { transform-box: view-box; transform-origin: 106.21px 210.7px; }   /* where he sits */
+.pet.thiccums #figure { transform-box: view-box; transform-origin: 106.21px 210.7px; }
+.pet.thiccums #shadow { transform-box: view-box; transform-origin: 108.5px 211.3px; }
+/* the butt: the near cheek squashes onto its bottom (the far one is bent, not transformed: moves.ts bendFar) */
+.pet.thiccums #butt { transform-box: view-box; transform-origin: 122.45px 198.75px; }
+/* a cape sways about his shoulders */
+.pet.thiccums #robe, .pet.thiccums #bisht { transform-box: view-box; transform-origin: 118px 104px; }
+/* the open mouth shrinks up toward the nose it hangs from (the push) */
+.pet.thiccums #mouth-open { transform-box: fill-box; transform-origin: 50% 8%; }
+/* the zombie: his white goes mossy by the rule for every pet's #F8F8FF; the shine in his black eyes goes a sickly yellow */
+.pet.thiccums .rig.zombie .eye .pupil [fill="#FFFFFF"] { fill: #DCE58A; }
+/* the pumpkin is worn over his whole head: nothing of the head shows past it but through its carvings (the neck below it does) */
+.pet.thiccums svg.rig.pumpkinhead #head { clip-path: url(#thiccpkclip); }
+/* the kippah sits on the top of his head; on the emo hair it rides up onto the mop, and a zombie's skull is open with the
+   brain out, so it perches on the brain, cocked (the hair covers the brain: back on the hair) */
+.pet.thiccums .kippahpose { transform-box: fill-box; transform-origin: 50% 100%; }
+.pet.thiccums .rig.hashair .kippahpose { transform: translateY(-3px); }
+.pet.thiccums .rig.zombie .kippahpose { transform: translate(5px, -12px) rotate(8deg); }
+.pet.thiccums .rig.zombie.hashair .kippahpose { transform: translateY(-3px); }
+/* under a cape (the witch's, the bisht) the head's dip under his chin is where the cape's collar starts: it gets its line */
+.pet.thiccums .rig.hatted .thiccneck, .pet.thiccums .rig.hasbisht .thiccneck { display: inline; }
+/* under the keffiyeh his emo hair shows only in the face's opening */
+.pet.thiccums svg.rig.haskeffiyeh #emohair { clip-path: url(#thicckfopen); }
+/* the item pieces that ride on the head unit pivot with it */
+.pet.thiccums #keffiyehdrape { transform-box: view-box; transform-origin: 118.97px 113.49px; }

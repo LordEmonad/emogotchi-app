@@ -1,9 +1,15 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Pet, type PetRig } from '../pet/Pet';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Pet, type AnyDrawing, type PetRig } from '../pet/Pet';
 import { Director } from './director';
 import { PROPS, type PropName } from './props';
-import { CAT, CAT_PAD, HOST_H, HOST_TOP, HOST_W, WORLD } from './world';
-import { SceneryBack, SceneryFront, type SceneName } from './Scenery';
+import { CAT_PAD, petBox, WORLD } from './world';
+import type { SceneName } from './Scenery';
+// A room theme's scenery is a chunk of its own, with its art (roomArt.ts): only a pet in a room theme loads it (the mobile
+// pass, 2026-09-29). Until it lands the room shows the theme's colours (stage.css) without its pictures.
+const SceneryBack = lazy(() => import('./Scenery').then((m) => ({ default: m.SceneryBack })));
+const SceneryFront = lazy(() => import('./Scenery').then((m) => ({ default: m.SceneryFront })));
+import { SoundControl } from '../sound/Control';
+import { useMusic } from '../sound/useMusic';
 import './stage.css';
 
 type Props = {
@@ -17,11 +23,17 @@ type Props = {
   thoughtSide?: 1 | -1;
   /** A room theme from the item shop, or null for the plain room. */
   scene?: SceneName | null;
+  /** Which character lives here (the cat unless told otherwise). */
+  character?: AnyDrawing;
+  /** the rig's lite profile: fewer things moving at once, for a slow screen (the rabbit r1) */
+  lite?: boolean;
+  /** A room that is only on show (one of a row of pets, a reel that loops for ever): no sound, no music. */
+  quiet?: boolean;
   children?: ReactNode;
 };
 
 /** The room: a fixed world box scaled to the container. Props are placed imperatively by the director. */
-export function Stage({ onDirector, night, thought, thoughtSide = 1, scene = null, onPet: onPetCb, children }: Props) {
+export function Stage({ onDirector, night, thought, thoughtSide = 1, scene = null, character = 'cat', lite = false, quiet = false, onPet: onPetCb, children }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const back = useRef<HTMLDivElement>(null);
   const front = useRef<HTMLDivElement>(null);
@@ -30,6 +42,9 @@ export function Stage({ onDirector, night, thought, thoughtSide = 1, scene = nul
   const [rig, setRig] = useState<PetRig | null>(null);
   const director = useRef<Director | null>(null);
   const cb = useRef(onDirector); cb.current = onDirector;
+  const quietRef = useRef(quiet); quietRef.current = quiet;
+  const [mood, setMood] = useState({ asleep: false, dead: false });
+  const B = petBox(character);   // the box scales per character (sahur stands taller); the rig never knows
 
   useLayoutEffect(() => {
     const el = box.current; if (!el) return;
@@ -39,20 +54,27 @@ export function Stage({ onDirector, night, thought, thoughtSide = 1, scene = nul
     return () => ro.disconnect();
   }, []);
 
-  useEffect(() => {
+  // a layout effect, so the page can open the room on its pet as it is (director.arrive) before the first frame is drawn
+  useLayoutEffect(() => {
     if (!rig || !back.current || !front.current || !catHost.current) return;
     const d = new Director(rig, { back: back.current, front: front.current, cat: catHost.current });
+    d.muted = quietRef.current;
     director.current = d;
     cb.current(d);
-    return () => { d.destroy(); director.current = null; cb.current(null); };
+    // the room's music follows the pet: asleep, dead (the page may open the room on either: director.arrive)
+    const mood = () => { const st = d.getState(); setMood((m) => (m.asleep === st.sleeping && m.dead === st.dead ? m : { asleep: st.sleeping, dead: st.dead })); };
+    const off = d.subscribe(mood); mood();
+    return () => { off(); d.destroy(); director.current = null; cb.current(null); };
   }, [rig]);
+  useEffect(() => { if (director.current) director.current.muted = quiet; }, [quiet]);
+  useMusic(quiet || !rig ? null : { place: 'room', who: character, scene, asleep: mood.asleep, dead: mood.dead });
 
   const onPet = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = director.current; if (!d) return;
     const r = e.currentTarget.getBoundingClientRect();
-    if (d.isBusy || d.getState().dead) return;
+    if (d.isActing || d.getState().dead) return;   // a tap while it potters about still counts: the nuzzle follows
     onPetCb?.();
-    d.pet(e.clientX - r.left < r.width / 2 ? -1 : 1).catch(() => {});
+    d.pet(e.clientX - r.left < r.width / 2 ? -1 : 1, { quick: true }).catch(() => {});   // a tap is always the quick nuzzle, never kapparot
   };
 
   return (
@@ -64,18 +86,19 @@ export function Stage({ onDirector, night, thought, thoughtSide = 1, scene = nul
         <div className="floor" style={{ top: WORLD.floor - 34 }} />
         <div className="rug" style={{ top: WORLD.floor - 4 }} />
         <div className="moon" dangerouslySetInnerHTML={{ __html: PROPS.moon }} />
-        {scene && <SceneryBack scene={scene} />}
+        {scene && <Suspense fallback={null}><SceneryBack scene={scene} /></Suspense>}
         <div ref={back} className="layer" />
-        <div ref={catHost} className="cathost" style={{ width: HOST_W, height: HOST_H, top: HOST_TOP, left: WORLD.w / 2 - CAT.w / 2 - CAT_PAD.side }}>
-          <div className="catbody" style={{ width: CAT.w, height: CAT.h, top: CAT_PAD.top, left: CAT_PAD.side }} onPointerDown={onPet}>
-            <Pet onRig={setRig} style={{ width: '100%', height: '100%' }} />
+        <div ref={catHost} className="cathost" style={{ width: B.hostW, height: B.hostH, top: B.hostTop, left: WORLD.w / 2 - B.w / 2 - CAT_PAD.side }}>
+          <div className="catbody" style={{ width: B.w, height: B.h, top: CAT_PAD.top, left: CAT_PAD.side }} onPointerDown={onPet}>
+            <Pet onRig={setRig} character={character} lite={lite} style={{ width: '100%', height: '100%' }} />
             <Thought icon={thought} side={thoughtSide} />
           </div>
         </div>
         <div ref={front} className="layer" />
-        {scene && <SceneryFront scene={scene} />}
+        {scene && <Suspense fallback={null}><SceneryFront scene={scene} /></Suspense>}
         {children}
       </div>
+      {!quiet && <SoundControl className="in-room" />}
     </div>
   );
 }

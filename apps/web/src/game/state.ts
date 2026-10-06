@@ -4,7 +4,10 @@
  */
 export type Stats = { food: number; clean: number; fun: number; energy: number };
 /** Lifetime record. On chain these are packed counters that stay with the token forever. */
-export type Record_ = { feeds: number; washes: number; plays: number; naps: number; cleanups: number; pets: number; names: number; deaths: number; revives: number };
+export type Record_ = { feeds: number; washes: number; plays: number; naps: number; cleanups: number; pets: number; names: number; deaths: number; revives: number; screenshots: number; slaps: number; squeezes: number; burns: number; tungs: number; bounces?: number };
+/** inversebrah's four stunts, Sahur's one and Thiccums' one: gas only, counted for life, touching no meter. */
+export type Stunt = 'screenshot' | 'slap' | 'squeeze' | 'burn' | 'tung' | 'bounce';
+export const STUNTS: Stunt[] = ['screenshot', 'slap', 'squeeze', 'burn', 'tung', ...(__THICCUMS__ ? ['bounce' as const] : [])];
 export type Game = {
   stats: Stats;
   record: Record_;
@@ -31,7 +34,7 @@ export type Event =
   | { type: 'pay'; action: PaidAction }
   | { type: 'fed' } | { type: 'washed' } | { type: 'played' } | { type: 'slept'; on: boolean } | { type: 'cleaned' }
   | { type: 'pooped' } | { type: 'petted' }
-  | { type: 'revived' } | { type: 'kill' } | { type: 'named' }
+  | { type: 'revived' } | { type: 'kill' } | { type: 'named' } | { type: 'stunt'; kind: Stunt }
   | { type: 'speed'; speed: number }
   | { type: 'set'; stats: Partial<Stats> }
   | { type: 'reset' };
@@ -69,7 +72,7 @@ export const BURN_SHARE = 0.8;
 const clamp = (v: number) => Math.min(100, Math.max(0, v));
 
 export const initial = (): Game => ({
-  stats: { food: 72, clean: 80, fun: 64, energy: 85 }, record: { feeds: 0, washes: 0, plays: 0, naps: 0, cleanups: 0, pets: 0, names: 0, deaths: 0, revives: 0 }, alive: true, zeroFor: 0, diedOnDay: null, lastPetDay: null, sleeping: false, poop: false, poopDue: null, t: 0, speed: 1,
+  stats: { food: 72, clean: 80, fun: 64, energy: 85 }, record: { feeds: 0, washes: 0, plays: 0, naps: 0, cleanups: 0, pets: 0, names: 0, deaths: 0, revives: 0, screenshots: 0, slaps: 0, squeezes: 0, burns: 0, tungs: 0 }, alive: true, zeroFor: 0, diedOnDay: null, lastPetDay: null, sleeping: false, poop: false, poopDue: null, t: 0, speed: 1,
   spentMon: 0, burnedEmo: 0, actions: 0, log: [],
 });
 
@@ -115,6 +118,7 @@ export function reduce(g: Game, e: Event): Game {
     case 'revived': if (g.alive) return g; return { ...g, record: { ...g.record, revives: g.record.revives + 1 }, alive: true, zeroFor: 0, diedOnDay: null, poop: false, poopDue: null, stats: { food: 60, clean: 60, fun: 60, energy: 60 } };
     case 'kill': if (!g.alive) return g; return { ...g, record: { ...g.record, deaths: g.record.deaths + 1 }, alive: false, diedOnDay: dayOf(g.t), sleeping: false, zeroFor: DEATH_AFTER };
     case 'named': return { ...g, record: { ...g.record, names: g.record.names + 1 } };
+    case 'stunt': { const k = ({ screenshot: 'screenshots', slap: 'slaps', squeeze: 'squeezes', burn: 'burns', tung: 'tungs', ...(__THICCUMS__ ? { bounce: 'bounces' } : {}) } as Record<Stunt, keyof Record_>)[e.kind]; return { ...g, record: { ...g.record, [k]: (g.record[k] ?? 0) + 1 } }; }
     case 'speed': return { ...g, speed: e.speed };
     case 'set': return { ...g, stats: { ...g.stats, ...e.stats } };
     case 'reset': return initial();

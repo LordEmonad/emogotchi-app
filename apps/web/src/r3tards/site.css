@@ -1,0 +1,40 @@
+/* The r3tard on the site: every page style that names him (the five-pet layouts, his cards' colour). Loaded at the start
+   only in a build with his switch on (main.tsx), because a stylesheet cannot be switched off by the build's constant the
+   way the code is. His drawing's own styles are r3tards.css, his mint page's mint.css. */
+
+/* Get a pet: five cards. Two across with the cat full width under them; from 1040 three across and the last two centred
+   under them (a sixth-column grid: every card two columns wide). The doubled class outranks the four-pet rules, which
+   arrive in a stylesheet of their own in no fixed order. */
+@media (min-width: 740px) {
+  .adopt-grid.adopt-grid:has(.adopt-card[data-pet="r3tards"]) { grid-template-columns: repeat(2, 1fr); }
+  .adopt-grid.adopt-grid:has(.adopt-card[data-pet="r3tards"]) .adopt-card.adopt-card[data-pet="cat"] { grid-column: 1 / -1; }
+}
+@media (min-width: 1040px) {
+  .adopt-grid.adopt-grid:has(.adopt-card[data-pet="r3tards"]) { grid-template-columns: repeat(6, 1fr); }
+  .adopt-grid.adopt-grid:has(.adopt-card[data-pet="r3tards"]) .adopt-card.adopt-card { grid-column: span 2; }
+  .adopt-grid.adopt-grid:has(.adopt-card[data-pet="r3tards"]) .adopt-card.adopt-card:nth-child(4) { grid-column: 2 / span 2; }
+  .adopt-grid.adopt-grid:has(.adopt-card[data-pet="r3tards"]) .adopt-card.adopt-card[data-pet="cat"] { grid-column: 4 / span 2; }
+}
+.adopt-card[data-pet="r3tards"] { border-color: rgba(230,207,90,0.4); }
+.adopt-card[data-pet="r3tards"] h2 { color: #EBDD8A; }
+
+/* the home page's pet cards: five. Two across with the last full width; from 1000 three across, then two */
+@media (min-width: 720px) {
+  .pets-three.pets-three:has(.pet-card[data-pet="r3tards"]) { grid-template-columns: repeat(2, 1fr); }
+  .pets-three.pets-three:has(.pet-card[data-pet="r3tards"]) .pet-card.pet-card { grid-column: auto; }
+  .pets-three.pets-three:has(.pet-card[data-pet="r3tards"]) .pet-card.pet-card[data-pet="r3tards"] { grid-column: 1 / -1; }
+}
+@media (min-width: 1000px) {
+  .pets-three.pets-three:has(.pet-card[data-pet="r3tards"]) { grid-template-columns: repeat(6, 1fr); }
+  .pets-three.pets-three:has(.pet-card[data-pet="r3tards"]) .pet-card.pet-card { grid-column: span 2; }
+  .pets-three.pets-three:has(.pet-card[data-pet="r3tards"]) .pet-card.pet-card:nth-child(n + 4) { grid-column: span 3; }
+}
+.pet-card[data-pet="r3tards"] { border-color: rgba(230,207,90,0.36); }
+.pet-card[data-pet="r3tards"] h2 { color: #EBDD8A; }
+
+/* the stats page's hero tiles with five pets: twelve tiles, three across in four rows (the page's own grid): the pets and
+   the care count, then active / names / items, then the three stunt tiles last (the order puts Items with the counts) */
+@media (min-width: 720px) {
+  .stats-kpis.is-five > :nth-child(9), .stats-kpis.is-five > :nth-child(10), .stats-kpis.is-five > :nth-child(11) { order: 2; }
+  .stats-kpis.is-five > :nth-child(12) { order: 1; }
+}

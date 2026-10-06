@@ -1,0 +1,45 @@
+/* The sound control and the sound lab. Only in a build with sound. */
+
+/* ---------- the control: a small pill (the speaker, and the mixer behind it) ---------- */
+.snd { position: relative; display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: 999px; background: rgba(15, 8, 26, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.snd-b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: #f8f8ff; opacity: 0.78; background: transparent; border: 0; cursor: pointer; transition: opacity 0.15s, background 0.15s; }
+.snd-b:hover, .snd-b:focus-visible { opacity: 1; background: rgba(255, 255, 255, 0.1); }
+.snd-b[aria-pressed="false"] { opacity: 0.5; }
+.snd-pop { position: absolute; z-index: 40; top: calc(100% + 8px); left: 0; width: 218px; padding: 12px 14px 10px; border-radius: 14px; background: #1a1026; border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5); color: #f8f8ff; font-size: 13px; }
+.snd[data-side="right"] .snd-pop { left: auto; right: 0; }
+.snd[data-drop="up"] .snd-pop { top: auto; bottom: calc(100% + 8px); }
+.snd-pop label { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 10px; margin: 6px 0; }
+.snd-pop input[type="range"] { width: 100%; accent-color: #e84d7f; font-size: 13px !important; }
+.snd-pop p { margin: 8px 0 0; font-size: 11.5px; line-height: 1.35; color: rgba(248, 248, 255, 0.6); }
+/* (the pill's blur makes it a layer of its own, so the mixer's own z-index counts for nothing outside it: while the
+   mixer is open the pill itself comes to the front of whatever follows it on the page) */
+.snd[data-open] { z-index: 40; }
+@media (pointer: coarse) { .snd-b { width: 36px; height: 36px; } }
+
+/* in a pet's room: the top left corner */
+.stage > .snd, .snd.in-room { position: absolute; top: 10px; left: 10px; z-index: 6; }
+.snd.in-room[data-open] { z-index: 40; }
+
+/* ---------- the lab ---------- */
+.sl { max-width: 1120px; padding-bottom: 180px; }
+.sl h1 { font-size: 28px; margin: 18px 0 6px; }
+.sl h2 { font-size: 15px; margin: 22px 0 8px; color: #f2a7c4; }
+.sl-note { color: rgba(248, 248, 255, 0.65); font-size: 13px; margin: 6px 0; }
+.sl-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.sl-btn { padding: 7px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14); color: #f8f8ff; font-size: 13px; cursor: pointer; }
+.sl-btn:hover { background: rgba(255, 255, 255, 0.13); }
+.sl-btn.on { background: #e84d7f; border-color: #e84d7f; }
+.sl-mixer { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); position: sticky; top: 8px; z-index: 5; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.sl-mixer label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.sl-mixer input { accent-color: #e84d7f; }
+.sl-last { position: fixed; right: 16px; bottom: 16px; z-index: 6; display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 14px; background: #1a1026; border: 1px solid rgba(255, 255, 255, 0.14); font-size: 12px; max-width: calc(100vw - 32px); }
+.sl-pic { display: block; border-radius: 8px; max-width: 100%; }
+@media (max-width: 640px) { .sl-last { left: 16px; flex-direction: column; align-items: flex-start; } }
+
+.sl-sheet { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: #0d0716; }
+.sl-cell { margin: 0; }
+.sl-cell figcaption { display: flex; flex-direction: column; font: 11px/1.3 ui-monospace, monospace; color: #f8f8ff; padding: 3px 2px 6px; }
+.sl-cell figcaption span { color: rgba(248, 248, 255, 0.6); }
+
+/* Fight Club's page: under the hero's button */
+.fcp-sound { margin: 16px 0 0 10px; vertical-align: middle; }

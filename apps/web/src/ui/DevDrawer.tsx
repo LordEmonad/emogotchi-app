@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import type { Character } from '../pet/Pet';
 import type { Director } from '../scene/director';
 import type { Event } from '../game/state';
 
 export type ViewOverride = 'auto' | 'landing' | 'pet' | 'nopet' | 'dead';
-type Props = { director: Director | null; dispatch: (e: Event) => void; view: ViewOverride; setView: (v: ViewOverride) => void; crown: boolean; setCrown: (b: boolean | null) => void; speed: number; onConnectDemo: () => void; onDisconnect: () => void; live?: boolean; onCrank?: () => void };
+type Props = { director: Director | null; dispatch: (e: Event) => void; view: ViewOverride; setView: (v: ViewOverride) => void; crown: boolean; setCrown: (b: boolean | null) => void; speed: number; onConnectDemo: () => void; onDisconnect: () => void; live?: boolean; onCrank?: () => void; character?: Character; setCharacter?: (c: Character) => void };
 
-export function DevDrawer({ director, dispatch, view, setView, crown, setCrown, speed, onConnectDemo, onDisconnect, live = false, onCrank }: Props) {
+export function DevDrawer({ director, dispatch, view, setView, crown, setCrown, speed, onConnectDemo, onDisconnect, live = false, onCrank, character = 'cat', setCharacter }: Props) {
   const [open, setOpen] = useState(false);
   const B = ({ l, fn }: { l: string; fn: () => unknown }) => <button onClick={() => void fn()} className="dev-b">{l}</button>;
   return (
@@ -15,6 +16,7 @@ export function DevDrawer({ director, dispatch, view, setView, crown, setCrown, 
         <div className="dev-panel">
           <div className="dev-row"><span>View</span>{(['auto', 'landing', 'pet', 'nopet', 'dead'] as ViewOverride[]).map((v) => <button key={v} className={`dev-b ${view === v ? 'is-on' : ''}`} onClick={() => setView(v)}>{v}</button>)}</div>
           <div className="dev-row"><span>Wallet</span><B l="connect demo" fn={onConnectDemo} /><B l="disconnect" fn={onDisconnect} /></div>
+          {!live && setCharacter && <div className="dev-row"><span>Pet</span><button className={`dev-b ${character === 'cat' ? 'is-on' : ''}`} onClick={() => setCharacter('cat')}>cat</button><button className={`dev-b ${character === 'frog' ? 'is-on' : ''}`} onClick={() => setCharacter('frog')}>frok</button><button className={`dev-b ${character === 'sahur' ? 'is-on' : ''}`} onClick={() => setCharacter('sahur')}>sahur</button>{__THICCUMS__ ? <button className={`dev-b ${character === 'thiccums' ? 'is-on' : ''}`} onClick={() => setCharacter('thiccums')}>thiccums</button> : null}{__R3TARDS__ ? <button className={`dev-b ${character === 'r3tards' ? 'is-on' : ''}`} onClick={() => setCharacter('r3tards')}>r3tards</button> : null}{__EMONAD__ ? <button className={`dev-b ${character === 'emonad' ? 'is-on' : ''}`} onClick={() => setCharacter('emonad')}>emonad</button> : null}</div>}
           {live && <div className="dev-row"><span>Chain</span><B l="crank burn" fn={() => onCrank?.()} /><B l="crown: contract" fn={() => setCrown(null)} /></div>}
           {!live && <div className="dev-row"><span>Life</span><B l="kill" fn={() => dispatch({ type: 'kill' })} /><B l="revive" fn={() => { dispatch({ type: 'revived' }); return director?.revive(); }} /></div>}
           {!live && <div className="dev-row"><span>Stats</span>

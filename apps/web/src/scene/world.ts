@@ -17,3 +17,17 @@ export const CAT_PAD = { top: 190, bottom: 30, side: 70 } as const;
 export const HOST_TOP = CAT_TOP - CAT_PAD.top;
 export const HOST_W = CAT.w + CAT_PAD.side * 2;
 export const HOST_H = CAT.h + CAT_PAD.top + CAT_PAD.bottom;
+
+/**
+ * How much bigger than the cat's box a character stands in the room. Tung Tung Tung Sahur is a log three times
+ * taller than it is wide: at the cat's height he is a toothpick and his face unreadable, so he stands 1.4x (a
+ * 336-unit box, his top at y=90 of the 460 room). The rig is untouched by this: the box scales, the svg is the same.
+ */
+export type PetName = 'cat' | 'frog' | 'sahur' | 'seal' | 'thiccums' | 'r3tards' | 'emonad';   // (emonad's scale is set by his own module, so no production file names him)
+export const PET_SCALE: Partial<Record<PetName, number>> = { cat: 1, frog: 1, sahur: 1.4, r3tards: 1.25 };   // (r3tards: a face 116 wide on a stick reads small at 1)   // (a character not listed stands at 1)
+/** The character's box in world units: its size, where its feet sit, its top, and the host box with the pad around it. */
+export function petBox(character: PetName) {
+  const k = PET_SCALE[character] ?? 1;
+  const h = CAT.h * k; const w = CAT.w * k; const footY = CAT.footY * k; const top = WORLD.floor - footY;
+  return { h, w, footY, top, hostTop: top - CAT_PAD.top, hostW: w + CAT_PAD.side * 2, hostH: h + CAT_PAD.top + CAT_PAD.bottom, S: h / 230 };
+}

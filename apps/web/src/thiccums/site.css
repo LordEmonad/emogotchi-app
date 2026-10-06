@@ -1,0 +1,29 @@
+/* Thiccums on the site: every page style that names him. It ships only inside his own chunk (register.ts imports it,
+   and main.tsx loads that only in a build with his switch on), because a stylesheet cannot be switched off by the
+   build's constant the way the code is. */
+
+/* Get a pet: four cards, two by two */
+@media (min-width: 740px) {
+  .adopt-grid:has(.adopt-card[data-pet="thiccums"]) { grid-template-columns: repeat(2, 1fr); }
+  .adopt-grid:has(.adopt-card[data-pet="thiccums"]) .adopt-card[data-pet="cat"] { grid-column: auto; }
+}
+.adopt-card[data-pet="thiccums"] { border-color: rgba(111,183,232,0.42); }
+.adopt-card[data-pet="thiccums"] h2 { color: #A9D6F5; }
+
+/* the home page's pet cards: four, two by two */
+@media (min-width: 720px) {
+  .pets-three:has(.pet-card[data-pet="thiccums"]) { grid-template-columns: repeat(2, 1fr); }
+  .pets-three:has(.pet-card[data-pet="thiccums"]) .pet-card[data-pet="sahur"] { grid-column: auto; }
+}
+.pet-card[data-pet="thiccums"] { border-color: rgba(111,183,232,0.38); }
+.pet-card[data-pet="thiccums"] h2 { color: #A9D6F5; }
+
+/* the stats page's hero tiles with four pets: the pets four across, then care / active / names / items, then the
+   three stunt tiles three across (the order puts Items with the counts; the stunts come last) */
+@media (min-width: 720px) {
+  .stats-kpis.is-four { grid-template-columns: repeat(12, 1fr); }
+  .stats-kpis.is-four > * { grid-column: span 3; }
+  .stats-kpis.is-four > :nth-child(8), .stats-kpis.is-four > :nth-child(9), .stats-kpis.is-four > :nth-child(10) { grid-column: span 4; order: 2; }
+  .stats-kpis.is-four > :nth-child(11) { order: 1; }
+}
+
