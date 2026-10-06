@@ -253,21 +253,11 @@ Build with `pnpm build` and serve `apps/web/dist` from any static host. The page
 origin for the gallery, stats and Emotown. The live site is served by the Worker in `site/`.
 `tools/pages-deploy.sh` is the project's own deploy script, written for its accounts.
 
-## Built during the hackathon, and what came before
+## Built during the hackathon
 
-Apart from what is listed below, everything here was built during the Metropolis hackathon period. The first commit
-is 2026-09-12, and the history runs to the present. Every contract was deployed in that window (the first on
-2026-09-15).
-
-What existed before and was used as a starting point:
-
-- **The cat character** was adapted from our earlier game *the original* and re-rigged for Emogotchi. Its drawing and
-  every animation were rebuilt here.
-- **$EMO** (the Emonad memecoin on nad.fun) and **the Emonad character design** existed before. Emonadgotchi was
-  traced from Emonad's turnaround sheet (the sheet is not included).
-- **The other pets' characters** come from their communities (see below). Their drawings and animations were made
-  here.
-- **forge-std** is vendored in `contracts/lib/forge-std` (MIT / Apache-2.0).
+Everything here was built during the Metropolis hackathon period. The first commit is 2026-09-12, the history runs to
+the present, and every contract was deployed in that window (the first on 2026-09-15). Code from elsewhere is listed
+under Attribution.
 
 ## AI tools
 
