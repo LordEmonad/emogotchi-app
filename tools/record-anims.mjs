@@ -15,13 +15,17 @@
  * 60fps a sprite sheet would be tens of megabytes and a video of flat vector art is a fraction of that.
  *
  *   node tools/record-anims.mjs        (dev server on 5173)
+ *   node tools/record-anims.mjs --pet=r3tards [feed wash …]   another pet's set, into public/anim/<pet>/ with its own
+ *                                      anim.json (the demo room opened on that pet: /?dev=1&pet=<pet>); the share sheet
+ *                                      offers the animated card for the pets listed in shareVideo.ts CLIP_DIR
  */
 import puppeteer from 'puppeteer-core';
 import { createServer } from 'node:http';
 import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, statSync } from 'node:fs';
 
-const RAW = '/tmp/emo-anim';
-const OUT = 'apps/web/public/anim';
+const PET = (process.argv.find((a) => a.startsWith('--pet=')) ?? '').slice(6);   // '' = the cat
+const RAW = `/tmp/emo-anim${PET ? '-' + PET : ''}`;
+const OUT = `apps/web/public/anim${PET ? '/' + PET : ''}`;
 const BASE = process.env.BASE ?? 'http://localhost:5173';
 const SIZE = 500;                                   // exactly the box the share card draws the cat into
 const FPS = 60;
@@ -66,11 +70,14 @@ const server = createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const ORIGIN = `http://127.0.0.1:${server.address().port}`;
 
-const browser = await puppeteer.launch({
+const launch = () => puppeteer.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: true,
   args: ['--hide-scrollbars'],
 });
+let browser = await launch();
+/** the browser, started again if it has died (it did once, a clip into a run, and every clip after it was given up on) */
+const alive = async () => { if (!browser.connected) { console.log('  (the browser was gone: starting another)'); browser = await launch(); } return browser; };
 
 /** Slow every animation and every timer by the same factor, so the choreography stays intact. */
 const SLOW = (rate) => {
@@ -90,11 +97,13 @@ const SLOW = (rate) => {
 async function capture(clip, variant) {
   const key = clip.key + variant.suffix;
   mkdirSync(`${RAW}/${key}`, { recursive: true });
-  const page = await browser.newPage();
+  const page = await (await alive()).newPage();
   await page.setViewport({ width: SIZE, height: SIZE, deviceScaleFactor: 1 });
   await page.evaluateOnNewDocument(() => { try { localStorage.setItem('emogotchi.wallet', 'demo'); } catch { /* private mode */ } });
-  await page.goto(`${BASE}/?dev=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.goto(`${BASE}/?dev=1${PET ? '&pet=' + PET : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.waitForFunction(() => window.__pet?.director, { timeout: 120000, polling: 200 });
+  // the right pet is in the room (a pet's drawing arrives in its own chunk)
+  if (PET) await page.waitForFunction((pet) => document.querySelector('.stage #cat')?.getAttribute('data-character') === pet, { timeout: 60000, polling: 200 }, PET);
 
   // Strip the page back to the stage alone, filling the viewport.
   //
@@ -159,7 +168,7 @@ async function capture(clip, variant) {
 
 /** Play the frames back at true speed and let the browser encode them. */
 async function encode(clip) {
-  const page = await browser.newPage();
+  const page = await (await alive()).newPage();
   await page.setViewport({ width: SIZE, height: SIZE });
   await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' }).catch(() => {});
   const out = await page.evaluate(async (key, times, size, fps, kbps) => {

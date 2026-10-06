@@ -9,7 +9,10 @@ import { buildTree } from './tree.mjs';
 import { keccak256, toBytes } from 'viem';
 
 /** The lookup key for a wallet: the published files hold these, never the addresses themselves, so the
- *  allowlist cannot be scraped and turned into "here are the communities" before the operator says so. */
+ *  allowlist is not sitting in one downloadable file. It is NOT secret: the address space is enumerable, so anyone
+ *  willing to hash a candidate list recovers the set. That is acceptable here — the airdrop recipients were already
+ *  public from Transfer logs, and a proof only works for its own msg.sender — but do not describe it as unscrapeable.
+ *  A genuinely private allowlist needs HMAC(serverSecret, address) shards served from the Worker. */
 export const keyOf = (a) => keccak256(toBytes(a.toLowerCase()));
 const args = process.argv.slice(2);
 const opt = (k) => args.flatMap((a, i) => (a === k ? [args[i + 1]] : []));

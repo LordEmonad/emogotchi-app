@@ -59,8 +59,22 @@ const query = async (topics, withName = false) => {
 };
 
 const named = await query([await topic('Named(uint256,string)')], true);
-const died = await query([await topic('Died(uint256,uint256)')]);
+// Dead cats: on chain a death is only *recorded* (Died) when the cat is next touched, so the true list is
+// derived from the feed clock. The Worker (worker/index.js) does that derivation; this file is its
+// fallback, so it takes the Worker's answer and only falls back to the recorded deaths if the Worker is down.
+let died; let extra = {};   // the Worker's never-died and revived lists, carried into the fallback so the gallery's chips never read 0 for a list it simply lacks
+try {
+  const r = await fetch('https://emogotchi.emonad.lol/api/cats');
+  const j = r.ok ? await r.json() : null;
+  if (j) extra = { neverDied: Array.isArray(j.neverDied) ? j.neverDied : j.neverDiedRuns ? { runs: j.neverDiedRuns } : undefined, revived: Array.isArray(j.revived) ? j.revived : j.revivedRuns ? { runs: j.revivedRuns } : undefined };
+  if (j && Array.isArray(j.died)) died = { ids: j.died };
+  else if (j && Array.isArray(j.diedRuns)) { const ids = []; for (const [hi, lo] of j.diedRuns) for (let id = hi; id >= lo; id--) ids.push(id); died = { ids }; }   // long lists come as [hi, lo] runs
+} catch { /* below */ }
+if (!died) { console.log('worker unreachable: dead list from recorded deaths only'); died = await query([await topic('Died(uint256,uint256)')]); }
 mkdirSync('apps/web/public/index', { recursive: true });
-const out = { generatedAt: new Date().toISOString(), block: named.to, named: named.ids, died: died.ids };
+// the shipped file keeps the runs too, so the fallback stays small once most cats are dead
+const runs = []; for (const id of died.ids) { const r = runs[runs.length - 1]; if (r && r[1] === id + 1) r[1] = id; else runs.push([id, id]); }
+const keep = (k, v) => (v === undefined ? {} : Array.isArray(v) ? { [k]: v } : { [k + 'Runs']: v.runs });
+const out = { generatedAt: new Date().toISOString(), block: named.to, named: named.ids, ...(died.ids.length <= 2000 ? { died: died.ids } : { diedRuns: runs }), ...keep('neverDied', extra.neverDied), ...keep('revived', extra.revived) };
 writeFileSync(OUT, JSON.stringify(out));
 console.log(`${named.ids.length} named, ${died.ids.length} died, scanned to block ${named.to} → ${OUT}`);

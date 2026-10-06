@@ -13,8 +13,10 @@
  * With no --keystore it falls back to the agent keystore used on testnet (~/.monskills/keystore).
  *
  * Progress is written to <list>.progress.json after every confirmed batch: the batch index, the
- * transaction hash and the addresses it covered. Re-running skips anything already confirmed, so an
- * interrupted airdrop is safe to restart. It never mints to the same row twice.
+ * transaction hash. **Resume is keyed by BATCH INDEX, not by address**: re-running skips the first N batches that
+ * are already confirmed. That is safe only while the row set is identical — if the CSV or --exclude changes between
+ * runs, index N is a different slice and wallets can be minted twice or skipped, with nothing detecting it. So:
+ * finish a --send run against one fixed row set, and if the inputs change, start from an empty progress file.
  *
  * The CSV is `address,cats` (a header is allowed). A row asking for more than one cat is repeated in
  * the batch, which is what `airdrop(address[])` expects: one cat per entry.

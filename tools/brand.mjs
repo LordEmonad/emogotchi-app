@@ -4,9 +4,17 @@
 import { readFileSync, writeFileSync, mkdirSync, statSync, unlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+//   node tools/brand.mjs              the cat's kit
+//   node tools/brand.mjs inversebrah  inversebrah's kit, from contracts/art-inversebrah, files prefixed inversebrah-
+//   node tools/brand.mjs sahur        Tung Tung Tung Sahur's kit, from contracts/art-sahur, files prefixed sahur- (plus a face icon)
+//   node tools/brand.mjs thiccums     Thiccums' kit, from contracts/art-thiccums, into thiccumsgotchi/brand/ (NOT the site's
+//                                     public folder: he is not launched, and every deploy ships apps/web/public whole)
 const root = fileURLToPath(new URL('..', import.meta.url));
-const ART = root + 'contracts/art/';
-const OUT = root + 'apps/web/public/brand/';
+const WHO = ['inversebrah', 'sahur', 'thiccums'].includes(process.argv[2]) ? process.argv[2] : 'cat';
+const ART = root + (WHO === 'cat' ? 'contracts/art/' : `contracts/art-${WHO}/`);
+const OUT = root + (WHO === 'thiccums' ? 'thiccumsgotchi/brand/' : 'apps/web/public/brand/');
+const CATLIKE = WHO === 'cat' || WHO === 'thiccums';   // drawn at the cat's size in the portraits (he is as wide as her box)
+const PREFIX = WHO === 'cat' ? '' : `${WHO}-`;
 mkdirSync(OUT, { recursive: true });
 const font = 'file://' + root + 'node_modules/.pnpm/@fontsource-variable+space-grotesk@5.3.0/node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2';
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -66,10 +74,16 @@ h1 .grad { background: linear-gradient(90deg,#ff7aa6,#E84D7F 45%,#B894D8); -webk
 ${copy ? `<div class="copy">${copy}</div>` : ''}${foot ? `<div class="foot ${foot.side ?? ''}">${foot.html}</div>` : ''}</div></body></html>`;
 };
 
-const BRAND = `<div class="brand">${heart}Emogotchi</div>`;
-const EYEBROW = `<div class="eyebrow">A cat that lives in your wallet</div>`;
-const H1 = `<h1>Feed it. Wash it.<br><span class="grad">Burn EMO.</span></h1>`;
-const SUB = `<p class="sub">A cat you keep alive on Monad. Every meal, bath and ball of yarn is <b>1 MON</b>, and <b>80%</b> of every interaction buys <b>EMO</b> and burns it.</p>`;
+const BRAND = WHO === 'cat' ? `<div class="brand">${heart}Emogotchi</div>` : WHO === 'thiccums' ? `<div class="brand">${heart}Thiccumsgotchi</div>` : WHO === 'sahur' ? `<div class="brand" style="font-size:.72em">${heart}Tung Tung Tung Sahuragotchi</div>` : `<div class="brand">${heart}Inversegotchi</div>`;
+const EYEBROW = WHO === 'cat' ? `<div class="eyebrow">A cat that lives in your wallet</div>` : WHO === 'thiccums' ? `<div class="eyebrow">Thiccums lives in your wallet</div>` : WHO === 'sahur' ? `<div class="eyebrow">Tung Tung Tung Sahur lives in your wallet</div>` : `<div class="eyebrow">inversebrah lives in your wallet</div>`;
+const H1 = WHO === 'cat' ? `<h1>Feed it. Wash it.<br><span class="grad">Burn EMO.</span></h1>` : WHO === 'thiccums' ? `<h1>Mint him free.<br><span class="grad">Watch it bounce.</span></h1>` : WHO === 'sahur' ? `<h1>Mint him free.<br><span class="grad">Tung tung tung.</span></h1>` : `<h1>Mint him free.<br><span class="grad">Keep him alive.</span></h1>`;
+const SUB = WHO === 'cat'
+  ? `<p class="sub">A cat you keep alive on Monad. Every meal, bath and ball of yarn is <b>1 MON</b>, and <b>80%</b> of every interaction buys <b>EMO</b> and burns it.</p>`
+  : WHO === 'thiccums'
+    ? `<p class="sub">A seal with a big bouncy butt, free to mint on Monad, one per wallet. Feed him, wash him, play with him, put him to bed, and watch that butt <b>bounce</b>.</p>`
+  : WHO === 'sahur'
+    ? `<p class="sub">One each, free, on Monad. Feed him, wash him, play with him, put him to bed: all of it <b>free</b>. Naming him is <b>10 MON</b>, and <b>80%</b> of it buys <b>EMO</b> and burns it.</p>`
+    : `<p class="sub">One each, free, on Monad. Feed him, wash him, slap him, set him on fire: all of it <b>free</b>. Naming him is <b>10 MON</b>, and <b>80%</b> of it buys <b>EMO</b> and burns it.</p>`;
 const FOOT = { html: `<b>$EMO</b> on Monad · emogotchi.emonad.lol` };
 // a wider line-up for the textless banner: more cats, the crowned one dead centre
 const WIDE = [{ mood: 'sleepy', size: 0.78 }, { mood: 'hungry', size: 0.86 }, { mood: 'grubby', size: 0.92 }, { mood: 'happy', crown: true, size: 1.08, z: 10 }, { mood: 'content', size: 0.92 }, { mood: 'bored', size: 0.86 }, { mood: 'sleeping', size: 0.78 }];
@@ -80,7 +94,7 @@ const FAMILY = [{ mood: 'hungry', size: 0.8 }, { mood: 'content', size: 0.9 }, {
 
 const pieces = [
   // X / Twitter header 1500x500 (3:1). The avatar covers the bottom-left corner on the profile page, so the copy sits high on the left.
-  { name: 'x-header', w: 1500, h: 500, dpr: 2, use: 'X header · 1500×500 (3:1)', opts: { cats: FAMILY, copy: BRAND + EYEBROW + H1, copyLeft: 0.06, copyTop: 0.44, copyW: 0.36, floorAt: 0.9, catH: 0.8, span: [0.4, 0.985], catGap: 0.5, scale: 0.9 } },
+  { name: 'x-header', w: 1500, h: 500, dpr: 2, use: 'X header · 1500×500 (3:1)', opts: { cats: FAMILY, copy: BRAND + EYEBROW + H1, copyLeft: 0.06, copyTop: 0.44, copyW: 0.36, floorAt: 0.9, catH: 0.8, span: [0.4, WHO === 'thiccums' ? 0.95 : 0.985], catGap: 0.5, scale: 0.9 } },
   // OpenSea page header. Their guidance is 8:3 on desktop and 16:9 on a phone, and it is the SAME file
   // cropped both ways: a 16:9 slice of an 8:3 image is the middle 66.7% of its width. This used to be
   // 4:1, so only 66.7% of it survived on desktop and 44.4% on a phone, which is why the end cats were
@@ -88,16 +102,32 @@ const pieces = [
   // round collection logo over the bottom-left and prints the name beside it.
   { name: 'opensea-banner', w: 2400, h: 900, dpr: 1, use: 'OpenSea / Poply header · 2400×900 (8:3; the middle 16:9 is what a phone keeps)', opts: { cats: WIDE5, floorAt: 0.9, catH: 0.86, span: [0.19, 0.81], catGap: 0.5, scale: 1.3 } },
   // OpenSea featured 1200x800 (3:2): the crowned cat, big.
-  { name: 'opensea-featured', w: 1200, h: 800, dpr: 1, use: 'OpenSea featured image · 1200×800 (3:2)', opts: { cats: [{ mood: 'happy', crown: true, size: 1 }], copy: BRAND + EYEBROW + H1 + SUB, copyLeft: 0.06, copyTop: 0.48, copyW: 0.46, floorAt: 0.87, catH: 1.0, span: [0.55, 0.985], scale: 1.05, foot: FOOT } },
+  { name: 'opensea-featured', w: 1200, h: 800, dpr: 1, use: 'OpenSea featured image · 1200×800 (3:2)', opts: { cats: [{ mood: 'happy', crown: true, size: 1 }], copy: BRAND + EYEBROW + H1 + SUB, copyLeft: 0.06, copyTop: 0.48, copyW: 0.46, floorAt: 0.87, catH: WHO === 'thiccums' ? 0.9 : CATLIKE ? 1.0 : 0.9, span: [0.55, 0.985], scale: 1.05, foot: FOOT } },
   // 16:9 hero: Discord banner / invite splash, decks, video thumbnails.
   { name: 'hero-16x9', w: 1920, h: 1080, dpr: 1, use: 'Hero 16:9 · 1920×1080 (Discord banner, splash, decks)', opts: { cats: FAMILY, copy: BRAND + EYEBROW + H1 + SUB, copyLeft: 0.06, copyTop: 0.42, copyW: 0.4, floorAt: 0.86, catH: 0.7, span: [0.47, 0.985], catGap: 0.48, scale: 1.5, foot: FOOT } },
 ];
+if (WHO !== 'cat') pieces.push(
+  // the link preview (Open Graph / X card) for /mint and /inversebrah: 1200x630 at 2x, him crowned on the right, the offer on the left
+  { name: 'og', w: 1200, h: 630, dpr: 2, use: 'Link preview (Open Graph / X card) · 2400×1260 (1.91:1)' + (WHO === 'thiccums' ? ', for his mint page' : ', used by /mint and /inversebrah'), opts: { cats: [{ mood: 'happy', crown: true, size: 1 }], copy: BRAND + EYEBROW + H1 + SUB, copyLeft: 0.06, copyTop: 0.47, copyW: 0.5, floorAt: 0.87, catH: 0.92, span: [0.58, 0.985], scale: 1.0, foot: FOOT } },
+);
 pieces.push(
-  { name: 'logo', w: 1024, h: 1024, dpr: 1, use: 'Logo / avatar · 1024×1024 (X, Telegram, Discord, MonadVision cover, OpenSea logo)', opts: { cats: [{ mood: 'happy', crown: true }], floorAt: 0.975, catH: 1.32, span: [0.0, 1.0], catGap: 1 } },
-  { name: 'logo-transparent', w: 1024, h: 1024, dpr: 1, use: 'Logo on transparent · 1024×1024 (stickers, overlays)', opts: { cats: [{ mood: 'happy', crown: true }], floorAt: 0.975, catH: 1.32, span: [0.0, 1.0], catGap: 1, transparent: true } },
+  { name: 'logo', w: 1024, h: 1024, dpr: 1, use: 'Logo / avatar · 1024×1024 (X, Telegram, Discord, MonadVision cover, OpenSea logo)', opts: { cats: [{ mood: 'happy', crown: true }], floorAt: 0.975, catH: CATLIKE ? 1.32 : 1.1, span: [0.0, 1.0], catGap: 1 } },
+  { name: 'logo-transparent', w: 1024, h: 1024, dpr: 1, use: 'Logo on transparent · 1024×1024 (stickers, overlays)', opts: { cats: [{ mood: 'happy', crown: true }], floorAt: 0.975, catH: CATLIKE ? 1.32 : 1.1, span: [0.0, 1.0], catGap: 1, transparent: true } },
+);
+if (WHO === 'thiccums') pieces.push(
+  // his avatar is the picture itself: the resting face (eyes open, the w smile), no crown, as the reference draws him
+  { name: 'icon', w: 1024, h: 1024, dpr: 1, use: 'Icon / avatar · 1024×1024, the reference look (X, Telegram, Discord, OpenSea logo)', opts: { cats: [{ mood: 'content' }], floorAt: 0.975, catH: 1.32, span: [0.0, 1.0], catGap: 1 } },
+  { name: 'icon-transparent', w: 1024, h: 1024, dpr: 1, use: 'Icon on transparent · 1024×1024', opts: { cats: [{ mood: 'content' }], floorAt: 0.975, catH: 1.32, span: [0.0, 1.0], catGap: 1, transparent: true } },
+);
+if (WHO === 'sahur') pieces.push(
+  // his avatar is the full figure (the operator's call over a face crop), on his resting face: eyes open and the smirk
+  // are the character, and the happy grin shuts the eyes. The logo above is the happy crowned one like the other kits.
+  { name: 'icon', w: 1024, h: 1024, dpr: 1, use: 'Icon / avatar · 1024×1024, full figure (X, Telegram, Discord, OpenSea logo)', opts: { cats: [{ mood: 'content', crown: true }], floorAt: 0.975, catH: 1.12, span: [0.0, 1.0], catGap: 1 } },
+  { name: 'icon-transparent', w: 1024, h: 1024, dpr: 1, use: 'Icon on transparent · 1024×1024', opts: { cats: [{ mood: 'content', crown: true }], floorAt: 0.975, catH: 1.12, span: [0.0, 1.0], catGap: 1, transparent: true } },
 );
 const written = [];
 for (const p of pieces) {
+  p.name = PREFIX + p.name;
   const html = OUT + `.${p.name}.html`; const png = OUT + `${p.name}.png`;
   writeFileSync(html, page({ w: p.w, h: p.h, ...p.opts }));
   execFileSync(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--default-background-color=00000000', `--window-size=${p.w},${p.h}`, `--force-device-scale-factor=${p.dpr}`, `--screenshot=${png}`, 'file://' + html], { stdio: 'ignore' });
@@ -105,14 +135,16 @@ for (const p of pieces) {
   written.push({ file: `${p.name}.png`, use: p.use, px: `${p.w * p.dpr}×${p.h * p.dpr}`, kb: Math.round(statSync(png).size / 1024) });
   console.log(p.name, `${p.w * p.dpr}x${p.h * p.dpr}`, Math.round(statSync(png).size / 1024), 'KB');
 }
-// transparent logo: the crowned happy cat alone
-writeFileSync(OUT + 'logo-transparent-1024.svg', Buffer.from(cat('happy', true).split(',')[1], 'base64'));
-written.push({ file: '../og.png', use: 'Link preview (Open Graph / X card) · 2400×1260 (1.91:1)', px: '2400×1260', kb: Math.round(statSync(root + 'apps/web/public/og.png').size / 1024) });
-writeFileSync(OUT + 'index.html', `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Emogotchi brand kit</title><style>
+// transparent logo: the crowned happy one alone
+writeFileSync(OUT + PREFIX + 'logo-transparent-1024.svg', Buffer.from(cat('happy', true).split(',')[1], 'base64'));
+if (WHO === 'cat') written.push({ file: '../og.png', use: 'Link preview (Open Graph / X card) · 2400×1260 (1.91:1)', px: '2400×1260', kb: Math.round(statSync(root + 'apps/web/public/og.png').size / 1024) });
+const TITLE = WHO === 'cat' ? 'Emogotchi brand kit' : WHO === 'thiccums' ? 'Thiccumsgotchi brand kit (not launched)' : WHO === 'sahur' ? 'Tung Tung Tung Sahuragotchi brand kit' : 'Inversegotchi brand kit';
+const LEAD = WHO === 'thiccums' ? 'Every piece is composed from Thiccums\' baked on-chain art by <code>tools/brand.mjs thiccums</code>. It lives in <code>thiccumsgotchi/brand/</code>, outside the site, until he launches.' : WHO === 'cat' ? 'Every piece is generated from the on-chain cat art by <code>tools/brand.mjs</code>. Right-click → Save, or use the direct link. The items collection kit is at <a href="items/">/brand/items/</a>, inversebrah\'s at <a href="inversebrah.html">/brand/inversebrah.html</a>.' : WHO === 'sahur' ? 'Every piece is generated from Tung Tung Tung Sahur\'s baked art by <code>tools/brand.mjs sahur</code>. Right-click → Save, or use the direct link. The cat\'s kit is at <a href="./">/brand/</a>.' : 'Every piece is generated from inversebrah\'s on-chain art by <code>tools/brand.mjs inversebrah</code>. Right-click → Save, or use the direct link. The cat\'s kit is at <a href="./">/brand/</a>.';
+writeFileSync(OUT + (WHO === 'cat' ? 'index.html' : `${WHO}.html`), `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${TITLE}</title><style>
 body{margin:0;background:#0c0614;color:#F8F8FF;font:16px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;padding:32px 20px 80px}h1{font-size:28px;margin:0 0 4px}p.lead{color:#B894D8;margin:0 0 32px}
 .piece{max-width:1200px;margin:0 auto 48px}.piece h2{font-size:17px;margin:0 0 8px;font-weight:600}.piece small{color:#B894D8;font-weight:400;margin-left:8px}
 .frame{background:repeating-conic-gradient(#1a1024 0 25%,#12091b 0 50%) 0 0/28px 28px;border-radius:14px;padding:12px;display:inline-block;max-width:100%}.frame img{display:block;max-width:100%;height:auto;border-radius:8px}
-a{color:#ff7aa6}</style></head><body><h1>Emogotchi brand kit</h1><p class="lead">Every piece is generated from the on-chain cat art by <code>tools/brand.mjs</code>. Right-click → Save, or use the direct link. The items collection kit is at <a href="items/">/brand/items/</a>.</p>
+a{color:#ff7aa6}</style></head><body><h1>${TITLE}</h1><p class="lead">${LEAD}</p>
 ${written.map((p) => `<div class="piece"><h2>${p.use}<small>${p.px} · ${p.kb} KB · <a href="${p.file}" download>${p.file.replace('../', '')}</a></small></h2><div class="frame"><img src="${p.file}" alt=""></div></div>`).join('')}
 </body></html>`);
-writeFileSync(OUT + 'pieces.json', JSON.stringify(written, null, 2));
+writeFileSync(OUT + PREFIX + 'pieces.json', JSON.stringify(written, null, 2));
