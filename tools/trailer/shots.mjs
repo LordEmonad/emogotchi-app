@@ -8,6 +8,7 @@ import { launch, open, film, boxOf, press, sleep } from './lib.mjs';
 import { EMO } from './emo-takes.mjs';
 import { EMO3 } from './emo3-takes.mjs';
 import { EG } from './eg-takes.mjs';
+import { DEMO } from './demo-takes.mjs';
 
 export const RAW = process.env.RAW ?? 'trailer/raw';
 const JOBS = Number(process.env.JOBS ?? 3);
@@ -217,10 +218,19 @@ if (W) Object.assign(TAKES, {
       await stage(page, [[pet('main', 0), 1760, 832], [pet('tung', 0), 1985, 826], [pet('frog', 0), 2210, 834]], 1989);
       await sleep(9000);
     },
+    // (the pointer is kept off the message list: left over a row, each row the new messages pushed under it lit up with
+    // its hover highlight, a flicker down the list; so it rests over the sky, and the box is clicked where it is seen)
     events: [
+      { at: 100, run: (page) => page.mouse.move(1000, 170).then(() => null) },
       says(500, 'tung', 'gm emotown'),
       says(2300, 'frog', 'who fed their pet today?'),
-      tap(3700, { sel: '[placeholder^="Say something"]' }),
+      { at: 3700, run: async (page) => {
+        const p = await page.evaluate(() => { const el = [...document.querySelectorAll('[placeholder^="Say something"]')].find((e) => e.offsetParent !== null && e.getBoundingClientRect().height > 0); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.x + Math.min(b.width / 2, 140), y: b.y + b.height / 2 }; });
+        if (!p) throw new Error('no message box');
+        await page.mouse.click(p.x, p.y);
+        await page.mouse.move(1000, 170);
+        return p;
+      } },
       ...types(4000, 'just fed Pickle. he says gm'),
       { at: 6000, run: (page) => page.keyboard.press('Enter').then(() => null) },
       { at: 7600, run: async () => { const h = await api('tung', '/chat/history?room=square'); const list = h?.items ?? []; const mine = [...list].reverse().find((m) => (m.a ?? '').toLowerCase() === W.people.main.address.toLowerCase()); if (mine) { await api('tung', '/chat/react', { id: mine.id, emoji: '\u{1F525}' }); await api('frog', '/chat/react', { id: mine.id, emoji: '❤️' }); } return null; } },
@@ -276,6 +286,7 @@ if (W) Object.assign(TAKES, {
 Object.assign(TAKES, EMO);
 Object.assign(TAKES, EMO3);
 Object.assign(TAKES, EG);
+Object.assign(TAKES, DEMO);
 
 async function shoot(name, raw = RAW) {
   const t = TAKES[name];

@@ -23,7 +23,10 @@ createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? '/', 'http://x');
     if (PASS.test(url.pathname) && url.pathname.startsWith('/api/')) {
-      const up = await fetch(LIVE + url.pathname + url.search, { method: req.method, headers: { accept: req.headers.accept ?? '*/*' } });
+      // a POST (the starter drip) goes on with its body and its content type, which the Worker checks
+      const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await new Promise((ok) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => ok(Buffer.concat(c))); });
+      const headers = { accept: req.headers.accept ?? '*/*', ...(req.headers['content-type'] ? { 'content-type': req.headers['content-type'] } : {}) };
+      const up = await fetch(LIVE + url.pathname + url.search, { method: req.method, headers, body });
       res.writeHead(up.status, { 'content-type': up.headers.get('content-type') ?? 'application/json', 'cache-control': 'no-store' });
       res.end(Buffer.from(await up.arrayBuffer()));
       return;

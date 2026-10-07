@@ -46,7 +46,7 @@ for (const c of T.clips) for (const take of takesOf(c)) {
     missing.add(take); console.warn(`  not filmed yet: ${take}`); continue;
   }
   const m = JSON.parse(readFileSync(metaPath, 'utf8'));
-  T.takes[take] = { frames: m.frames, marks: m.marks ?? [], fps: m.fps ?? 60 };
+  T.takes[take] = { frames: m.frames, marks: m.marks ?? [], fps: m.fps ?? 60, txs: m.txs ?? [] };
   cuesOf[take] = m.cues ?? [];
 }
 for (const c of T.clips) {

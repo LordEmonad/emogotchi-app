@@ -362,8 +362,9 @@
 .modal-err { margin: 10px 0 0; font-size: 13px; color: #F08BAA; }
 /* Two pets to demo, so this is a row with a choice rather than one button. */
 .modal-demo { margin-top: 14px; width: 100%; padding: 10px 12px; border-radius: 12px; background: transparent; border: 1px dashed rgba(184,148,216,0.35); color: rgba(248,248,255,0.7); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
-.modal-demo-pick { display: inline-flex; gap: 8px; }
-.modal-demo-pick button { padding: 5px 12px; border-radius: 999px; font: inherit; color: rgba(248,248,255,0.8); background: rgba(80,40,88,0.45); border: 1px solid rgba(184,148,216,0.3); cursor: pointer; }
+/* six pets: the chips wrap inside the dashed box (in one row they ran off both sides of a phone's sheet), each on one line */
+.modal-demo-pick { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 100%; }
+.modal-demo-pick button { white-space: nowrap; padding: 5px 12px; border-radius: 999px; font: inherit; color: rgba(248,248,255,0.8); background: rgba(80,40,88,0.45); border: 1px solid rgba(184,148,216,0.3); cursor: pointer; }
 .modal-demo-pick button b { color: #EAC6EA; }
 .modal-demo-pick button:hover { border-color: rgba(232,77,127,0.65); background: rgba(80,40,88,0.7); }
 .modal-fine { margin: 10px 0 0; font-size: 11.5px; color: rgba(248,248,255,0.4); text-align: center; }

@@ -110,12 +110,61 @@ const TIMEWARP = () => {
 };
 
 /**
+ * Runs after TIMEWARP when a take films a real chain (open({ realNet: true })): every fetch's answer reaches the page only
+ * once the PAGE's clock has moved on by as long as the answer really took, so a transaction that took 0.9 s on Monad takes
+ * 0.9 s on film too (with the clock slowed to a few percent, an answer would otherwise land between two frames and every
+ * wait would look instant). It also writes down the page's transactions: when each was sent (`sent`, with its hash) and
+ * when the page learned it was in a block (`mined`), on the page's clock, in window.__txlog.
+ */
+const REALNET = () => {
+  if (window.__realnet) return;
+  window.__realnet = true;
+  const tw = window.__tw;
+  const realFetch = window.fetch.bind(window);
+  const log = (window.__txlog = []);
+  const seen = new Set();
+  window.fetch = async (input, init) => {
+    const v0 = tw.virt();
+    const r0 = tw.realNow();
+    let rpc = null;
+    try { const b = init?.body; if (typeof b === 'string' && b.includes('"jsonrpc"')) rpc = JSON.parse(b); } catch { /* not JSON-RPC */ }
+    const url = typeof input === 'string' ? input : input?.url ?? '';
+    const drip = /\/api\/drip$/.test(url.split('?')[0]);
+    const res = await realFetch(input, init);
+    let text = null;
+    if (rpc || drip) text = await res.clone().text().catch(() => null);   // the body's own transfer counts in the wait
+    // the starter is sent by the server: its hash comes back in the answer
+    if (drip && text) { try { const j = JSON.parse(text); log.push({ kind: 'drip', hash: j.hash ?? null, ok: !!j.ok, amount: j.amount ?? null, t: v0, back: v0 + (tw.realNow() - r0) }); } catch { /* fine */ } }
+    const due = v0 + (tw.realNow() - r0);
+    if (tw.virt() < due) await new Promise((ok) => setTimeout(ok, due - tw.virt()));   // the page's (warped) timer
+    if (rpc && text) {
+      try {
+        const calls = Array.isArray(rpc) ? rpc : [rpc];
+        const outs = [].concat(JSON.parse(text));
+        for (const c of calls) {
+          const o = outs.find((x) => x && x.id === c.id) ?? outs[0];
+          if (!o || !o.result) continue;
+          if (c.method === 'eth_sendRawTransaction' || c.method === 'eth_sendTransaction') log.push({ kind: 'sent', hash: o.result, t: v0 });
+          // the first time an address the page asks about holds anything (a new account's starter has landed)
+          if (c.method === 'eth_getBalance' && /^0x0*[1-9a-f]/i.test(o.result) && !seen.has('bal:' + c.params?.[0])) { seen.add('bal:' + c.params[0]); log.push({ kind: 'funded', address: c.params[0], wei: o.result, t: tw.virt() }); }
+          if (c.method === 'eth_getTransactionReceipt' && !seen.has(c.params?.[0])) {
+            seen.add(c.params[0]);
+            log.push({ kind: 'mined', hash: c.params[0], t: tw.virt(), status: o.result.status, block: o.result.blockNumber, to: o.result.to, gasUsed: o.result.gasUsed });
+          }
+        }
+      } catch { /* not ours to break */ }
+    }
+    return res;
+  };
+};
+
+/**
  * A page of the site with its clock in hand.
  *   w, h, dpr   the viewport (css px) and how many device px each is: w*dpr x h*dpr is the picture's size
  *   wallet      'demo' = the site's own demo pet; null = a visitor with no wallet
  *   storage     extra localStorage entries, set before the page's scripts
  */
-export async function open(browser, { path, w, h, dpr = 1, wallet = null, account = null, person = null, base = BASE, storage = {}, mobile = false, ua = null, wait = null, before = null, slowLoad = null }) {
+export async function open(browser, { path, w, h, dpr = 1, wallet = null, account = null, person = null, base = BASE, storage = {}, mobile = false, ua = null, wait = null, before = null, slowLoad = null, realNet = false }) {
   const page = await (person || base !== BASE ? await browser.createBrowserContext() : browser).newPage();
   await page.setViewport({ width: w, height: h, deviceScaleFactor: dpr, isMobile: mobile, hasTouch: mobile });
   if (ua) await page.setUserAgent(ua);
@@ -129,6 +178,7 @@ export async function open(browser, { path, w, h, dpr = 1, wallet = null, accoun
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e.message ?? e)));
   await page.evaluateOnNewDocument(TIMEWARP);
+  if (realNet) await page.evaluateOnNewDocument(REALNET);
   await page.evaluateOnNewDocument((wallet, storage) => {
     try {
       if (wallet) localStorage.setItem('emogotchi.wallet', wallet);
@@ -211,14 +261,19 @@ export async function setRate({ page, cdp }, rate) {
  *   skip      ms of page time run through, unfilmed, after the action starts (to film only the end of a long scene);
  *             the cues are counted from the first frame, so the ones before it are negative
  *   transparent  the picture keeps its alpha (the page's own backgrounds must be hidden by the take's css): a pet cut out
+ *   wants     the page asks for real presses itself: its script sets window.__want = { text | has | sel, nth, within }
+ *             (or { type: 'abc' } / { key: 'Enter' }) when it is ready for one, and waits for window.__wantDone to move;
+ *             the press is made between two frames through the browser's input pipeline. For a real chain, where what
+ *             the page waits for (a starter, a receipt) takes as long as it takes, so no press can be timed in advance.
+ *   touch     those presses are finger taps (a phone): no pointer is left resting where something opens next
  */
-export async function film(shot, { dir, ms, rate = 0.08, action = null, tail = 400, events = [], clip = null, fps = FPS, skip = 0, transparent = false }) {
+export async function film(shot, { dir, ms, rate = 0.08, action = null, tail = 400, events = [], clip = null, fps = FPS, skip = 0, transparent = false, wants = false, touch = false }) {
   const { page, cdp } = shot;
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   await page.bringToFront();
   await setRate(shot, 0);
-  const mark = await page.evaluate(() => { window.__recDone = false; return { virt: window.__tw.virt(), n: (window.__sfx ?? []).length }; });
+  const mark = await page.evaluate(() => { window.__recDone = false; window.__want = null; return { virt: window.__tw.virt(), n: (window.__sfx ?? []).length, tx: (window.__txlog ?? []).length }; });
   if (action) await page.evaluate(`(async () => { ${action} })().catch((e) => console.error('action', e)).then(() => { window.__recDone = true; }); void 0;`);
   if (skip > 0) {
     // run the page through `skip` ms of its time at half speed, unfilmed (its clock stops itself at the end)
@@ -258,13 +313,28 @@ export async function film(shot, { dir, ms, rate = 0.08, action = null, tail = 4
       const where = await todo.shift().run(page);
       if (where && typeof where.x === 'number') marks.push({ at: Math.round(at), x: where.x, y: where.y });
     }
+    if (wants) {
+      const want = await page.evaluate(() => { const w = window.__want; window.__want = null; return w; });
+      if (want) {
+        let where = null;
+        try {
+          if (want.type) await page.keyboard.type(want.type, { delay: 0 });
+          else if (want.key) await page.keyboard.press(want.key);
+          else where = await press(page, want, { touch });
+        } catch (e) { console.log(`  a press the page asked for failed: ${String(e.message ?? e).slice(0, 120)}`); }
+        if (where) marks.push({ at: Math.round(at), x: where.x, y: where.y });
+        await page.evaluate(() => { window.__wantDone = (window.__wantDone ?? 0) + 1; });
+      }
+    }
     await page.screenshot({ path: `${dir}/f-${pad(i)}.png`, captureBeyondViewport: false, ...(transparent ? { omitBackground: true } : {}), ...(clip ? { clip } : {}) });
     if (action && end === max && i % 6 === 5 && await page.evaluate(() => window.__recDone === true)) end = Math.min(max, i + Math.round(tail / 1000 * fps));
   }
   // what the page sounded like, by the take's own clock (ms from its first frame)
   const cues = await page.evaluate((m, k) => (window.__sfx ?? []).slice(m.n).map((e) => ({ ...e, t: Math.round((e.t - m.virt - k) * 10) / 10 })), mark, skip);
+  // the take's transactions (a real chain's): sent and mined, ms from its first frame
+  const txs = await page.evaluate((m, k) => (window.__txlog ?? []).slice(m.tx).map((e) => ({ ...e, t: Math.round((e.t - m.virt - k) * 10) / 10 })), mark, skip);
   await setRate(shot, 1);
-  const meta = { frames: i, fps, skip, rate, cues, worstStrayMs: Math.round(worst * 10) / 10, hitches, marks, errors: shot.errors.slice(0, 5) };
+  const meta = { frames: i, fps, skip, rate, cues, txs, worstStrayMs: Math.round(worst * 10) / 10, hitches, marks, errors: shot.errors.slice(0, 5) };
   writeFileSync(`${dir}/meta.json`, JSON.stringify(meta));
   return meta;
 }
@@ -279,7 +349,7 @@ export const boxOf = (page, sel, nth = 0) => page.evaluate((sel, nth) => {
 }, sel, nth);
 
 /** A real click (through the browser's input pipeline) on the middle of an element found by selector or by its text. */
-export async function press(page, { sel = null, nth = 0, text = null, has = null, within = 'button, a, [role="button"]' }) {
+export async function press(page, { sel = null, nth = 0, text = null, has = null, within = 'button, a, [role="button"]' }, { touch = false } = {}) {
   const at = await page.evaluate((sel, text, within, nth, has) => {
     const shown = [...document.querySelectorAll(sel ?? within)].filter((e) => sel || e.offsetParent !== null);
     const el = sel ? shown[nth] : has ? shown.find((e) => e.textContent.includes(has)) : shown.find((e) => e.textContent.trim().replace(/\s+/g, ' ').startsWith(text));
@@ -289,7 +359,10 @@ export async function press(page, { sel = null, nth = 0, text = null, has = null
     return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
   }, sel, text, within, nth, has);
   if (!at) throw new Error(`nothing to press: ${sel ?? text ?? has}`);
-  await page.mouse.click(at.x, at.y);
+  // a phone is pressed with a finger: a mouse click leaves the pointer resting there, and whatever opens under it next
+  // (a sheet's option, a list's row) lights up with its hover style, which a phone never shows
+  if (touch) await page.touchscreen.tap(at.x, at.y);
+  else await page.mouse.click(at.x, at.y);
   return at;
 }
 

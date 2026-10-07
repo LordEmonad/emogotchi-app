@@ -8,8 +8,8 @@ transaction, the pet's whole life is stored on chain (its picture too), and if i
 - **Track:** 03, Social, Attention & Culture
 - **Chain:** Monad mainnet (chain id 143). Every contract below is verified on Sourcify (exact match).
 
-As of 2026-10-06 there are **83,286 pets** across six collections. Their care has bought and burned
-**588,000+ $EMO**, and **127 fights** have been challenged in Fight Club.
+As of 2026-10-07 there are **83,316 pets** across six collections. Their care has bought and burned
+**607,000+ $EMO**, and **135 fights** have been challenged in Fight Club.
 
 ## The problem, and who it is for
 
@@ -118,6 +118,8 @@ $EMO burn, or to its fixed treasury and team addresses through the public `sweep
 | NamedPetGate deployed | [`0x967a9b9f…0250631`](https://monadscan.com/tx/0x967a9b9f70b36e4c1038f3fa0c47fea67c32698a1a8e56ef929cef4360250631) |
 | HoldsGate deployed | [`0x7d86bd7f…a8eab6`](https://monadscan.com/tx/0x7d86bd7ff8d44caa82bf6dfdf3894bdd1b190bafb02bd83968c642580da8eab6) |
 | A player caring for their pets (`care(ids, actions)` on Inversegotchi) | [`0x341f3d78…dbfd1d`](https://monadscan.com/tx/0x341f3d78e88507404b42022ecb72181f62e5cf94d2185911eb0d2c36a2dbfd1d) |
+| The demo video's new passkey account minting Emonadgotchi #47 | [`0x7aa69fb4…15c891`](https://monadscan.com/tx/0x7aa69fb4782833617da2a7ec2bbff5e1bc08b0b731acdd8345fdbf90ab15c891) |
+| The same account feeding him (gas only) | [`0xe4b12371…ff9a403`](https://monadscan.com/tx/0xe4b12371f52eac38b0a36f1089fa6c3ca0264af96f40d7c3259650200ff9a403) |
 
 ## Architecture
 
@@ -183,6 +185,9 @@ Open http://localhost:5173.
   transaction, and a cat's care costs real MON.
 - To look around without a wallet, open the Connect sheet and pick a demo pet. The demo runs entirely in the page.
 - Emotown's chat sign-in only works on the live site, or against a local API Worker (below).
+
+Every push runs the same checks on GitHub Actions (`.github/workflows/ci.yml`): typecheck and build the site, the
+Worker's tests, and the contracts' test suite.
 
 Other commands from the root:
 

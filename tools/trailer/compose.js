@@ -137,10 +137,13 @@ function block(c, ms, x, cy, max, { align = 'left', size = 104, subSize = 34 } =
   let y = cy - total / 2;
   let i = 0;
   const step = c.stagger ?? 90;
+  const out = c.textOut && c._left != null ? easeOut(clamp(c._left / 240)) : 1;
+  ctx.save(); ctx.globalAlpha *= out;
   if (c.kicker) { const p = enter(ms, 0); kicker(c.kicker, x, y + 25, { align, alpha: p, dy: (1 - p) * 22 }); y += kh; i += 1; }
   for (const l of lines) { const p = enter(ms, i * step); y += lh; line(l, x, y - s * 0.2, { size: s, align, alpha: p, dy: (1 - p) * 30 }); i += 1; }
   if (subs.length) y += 26;
   for (const l of subs) { const p = enter(ms, i * step + 60); y += sh; line(l, x, y - subSize * 0.3, { size: subSize, weight: 400, tracking: -0.005, color: INK2, align, alpha: p, dy: (1 - p) * 20 }); i += 1; }
+  ctx.restore();
 }
 
 // ---------- the layouts ----------
@@ -307,7 +310,145 @@ async function drawPhone(c, ms, f) {
   ctx.restore();
   ctx.restore();
   const colW = W - sw - 190 - 110 - 120;
-  block(c, ms, right ? 110 : W - 110 - colW, H / 2, colW, { size: c.size ?? 128, subSize: 40 });
+  const tx = right ? 110 : W - 110 - colW;
+  if (c.receipts) {
+    // the type higher, and under it the take's own transactions as they happen (the hackathon demo)
+    block(c, ms, tx, c.blockY ?? 330, colW, { size: c.size ?? 110, subSize: 38 });
+    drawReceipts(c, ms, tx, c.receiptsY ?? 590, Math.min(colW, 860), f);
+  } else block(c, ms, tx, H / 2, colW, { size: c.size ?? 128, subSize: 40 });
+}
+
+// ---------- the hackathon demo: real transactions on screen ----------
+const MONO = '"SF Mono", ui-monospace, Menlo, monospace';
+const GREEN = '#5BD38A';
+const shortHash = (h) => (h ? `${h.slice(0, 8)}…${h.slice(-6)}` : '');
+/**
+ * What a take's transactions have done by take time `tms`, for a clip's `receipts`: [{ label, kind: 'tx', n }] names the
+ * take's n-th sent transaction; { kind: 'drip' } the starter (sent by the server; arrived when the page first saw the
+ * account hold MON). Each row: when it went, and when the page learned it was in a block (real latency: lib.mjs REALNET).
+ */
+function receiptRows(c, tms) {
+  const txs = T.takes[c.take]?.txs ?? [];
+  const sent = txs.filter((e) => e.kind === 'sent');
+  const rows = [];
+  for (const r of c.receipts) {
+    let s = null, m = null;
+    if (r.kind === 'drip') { s = txs.find((e) => e.kind === 'drip'); m = txs.find((e) => e.kind === 'funded' && (!r.address || e.address?.toLowerCase() === r.address.toLowerCase())); }
+    else { s = sent[r.n ?? 0]; m = s ? txs.find((e) => e.kind === 'mined' && e.hash === s.hash) : null; }
+    if (!s || tms < s.t) continue;
+    rows.push({ label: r.label, hash: s.hash, took: m ? (m.t - s.t) / 1000 : null, done: !!m && tms >= m.t, age: tms - s.t, doneAge: m ? tms - m.t : -1 });
+  }
+  return rows.slice(-(c.keep ?? 4));
+}
+function drawReceipts(c, ms, x, y, w, f) {
+  // the take's own time (from its frame, so a clip marked still or carry reads the same clock)
+  const tms = f * 1000 / (T.takes[c.take]?.fps ?? FPS);
+  const rows = receiptRows(c, tms);
+  const carry = c.still || c.carry;   // carried on from the clip before: the list is already there
+  const q0 = carry ? 1 : enter(ms, 120, 380);
+  kicker(c.receiptsTitle ?? 'ON MONAD MAINNET', x, y, { alpha: q0, dy: (1 - q0) * 16 });
+  const rh = 92, gap = 14;
+  rows.forEach((r, i) => {
+    const ry = y + 46 + i * (rh + gap);
+    const p = carry && r.age > 400 ? 1 : easeOut(clamp(r.age / 320));
+    ctx.save();
+    ctx.globalAlpha *= p;
+    ctx.translate(0, (1 - p) * 18);
+    rr(x, ry, w, rh, 22); ctx.fillStyle = 'rgba(28,16,40,0.88)'; ctx.fill();
+    ctx.strokeStyle = r.done ? 'rgba(91,211,138,0.45)' : 'rgba(184,148,216,0.35)'; ctx.lineWidth = 2; ctx.stroke();
+    // the state: a ring that turns while it waits, a tick once it is in a block
+    const cx = x + 46, cy = ry + rh / 2;
+    if (r.done) {
+      const k = easeOut(clamp(r.doneAge / 260));
+      ctx.beginPath(); ctx.arc(cx, cy, 20 * (0.7 + 0.3 * k), 0, Math.PI * 2); ctx.fillStyle = GREEN; ctx.fill();
+      ctx.strokeStyle = '#0b1f12'; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(cx - 8, cy + 1); ctx.lineTo(cx - 2, cy + 7); ctx.lineTo(cx + 9, cy - 6); ctx.stroke();
+    } else {
+      const a = (r.age / 1000) * Math.PI * 2.2;
+      ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(184,148,216,0.25)'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 17, a, a + Math.PI * 1.1); ctx.strokeStyle = PINK; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
+    }
+    setFont(31, 700, -0.01); ctx.fillStyle = INK; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    ctx.fillText(r.label, x + 86, ry + 40);
+    ctx.font = `500 23px ${MONO}`; ctx.letterSpacing = '0px'; ctx.fillStyle = INK3;
+    ctx.fillText(shortHash(r.hash), x + 86, ry + 72);
+    ctx.textAlign = 'right';
+    if (r.done) { setFont(28, 600, -0.005); ctx.fillStyle = GREEN; ctx.fillText(`on chain · ${r.took.toFixed(1)} s`, x + w - 30, ry + rh / 2 + 10); }
+    else { setFont(28, 500, -0.005); ctx.fillStyle = INK2; ctx.fillText('sending…', x + w - 30, ry + rh / 2 + 10); }
+    ctx.restore();
+  });
+}
+
+/**
+ * A block explorer's page (a still taken in a real browser: tools/trailer/demo-scan.mjs), in a window with its caption
+ * underneath, a slow push in, and pink outlines on what to look at: `marks` [{ r: [x0, y0, x1, y1] as fractions of the
+ * picture, at: ms }].
+ */
+async function drawScan(c, ms) {
+  const img = await frameOf(c.take, 0);
+  backdrop(0.04);
+  const k = 0.875;
+  const w = W * k, h = H * k, x = (W - w) / 2, y = 16;
+  const p = easeInOut(clamp(ms / (c.lenMs || 1)));
+  const z = lerp(c.zoom?.[0] ?? 1, c.zoom?.[1] ?? 1.08, p);
+  const [fx, fy] = c.focus ?? [0.4, 0.4];
+  const sw = img.width / z, sh = img.height / z, sx = (img.width - sw) * fx, sy = (img.height - sh) * fy;
+  ctx.save(); ctx.shadowColor = 'rgba(132,70,210,0.42)'; ctx.shadowBlur = 90; rr(x, y, w, h, 26); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();
+  ctx.save(); rr(x, y, w, h, 26); ctx.clip(); ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  for (const m of c.marks ?? []) {
+    const q = enter(ms, m.at ?? 700, 420);
+    if (q <= 0) continue;
+    const X = (u) => x + ((u * img.width - sx) / sw) * w, Y = (v) => y + ((v * img.height - sy) / sh) * h;
+    const x0 = X(m.r[0]) - 10, y0 = Y(m.r[1]) - 8, x1 = X(m.r[2]) + 10, y1 = Y(m.r[3]) + 8;
+    const grow = 1 + 0.08 * (1 - q);
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    ctx.save();
+    ctx.globalAlpha = q;
+    ctx.translate(mx, my); ctx.scale(grow, grow); ctx.translate(-mx, -my);
+    ctx.shadowColor = 'rgba(232,77,127,0.55)'; ctx.shadowBlur = 24;
+    rr(x0, y0, x1 - x0, y1 - y0, 14); ctx.strokeStyle = PINK; ctx.lineWidth = 5; ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+  rr(x + 1, y + 1, w - 2, h - 2, 25); ctx.strokeStyle = 'rgba(184,148,216,0.38)'; ctx.lineWidth = 2; ctx.stroke();
+  const title = c.title ? [].concat(c.title).join(' ') : '';
+  const sub = c.sub ? [].concat(c.sub).join(' ') : '';
+  const ts = 52, ss = 38, gap = title && sub ? 32 : 0;
+  const tw = title ? widthOf(title.replace(/\*/g, ''), ts, 700, -0.02) : 0;
+  const sw2 = sub ? widthOf(sub, ss, 400, -0.005) : 0;
+  const cy = y + h + (H - y - h) / 2 + 15;
+  let cx = W / 2 - (tw + gap + sw2) / 2;
+  const q = enter(ms, 60);
+  if (title) { line(title, cx, cy, { size: ts, tracking: -0.02, alpha: q, dy: (1 - q) * 14 }); cx += tw + gap; }
+  if (sub) { const q2 = enter(ms, 160); line(sub, cx, cy - 1, { size: ss, weight: 400, tracking: -0.005, color: INK2, alpha: q2, dy: (1 - q2) * 14 }); }
+}
+
+/** a card of points, left aligned: a kicker, a title, then lines that enter a beat apart (the demo's "under the hood") */
+function drawList(c, ms) {
+  backdrop(0.06);
+  const x = 150, colW = W - 300;
+  let y = 128;
+  if (c.kicker) { const p = enter(ms, 0); kicker(c.kicker, x, y, { alpha: p, dy: (1 - p) * 20 }); y += 60; }
+  const lines = [].concat(c.title ?? []);
+  const s = fit(lines, c.size ?? 92, colW);
+  lines.forEach((l, i) => { const p = enter(ms, 60 + i * 90); y += s * 1.02; line(l, x, y - s * 0.12, { size: s, alpha: p, dy: (1 - p) * 26 }); });
+  y += 26;
+  const items = c.items ?? [];
+  const beat = (T.beat ?? 30) * 1000 / FPS;
+  const rowH = Math.min(c.rowH ?? 110, (H - y - 70) / Math.max(items.length, 1));
+  items.forEach((it, i) => {
+    const p = enter(ms, 420 + i * (c.stagger ?? 0.5) * beat, 380);
+    const cy = y + i * rowH + rowH / 2;
+    ctx.save(); ctx.globalAlpha *= p; ctx.translate((1 - p) * -24, 0);
+    heart(x + 14, cy - 1, 26);
+    // as big as asked, smaller until the head and its tail fit the column on one line
+    let hs = it.size ?? c.itemSize ?? 38;
+    const wide = (sz) => widthOf(it.head, sz, 700, -0.015) + (it.tail ? 16 + widthOf(it.tail, sz - 4, 400, -0.005) : 0);
+    while (hs > 24 && wide(hs) > colW - 58) hs -= 1;
+    line(it.head, x + 58, cy + hs * 0.33, { size: hs, weight: 700, tracking: -0.015 });
+    if (it.tail) { const w = widthOf(it.head, hs, 700, -0.015); line(it.tail, x + 58 + w + 16, cy + hs * 0.33, { size: hs - 4, weight: 400, tracking: -0.005, color: INK2 }); }
+    ctx.restore();
+  });
 }
 
 /** the last card: the pets' faces, the name, where to find it */
@@ -1069,7 +1210,7 @@ function emoFinish(c, n) {
   grain(n);
 }
 
-const LAYOUT = { print: drawPrint, card: drawCard, full: drawFull, room: drawRoom, phone: drawPhone, end: drawEnd, fill: drawFill, title: drawTitle, grid: drawGrid, emoend: drawEmoEnd, xform: drawXform, band: drawBand, diary: drawDiary, viewfinder: drawViewfinder, dump: drawDump, fit: drawFit, egend: drawEgEnd };
+const LAYOUT = { list: drawList, scan: drawScan, print: drawPrint, card: drawCard, full: drawFull, room: drawRoom, phone: drawPhone, end: drawEnd, fill: drawFill, title: drawTitle, grid: drawGrid, emoend: drawEmoEnd, xform: drawXform, band: drawBand, diary: drawDiary, viewfinder: drawViewfinder, dump: drawDump, fit: drawFit, egend: drawEgEnd };
 
 async function draw(n) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1077,6 +1218,7 @@ async function draw(n) {
   const c = T.clips.find((k) => n >= k.start && n < k.start + k.len);
   if (!c) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); return; }
   const i = n - c.start;
+  c._left = (c.start + c.len - n) * 1000 / FPS;   // what is left of the clip (captions leaving before a cut)
   const ms = c.still ? 5000 + i * 1000 / FPS : i * 1000 / FPS;   // still: the type carried over from the clip before, so nothing enters again
   // until: the take's picture is held from that second on (a sheet that closes itself a moment after it says what it has to)
   // (a take filmed at another rate, `fps` in its meta: `from` is in its own seconds; at 180 it plays three times slower)

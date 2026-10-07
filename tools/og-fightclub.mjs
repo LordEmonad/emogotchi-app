@@ -8,7 +8,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = process.argv.includes('--site') ? process.argv[process.argv.indexOf('--site') + 1] : 'http://127.0.0.1:5199';
-const BARE = process.argv.includes('--bare');   // no words: brand/fightclub-live.webp, for the home page's live row (2026-10-02)
+const BARE = process.argv.includes('--bare');   // no words: brand/fightclub-live.webp, for the home page's live row (2026-10-02);
+// with no words to make room for, the ring fills the whole frame (the card's framing left an empty strip down the left
+// of the home page's picture on phones, 2026-10-06)
 const OUT = process.env.OUT ?? join(ROOT, BARE ? 'apps/web/public/brand/fightclub-live.webp' : 'apps/web/public/brand/fightclub-og.png');
 const RAW = OUT.replace(/\.(png|webp)$/, '-2x.png');
 // a fixed random number: the same fight every time (Sahur on the left wins; the first blow that lands is his)
@@ -25,7 +27,7 @@ await page.addStyleTag({ content: `
   body { background: #12071f !important; overflow: hidden !important; }
   .fl-title, .fl-panel, .fl-actions, .hdr, footer { display: none !important; }
   .page, .fl-grid, .fl-ring { position: static !important; display: block !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
-  .fc-arena { position: fixed !important; left: ${process.env.LEFT ?? 300}px !important; top: ${process.env.TOP ?? -178}px !important; width: ${process.env.WIDTH ?? 1060}px !important; height: auto !important; border-radius: 0 !important; z-index: 1; }
+  .fc-arena { position: fixed !important; left: ${process.env.LEFT ?? (BARE ? 0 : 300)}px !important; top: ${process.env.TOP ?? (BARE ? -243 : -178)}px !important; width: ${process.env.WIDTH ?? (BARE ? 1200 : 1060)}px !important; height: auto !important; border-radius: 0 !important; z-index: 1; }
   .og-veil { position: fixed; inset: 0; pointer-events: none; z-index: 99;
     background: linear-gradient(180deg, rgba(10, 5, 20, 0.82) 0%, rgba(10, 5, 20, 0.35) 34%, rgba(10, 5, 20, 0) 58%), linear-gradient(0deg, rgba(10, 5, 20, 0.75) 0%, rgba(10, 5, 20, 0) 26%); }
   .og-title { position: fixed; left: 56px; top: 40px; z-index: 100; font-family: var(--font-sans); color: #F8F8FF; }

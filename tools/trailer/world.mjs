@@ -29,6 +29,7 @@ const LIVE = 'https://emogotchi.emonad.lol';
 const GAME = {
   frok: '0xB841cc9A4058345cc0B5913F9e966F0C06ab49c6', sahur: '0xc7969C5df0353e4E65B54e3587bD0CaB5d1aF4c7',
   thiccums: '0xbB2E3dd43350744F9764329c2C7A2CE87D9889Ec', r3tards: '0x41841b6F2F1750AB32C86C25aB2816F4996bf41e',
+  emonad: '0xcD4BF1Ea169703f810dA87680a1B8FdA64adcdF7',
 };
 const ABI = parseAbi(['function mint() returns (uint256)', 'function setName(uint256 id, string newName) payable', 'function balanceOf(address) view returns (uint256)', 'function tokenOfOwnerByIndex(address, uint256) view returns (uint256)']);
 const ITEMS = '0x09b0CD33E1a4905265A12BD10989F5C29d3b1B91';
@@ -92,9 +93,9 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (p === '/api/drip' && req.method === 'POST') {
-      // the starter, on the fork: what worker/drip.js does on mainnet (0.05 MON, once, to an account that holds nothing)
+      // the starter, on the fork: what worker/drip.js does on mainnet (0.5 MON since 2026-10-02, once, to an account that holds nothing)
       const { address } = JSON.parse((await read(req)).toString() || '{}');
-      const amount = parseEther('0.05');
+      const amount = parseEther('0.5');
       const [nonce, bal] = await Promise.all([pub.getTransactionCount({ address }), pub.getBalance({ address })]);
       const json = (b, s = 200) => { res.writeHead(s, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(b)); };
       if (nonce > 0) return json({ ok: false, reason: 'used' }, 409);
