@@ -8,6 +8,8 @@ transaction, the pet's whole life is stored on chain (its picture too), and if i
 - **Track:** 03, Social, Attention & Culture
 - **Chain:** Monad mainnet (chain id 143). Every contract below is verified on Sourcify (exact match).
 
+[![Watch the demo (3 min)](docs/demo-cover.png)](https://youtu.be/CiL8blAMIZs)
+
 As of 2026-10-07 there are **83,316 pets** across six collections. Their care has bought and burned
 **607,000+ $EMO**, and **135 fights** have been challenged in Fight Club.
 
