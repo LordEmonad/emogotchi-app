@@ -4,7 +4,7 @@
 transaction, the pet's whole life is stored on chain (its picture too), and if it goes hungry for two days it dies.
 
 - **Live:** https://emogotchi.emonad.lol
-- **Demo video:** _link added with the submission_
+- **Demo video:** https://youtu.be/CiL8blAMIZs (3 min)
 - **Track:** 03, Social, Attention & Culture
 - **Chain:** Monad mainnet (chain id 143). Every contract below is verified on Sourcify (exact match).
 
