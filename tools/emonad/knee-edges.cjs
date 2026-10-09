@@ -1,9 +1,9 @@
 // node tools/emonad/knee-edges.cjs > edges.json : each leg's edges at the knee, measured on packages/pet/emonad.svg (no
 // server). Paste the result into emonad.py KNEE_EDGES (only after the legs or their pivots change: the rig's knee is
 // drawn from these numbers every frame, so a stale set shows as a step at the front of a bent knee).
-const puppeteer = require('/Volumes/BJ/code/emonad projects/emo pets/node_modules/.pnpm/puppeteer-core@23.11.1/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js');
+const puppeteer = require('puppeteer-core');
 const fs = require('fs');
-const svg = fs.readFileSync('/Volumes/BJ/code/emonad projects/emo pets/packages/pet/emonad.svg', 'utf8');
+const svg = fs.readFileSync(require('node:path').join(__dirname, '..', '..', 'packages', 'pet', 'emonad.svg'), 'utf8');
 (async () => {
   const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
   const p = await b.newPage();

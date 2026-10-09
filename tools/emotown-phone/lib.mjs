@@ -18,16 +18,17 @@ export const { webkit, chromium, devices } = require('playwright');
 const ORIGIN = 'https://emogotchi.emonad.lol';
 const DIST = process.env.DIST || null;
 const LORD = '0xe974c0ed0eace26d85943309e6ed05bf3f536904';
+// Made-up residents for the stubbed reads (the pet ids are real public pets; the people are not).
 export const PEOPLE = [
-  { address: '0xfde42bc6569046a27a779cb5fb80606828874b9f', name: 'Sadcat', pet: { col: 'cat', id: 82504 } },
-  { address: '0x395e84161cc607da617b29ac8290d54a7a34bc71', name: 'Xim', pet: { col: 'cat', id: 17105 } },
-  { address: '0x729e15a1660bbc5389133d037f6ea0d36a1d0dde', name: 'shirin', pet: { col: 'cat', id: 34014 } },
-  { address: '0x56466a6ea6d50781590d361457364edb1a303a5a', name: 'casemidio', pet: { col: 'cat', id: 25587 } },
-  { address: '0xc35b0b63fbbabbe889fd9f22aa6ec0fba6961dd0', name: 'dobby_xyz', pet: { col: 'cat', id: 82442 } },
-  { address: '0x102046d600d64b6cb6f5487d3d779054469d9ee4', name: 'kozzakii', pet: { col: 'frok', id: 428 } },
-  { address: '0x2176c69c934280b58058915bcead2ac0d14c985c', name: 'MattTravelling', pet: { col: 'thiccums', id: 9 } },
+  { address: '0x1000000000000000000000000000000000000001', name: 'Sleepyhead', pet: { col: 'cat', id: 82504 } },
+  { address: '0x1000000000000000000000000000000000000002', name: 'Yarnball', pet: { col: 'cat', id: 17105 } },
+  { address: '0x1000000000000000000000000000000000000003', name: 'Bowlwatcher', pet: { col: 'cat', id: 34014 } },
+  { address: '0x1000000000000000000000000000000000000004', name: 'Tubtime', pet: { col: 'cat', id: 25587 } },
+  { address: '0x1000000000000000000000000000000000000005', name: 'Nightowl', pet: { col: 'cat', id: 82442 } },
+  { address: '0x1000000000000000000000000000000000000006', name: 'Frokfan', pet: { col: 'frok', id: 428 } },
+  { address: '0x1000000000000000000000000000000000000007', name: 'Beachday', pet: { col: 'thiccums', id: 9 } },
 ];
-const PFP = '/Volumes/BJ/code/emonad projects/emo pets/apps/web/public/pfp';
+const PFP = new URL('../../apps/web/public/pfp', import.meta.url).pathname;
 const PICS = ['cat', 'frog', 'sahur'].flatMap((c) => readdirSync(join(PFP, c)).filter((f) => f.endsWith('-t.png')).slice(0, 8).map((f) => join(PFP, c, f)));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json', '.woff2': 'font/woff2', '.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.ico': 'image/x-icon', '.txt': 'text/plain' };
 

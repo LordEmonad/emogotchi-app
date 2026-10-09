@@ -1,5 +1,5 @@
 // node tools/emonad/perf.cjs : frame intervals in the lab while he turns back and forth on a CPU slowed CPU times (default 4): with the turn's in-betweens on (full), with their path writes stubbed (nod), and off. BASE as in scan.cjs.
-const puppeteer = require('/Volumes/BJ/code/emonad projects/emo pets/node_modules/.pnpm/puppeteer-core@23.11.1/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js');
+const puppeteer = require('puppeteer-core');
 (async () => {
   const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
   const p = await b.newPage();

@@ -2,7 +2,7 @@
 // walk, and turns); then python3 tools/emonad/motion.py <out.json> lists velocity jumps. BASE as in scan.cjs. Expected
 // (by design): the jump's take-off (t 0.4) and landing (1.02), the headbang's hits on the head and the hair (every 0.57 s),
 // the hair flip's toss, the poke's jab (0.125), the walk's first lift.
-const puppeteer = require('/Volumes/BJ/code/emonad projects/emo pets/node_modules/.pnpm/puppeteer-core@23.11.1/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js');
+const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const BASE = process.env.BASE || 'http://127.0.0.1:5334';
 const DUR = { wave: 1.6, bigwave: 3.1, point: 2.6, hairflip: 1.35, sigh: 3.3, shrug: 1.5, nod: 1.2, shake: 1.35, headbang: 5.1, jump: 1.6, dance: 8.2, poke: 1.5, lookaround: 2.85, talk: 2.5, hands: 1.8, march: 2 };

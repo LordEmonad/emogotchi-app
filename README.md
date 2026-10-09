@@ -4,11 +4,12 @@
 transaction, the pet's whole life is stored on chain (its picture too), and if it goes hungry for two days it dies.
 
 - **Live:** https://emogotchi.emonad.lol
-- **Demo video:** https://youtu.be/CiL8blAMIZs (3 min)
-- **Track:** 03, Social, Attention & Culture
+- **Demo video:** https://youtu.be/CiL8blAMIZs (2:58)
+- **Track:** 03, Social, Attention & Culture. A daily, shared ritual (care, crowns, Emotown's chat, Fight Club) around
+  community mascots, paid for in a burn of the community's token.
 - **Chain:** Monad mainnet (chain id 143). Every contract below is verified on Sourcify (exact match).
 
-[![Watch the demo (3 min)](docs/demo-cover.png)](https://youtu.be/CiL8blAMIZs)
+[![Watch the demo (2:58)](docs/demo-cover.png)](https://youtu.be/CiL8blAMIZs)
 
 As of 2026-10-07 there are **83,316 pets** across six collections. Their care has bought and burned
 **607,000+ $EMO**, and **135 fights** have been challenged in Fight Club.
@@ -107,21 +108,21 @@ $EMO burn, or to its fixed treasury and team addresses through the public `sweep
 
 | What | Transaction |
 |---|---|
-| Emogotchi (cats) deployed | [`0x46eee792…5eb727`](https://monadscan.com/tx/0x46eee792eda62f52c8cb96af0f453ad9eb3ea86d250bfb2732ea83c14e5eb727) |
-| EmogotchiDrop deployed | [`0xdce6b963…543dd7c`](https://monadscan.com/tx/0xdce6b9637e68ff837c7d1e2605bb19ad523e616ab7a6ab5b4e4b13e63543dd7c) |
-| Cat art deployed | [`0x01e4d27c…3d38ba0`](https://monadscan.com/tx/0x01e4d27c5d0f34fe3df2909dd182d3ac69affa1d9b28b7a288801787e3d38ba0) |
-| Inversegotchi deployed | [`0xbaa6e839…c8a11b70e`](https://monadscan.com/tx/0xbaa6e83905ced9fa862ac83e7bf42bcbff87163732b6246dc5f7fd5c8a11b70e) |
-| Sahuragotchi deployed | [`0x87466265…021b258ca`](https://monadscan.com/tx/0x874662659a7c94b4f89c8e5fa9f890243cdc998d9a1f4cd0aa28f58021b258ca) |
-| Thiccumsgotchi deployed | [`0xf6ec45ae…b91a9b561`](https://monadscan.com/tx/0xf6ec45ae1a291af50ff1f81a106498ddd32518cbe6c21011180f6b0b91a9b561) |
+| Emogotchi (cats) deployed | [`0x46eee792…4e5eb727`](https://monadscan.com/tx/0x46eee792eda62f52c8cb96af0f453ad9eb3ea86d250bfb2732ea83c14e5eb727) |
+| EmogotchiDrop deployed | [`0xdce6b963…3543dd7c`](https://monadscan.com/tx/0xdce6b9637e68ff837c7d1e2605bb19ad523e616ab7a6ab5b4e4b13e63543dd7c) |
+| Cat art deployed | [`0x01e4d27c…e3d38ba0`](https://monadscan.com/tx/0x01e4d27c5d0f34fe3df2909dd182d3ac69affa1d9b28b7a288801787e3d38ba0) |
+| Inversegotchi deployed | [`0xbaa6e839…8a11b70e`](https://monadscan.com/tx/0xbaa6e83905ced9fa862ac83e7bf42bcbff87163732b6246dc5f7fd5c8a11b70e) |
+| Sahuragotchi deployed | [`0x87466265…21b258ca`](https://monadscan.com/tx/0x874662659a7c94b4f89c8e5fa9f890243cdc998d9a1f4cd0aa28f58021b258ca) |
+| Thiccumsgotchi deployed | [`0xf6ec45ae…91a9b561`](https://monadscan.com/tx/0xf6ec45ae1a291af50ff1f81a106498ddd32518cbe6c21011180f6b0b91a9b561) |
 | r3tardgotchi deployed | [`0xc27fc967…ceffd2a7`](https://monadscan.com/tx/0xc27fc9672a0bdff27d660034361a0ce8b1f44b86da61c77db2fc3c1dceffd2a7) |
 | Emonadgotchi deployed | [`0x729cc6c8…d9fb492b`](https://monadscan.com/tx/0x729cc6c80416d366348c774761c2879b1ea4645e4b64917fdd6b1023d9fb492b) |
-| EmogotchiItems deployed | [`0x69289dbb…ff3a925`](https://monadscan.com/tx/0x69289dbb60cea28519b27e201f9d7dd988d00db0d2da2c99d21aedab0ff3a925) |
-| FightClub deployed | [`0x187a3a1c…abc3e47`](https://monadscan.com/tx/0x187a3a1c38efd497cd200e801ac1e2e23cde20901c611abbdedc687a3abc3e47) |
-| NamedPetGate deployed | [`0x967a9b9f…0250631`](https://monadscan.com/tx/0x967a9b9f70b36e4c1038f3fa0c47fea67c32698a1a8e56ef929cef4360250631) |
-| HoldsGate deployed | [`0x7d86bd7f…a8eab6`](https://monadscan.com/tx/0x7d86bd7ff8d44caa82bf6dfdf3894bdd1b190bafb02bd83968c642580da8eab6) |
-| A player caring for their pets (`care(ids, actions)` on Inversegotchi) | [`0x341f3d78…dbfd1d`](https://monadscan.com/tx/0x341f3d78e88507404b42022ecb72181f62e5cf94d2185911eb0d2c36a2dbfd1d) |
-| The demo video's new passkey account minting Emonadgotchi #47 | [`0x7aa69fb4…15c891`](https://monadscan.com/tx/0x7aa69fb4782833617da2a7ec2bbff5e1bc08b0b731acdd8345fdbf90ab15c891) |
-| The same account feeding him (gas only) | [`0xe4b12371…ff9a403`](https://monadscan.com/tx/0xe4b12371f52eac38b0a36f1089fa6c3ca0264af96f40d7c3259650200ff9a403) |
+| EmogotchiItems deployed | [`0x69289dbb…0ff3a925`](https://monadscan.com/tx/0x69289dbb60cea28519b27e201f9d7dd988d00db0d2da2c99d21aedab0ff3a925) |
+| FightClub deployed | [`0x187a3a1c…3abc3e47`](https://monadscan.com/tx/0x187a3a1c38efd497cd200e801ac1e2e23cde20901c611abbdedc687a3abc3e47) |
+| NamedPetGate deployed | [`0x967a9b9f…60250631`](https://monadscan.com/tx/0x967a9b9f70b36e4c1038f3fa0c47fea67c32698a1a8e56ef929cef4360250631) |
+| HoldsGate deployed | [`0x7d86bd7f…0da8eab6`](https://monadscan.com/tx/0x7d86bd7ff8d44caa82bf6dfdf3894bdd1b190bafb02bd83968c642580da8eab6) |
+| A player caring for their pets (`care(ids, actions)` on Inversegotchi) | [`0x341f3d78…a2dbfd1d`](https://monadscan.com/tx/0x341f3d78e88507404b42022ecb72181f62e5cf94d2185911eb0d2c36a2dbfd1d) |
+| The demo video's new passkey account minting Emonadgotchi #47 | [`0x7aa69fb4…ab15c891`](https://monadscan.com/tx/0x7aa69fb4782833617da2a7ec2bbff5e1bc08b0b731acdd8345fdbf90ab15c891) |
+| The same account feeding him (gas only) | [`0xe4b12371…0ff9a403`](https://monadscan.com/tx/0xe4b12371f52eac38b0a36f1089fa6c3ca0264af96f40d7c3259650200ff9a403) |
 
 ## Architecture
 
@@ -146,7 +147,7 @@ $EMO burn, or to its fixed treasury and team addresses through the public `sweep
 | `apps/web` | The site: every page, the rig that animates the pets, the room "director" that choreographs actions, Emotown, Fight Club, the shop, the passkey wallet, sound (all synthesized with Web Audio), push. |
 | `packages/pet` | The pet drawings as SVG, generated by the Python scripts in `design/` (the drawings are code, not hand-edited files), plus props and the town's art. |
 | `packages/chain` | The typed chain client the site uses: reads, writes, the RPC transport, ABIs. |
-| `contracts` | Foundry: the games, the art contracts, the drop, the shop and its gates, Fight Club, their tests and deploy scripts. `contracts/art*` and `contracts/items` are the on-chain pictures. |
+| `contracts` | Foundry: the games, the art contracts, the drop, the shop and its gates, Fight Club, their tests and deploy scripts. `contracts/art*` and `contracts/items` are the on-chain pictures. `src/autocare` and `src/Kapparot.sol` are experiments that were never deployed, kept for the record (so is `apps/web/src/bouncepot`, a simulated game that only exists in dev builds). |
 | `worker` | The API Worker described above, its D1 migrations and tests. |
 | `site` | The Worker that serves the site, and its security headers. |
 | `tools` | Scripts: baking the on-chain art, portraits and link cards, the Merkle claim tree, the airdrop, mainnet-fork rehearsals of every launch, layout and sound checks, deploys. |
@@ -196,14 +197,22 @@ Other commands from the root:
 ```sh
 pnpm typecheck      # TypeScript across the workspace
 pnpm build          # production build into apps/web/dist
-pnpm pet:build      # regenerate packages/pet/*.svg from packages/pet/design/*.py
+pnpm pet:build      # regenerate the cat, frok, Sahur, prop and town SVGs from packages/pet/design/*.py
 ```
+
+The other drawings (Thiccums, the r3tard, Emonad, the item pictures, the packs' props) are made by running their own
+script in `packages/pet/design/` directly; each file's header says how. The Emonad tracer (`emonad_trace.py`,
+`emonad_morph.py`) also needs numpy, scipy, shapely and opencv.
+
+Optional overrides in `apps/web/.env.local`: `VITE_RPC_URL` (another Monad RPC), `VITE_SOCIAL_API` and
+`VITE_TOPUP_API` (a local API Worker), `VITE_MEDIA_ORIGIN` (uploaded pictures). Unset, the site uses the public RPC
+and the live API.
 
 ### The contracts
 
 ```sh
 cd contracts
-forge test --no-match-contract Fork                                  # 440 tests
+forge test --no-match-contract Fork                                  # 427 tests in 60 suites, about 9 minutes
 forge test --match-contract Fork --fork-url https://rpc.monad.xyz    # the same contracts against live mainnet state
 ```
 
@@ -234,7 +243,8 @@ npm test    # unit tests, push encryption, the index's fold, top-up validation
 
 It runs as `emogotchi-api` on Cloudflare (`worker/wrangler.toml`). To run your own copy:
 
-1. Create your own D1 databases and KV namespace, and put their ids in `wrangler.toml`.
+1. Create your own D1 databases and KV namespace, and put their ids in `wrangler.toml` (the ids and the admin
+   addresses in there are this project's own; replace them).
 2. Apply `migrations/` and `migrations-media/` (`npx wrangler d1 migrations apply <db>`).
 3. Deploy with `npx wrangler deploy`.
 4. Set secrets with `npx wrangler secret put <NAME>`. Each feature stays off until its secret is set:
@@ -262,14 +272,14 @@ origin for the gallery, stats and Emotown. The live site is served by the Worker
 
 ## Built during the hackathon
 
-Everything here was built during the Metropolis hackathon period. The first commit is 2026-09-12, the history runs to
-the present, and every contract was deployed in that window (the first on 2026-09-15). Code from elsewhere is listed
-under Attribution.
+Everything here was built during the Metropolis hackathon period, and every contract was deployed in that window (the
+first on 2026-09-15). Code from elsewhere is listed under Attribution.
 
-The source was committed in batches from the working tree (the work from 2026-09-20 to 2026-10-05 landed here on
-2026-10-06), so the dates below are the record. Each one is a Monad mainnet transaction or a site deploy, and the built
-site's own repository, [LordEmonad/emogotchi](https://github.com/LordEmonad/emogotchi), has a commit for every deploy,
-daily from 2026-09-14 to 2026-10-06.
+**On the commit history:** the source was committed in batches from the working tree. There are 109 commits from
+2026-09-12 to 2026-09-19; the work from 2026-09-20 to 2026-10-05 was committed in one batch on 2026-10-06; the history
+runs to the present. So the dates below are the record: each one is a Monad mainnet transaction, or a site deploy
+recorded in the built site's own repository, [LordEmonad/emogotchi](https://github.com/LordEmonad/emogotchi), which has
+a commit for every deploy, daily from 2026-09-14 to 2026-10-06.
 
 ### Timeline
 

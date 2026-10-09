@@ -4,7 +4,7 @@
 // loop closing exactly, footfall events, stops graceful and hard, the cost of making a rig, spins. Prints each check, then
 // "N/N passed". Run it after any change to apps/web/src/emonad/rig.ts or moves.ts. BASE: a page with the lab (default
 // 127.0.0.1:5334: a frozen development build on tools/serve-dist.mjs; a dev server works when nothing is being saved).
-const puppeteer = require('/Volumes/BJ/code/emonad projects/emo pets/node_modules/.pnpm/puppeteer-core@23.11.1/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js');
+const puppeteer = require('puppeteer-core');
 const BASE = process.env.BASE || 'http://127.0.0.1:5334';
 const SUITE = String.raw`
 const lab = window.__emonad; lab.stop();

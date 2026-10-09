@@ -6,7 +6,7 @@
 // because a dev server reloads every page on any save in src (cd apps/web && NODE_ENV=development npx vite build --mode
 // development --outDir <dir>; DIST=<dir> PORT=5334 node tools/serve-dist.mjs; restart it after a rebuild, stop it by PID).
 // cases: rest, move:<name>:<facing>, turn:<from>:<to>, walk:<facing>
-const puppeteer = require('/Volumes/BJ/code/emonad projects/emo pets/node_modules/.pnpm/puppeteer-core@23.11.1/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js');
+const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const BASE = process.env.BASE || 'http://127.0.0.1:5334';
 const [out, list, part] = process.argv.slice(2);

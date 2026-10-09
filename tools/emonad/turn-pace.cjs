@@ -7,7 +7,7 @@
 // the in-betweens change. HD=1 keeps the hair's strands (they slide across the back of his head as he turns past).
 // BASE: the lab (default 127.0.0.1:5334), best a frozen development build (see scan.cjs). It must not be paced already
 // for the numbers to be the drawing's own: the stills are by angle, which PACE does not touch.
-const puppeteer = require('/Volumes/BJ/code/emonad projects/emo pets/node_modules/.pnpm/puppeteer-core@23.11.1/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js');
+const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const BASE = process.env.BASE || 'http://127.0.0.1:5334';
 const [out] = process.argv.slice(2);
