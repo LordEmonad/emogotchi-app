@@ -266,6 +266,33 @@ Everything here was built during the Metropolis hackathon period. The first comm
 the present, and every contract was deployed in that window (the first on 2026-09-15). Code from elsewhere is listed
 under Attribution.
 
+The source was committed in batches from the working tree (the work from 2026-09-20 to 2026-10-05 landed here on
+2026-10-06), so the dates below are the record. Each one is a Monad mainnet transaction or a site deploy, and the built
+site's own repository, [LordEmonad/emogotchi](https://github.com/LordEmonad/emogotchi), has a commit for every deploy,
+daily from 2026-09-14 to 2026-10-06.
+
+### Timeline
+
+| Date (UTC) | Shipped | Proof |
+|---|---|---|
+| 2026-09-15 | Emogotchi and the Drop deployed, 82,423 cats airdropped, the site live | [tx](https://monadscan.com/tx/0x46eee792eda62f52c8cb96af0f453ad9eb3ea86d250bfb2732ea83c14e5eb727) |
+| 2026-09-17 | The item shop (ERC-1155) and its first items | [tx](https://monadscan.com/tx/0x69289dbb60cea28519b27e201f9d7dd988d00db0d2da2c99d21aedab0ff3a925) |
+| 2026-09-18 | inversebrah, the second pet (free mint, stunts) | [tx](https://monadscan.com/tx/0xbaa6e83905ced9fa862ac83e7bf42bcbff87163732b6246dc5f7fd5c8a11b70e) |
+| 2026-09-19 | The stats page and per-pet link previews | [deploys](https://github.com/LordEmonad/emogotchi/commits/main?since=2026-09-19&until=2026-09-20) |
+| 2026-09-20 | Passkey accounts (mera), live for everyone | [deploys](https://github.com/LordEmonad/emogotchi/commits/main?since=2026-09-20&until=2026-09-21) |
+| 2026-09-21 | The starter gas drip and referrals | [deploys](https://github.com/LordEmonad/emogotchi/commits/main?since=2026-09-21&until=2026-09-22) |
+| 2026-09-24 | The Halloween outfits and NamedPetGate | [tx](https://monadscan.com/tx/0x967a9b9f70b36e4c1038f3fa0c47fea67c32698a1a8e56ef929cef4360250631) |
+| 2026-09-25 | Tung Tung Tung Sahur, the third pet, and the Backrooms room | [tx](https://monadscan.com/tx/0x874662659a7c94b4f89c8e5fa9f890243cdc998d9a1f4cd0aa28f58021b258ca) |
+| 2026-09-27 | Emotown, with sign-in, chat, profiles, follows and DMs | [deploys](https://github.com/LordEmonad/emogotchi/commits/main?since=2026-09-27&until=2026-09-28) |
+| 2026-09-28 | The Jewish pack and the Habibi pack (items 8 to 17); the site moved to Cloudflare | [tx](https://monadscan.com/tx/0x83ee4c76eda5f2d88b8db464fabfec1e6f76e805c5ec9a1de2baafd5e7253a0f), [tx](https://monadscan.com/tx/0x1b45ab6cbe932f07fabefe6b35bd7a92c4b531b38e024f209b031bcfe541cf91) |
+| 2026-09-29 | Thiccums, the fourth pet | [tx](https://monadscan.com/tx/0xf6ec45ae1a291af50ff1f81a106498ddd32518cbe6c21011180f6b0b91a9b561) |
+| 2026-09-30 | Fight Club (Pyth Entropy); top-ups from other chains (Relay) | [tx](https://monadscan.com/tx/0x187a3a1c38efd497cd200e801ac1e2e23cde20901c611abbdedc687a3abc3e47) |
+| 2026-10-01 | Push notifications and the home-screen app; the incremental index | [deploys](https://github.com/LordEmonad/emogotchi/commits/main?since=2026-10-01&until=2026-10-02) |
+| 2026-10-02 | r3tardgotchi, the fifth pet; sound across the site | [tx](https://monadscan.com/tx/0xc27fc9672a0bdff27d660034361a0ce8b1f44b86da61c77db2fc3c1dceffd2a7) |
+| 2026-10-04 | The emo pack (items 18 to 31) and HoldsGate | [tx](https://monadscan.com/tx/0x7d86bd7ff8d44caa82bf6dfdf3894bdd1b190bafb02bd83968c642580da8eab6) |
+| 2026-10-05 | Emonadgotchi, the sixth pet | [tx](https://monadscan.com/tx/0x729cc6c80416d366348c774761c2879b1ea4645e4b64917fdd6b1023d9fb492b) |
+| 2026-10-06 | The demo video: a new passkey account mints and feeds Emonad #47 | [tx](https://monadscan.com/tx/0x7aa69fb4782833617da2a7ec2bbff5e1bc08b0b731acdd8345fdbf90ab15c891) |
+
 ## AI tools
 
 This project was built with **Claude Code** (Anthropic's Claude models) as the main coding tool. It wrote and
