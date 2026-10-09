@@ -73,7 +73,7 @@ export function refuseAddress(a: Address, me: string | null): string | null {
   if (DEAD.some((d) => d.toLowerCase() === x)) return 'That address is a black hole: anything sent there is gone for good.';
   if (me && x === me.toLowerCase()) return 'That is this wallet.';
   const c = chainCfg;
-  const game = c ? [c.contract, c.inverse, c.sahur, c.items, c.drop, c.autocare, ...(__THICCUMS__ ? [c.thiccums] : []), ...(__R3TARDS__ ? [c.r3tards] : []), ...(__EMONAD__ ? [c.emonad] : [])] : [];
+  const game = c ? [c.contract, c.inverse, c.sahur, c.items, c.drop, ...(__THICCUMS__ ? [c.thiccums] : []), ...(__R3TARDS__ ? [c.r3tards] : []), ...(__EMONAD__ ? [c.emonad] : [])] : [];
   if ([...game, ...OURS].some((k) => typeof k === 'string' && k.toLowerCase() === x)) return 'That is one of Emogotchi\'s own contracts, not a wallet. Nothing should ever be sent there.';
   return null;
 }

@@ -28,7 +28,7 @@ const ASK_ALWAYS = 'emogotchi.passkey.ask';
  * The two limits that make "signed without asking" safe to say out loud.
  *
  * On Monad the gas LIMIT is charged, used or not, so a call that is free in itself is not free to sign: the site's own
- * chain client floors some limits at millions of gas (a big Autocare round is tens of millions), which at launch-day
+ * chain client floors some limits at millions of gas (a big batch of care is tens of millions), which at launch-day
  * prices is MON, not dust. The allowlist reasons about what a call DOES; these reason about what it COSTS, and without
  * them the allowlist's promise — that a silent call cannot take the account's money — is not true.
  *

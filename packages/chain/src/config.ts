@@ -31,8 +31,6 @@ export type ChainConfig = {
   r3tards?: Address | null;
   /** Emonadgotchi, the sixth pet (Emonad, the $EMO mascot): the r3tard's rules. Set only when the build's __EMONAD__ switch is on. */
   emonad?: Address | null;
-  /** Autocare, the machine that keeps pets alive: one vault per user. Optional; without it /autocare is the demo. */
-  autocare: Address | null;
   explorer: string | null;
 };
 
@@ -59,7 +57,6 @@ export function configFromEnv(env: Record<string, string | undefined>): ChainCon
     ...(__THICCUMS__ ? { thiccums: __THICCUMS__ as Address } : {}),
     ...(__R3TARDS__ ? { r3tards: __R3TARDS__ as Address } : {}),
     ...(__EMONAD__ ? { emonad: __EMONAD__ as Address } : {}),
-    autocare: /^0x[0-9a-fA-F]{40}$/.test(env.VITE_AUTOCARE_ADDRESS ?? '') ? (env.VITE_AUTOCARE_ADDRESS as Address) : null,
     explorer: chain.blockExplorers?.default.url ?? null,
   };
 }

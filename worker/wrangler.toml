@@ -48,13 +48,12 @@ service = "emogotchi-site"
 
 # The cron, every minute: the index behind /api/stats, /api/cats and /api/starvation reads the chain's new blocks
 # (worker/indexer.js; it needs the secret HYPERSYNC_TOKEN and the `fold` table of migration 0009). Everything else it
-# runs only on every fifth minute, as when the cron was */5: the social sweep, push notifications, the Fight Club settle
-# watcher, and the Autocare poker (a no-op: it needs AUTOCARE_KEEPER_KEY and AUTOCARE_ADDRESS below, never set).
+# runs only on every fifth minute, as when the cron was */5: the social sweep, push notifications and the Fight Club
+# settle watcher.
 [triggers]
 crons = ["* * * * *"]
 
 [vars]
-AUTOCARE_ADDRESS = ""
 # Fight Club's settle watcher (worker/fightkeeper.js, every 5 minutes with the cron above): for a fight still pending
 # 3 minutes after its accept, fetch Pyth's revelation from Fortuna and settle it through Entropy's own reveal. Needs
 # the secret FIGHT_KEEPER_KEY (`npx wrangler secret put FIGHT_KEEPER_KEY`: a wallet holding gas money only, ~0.05 MON a

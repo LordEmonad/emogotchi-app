@@ -244,7 +244,7 @@ export class ChainClient {
   }
 
   setSigner(s: Signer | null): void { this.signer = s; }
-  /** The connected wallet, for clients that send their own transactions (the Autocare client). */
+  /** The connected wallet, for clients that send their own transactions (a client that sends for itself). */
   get signerInfo(): Signer | null { return this.signer; }
   /** Called the instant the wallet returns a transaction hash. Until it fires, the wallet has not signed. */
   onHash: ((hash: `0x${string}`) => void) | null = null;

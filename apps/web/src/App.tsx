@@ -33,7 +33,7 @@ const NO_ADDRESSES: string[] = [];
 import type { ViewOverride } from './ui/DevDrawer';
 import { loadLooks, lookOf, wear } from './fight/wear';
 // Every page but the home page is its own chunk (the mobile pass, 2026-09-29): the main bundle had carried all of them, so a
-// phone opening the FAQ first downloaded and parsed the stats page, the shop, the labs and the cancelled Autocare.
+// phone opening the FAQ first downloaded and parsed the stats page, the shop and the labs.
 const named = <K extends string>(load: () => Promise<Record<K, React.ComponentType<any>>>, key: K) => lazy(() => load().then((m) => ({ default: m[key] })));   // eslint-disable-line @typescript-eslint/no-explicit-any
 const Refer = named(() => import('./ui/Refer'), 'Refer');
 const CostumeLab = named(() => import('./ui/CostumeLab'), 'CostumeLab');
@@ -56,7 +56,6 @@ const Claim = named(() => import('./ui/Claim'), 'Claim');
 const Adopt = named(() => import('./ui/Adopt'), 'Adopt');
 const Gallery = named(() => import('./ui/Gallery'), 'Gallery');
 const Shop = named(() => import('./ui/Shop'), 'Shop');
-const AutocareRoute = lazy(() => import('./autocare/route'));
 const R1 = lazy(() => import('./r1/R1'));   // the r1 page pulls viem's mnemonic code; nobody else pays for it
 // the town rigs Thiccums itself (TownPet, not the Pet box that waits for his drawing), so his moves come first
 const Emotown = lazy(() => Promise.all([import('./emotown/Emotown'), __THICCUMS__ ? import('./thiccums/register') : null, __R3TARDS__ ? import('./r3tards/register') : null, __EMONAD__ ? import('./emonadgotchi/register') : null]).then(([m]) => ({ default: m.Emotown })));   // unlisted, experimental: the town where the pets active in the last day live
@@ -73,7 +72,6 @@ const EgLab = import.meta.env.DEV ? lazy(() => import('./emonadgotchi/Lab').then
 // once his switch is on (__EMONAD__), so nothing of him reaches the site before he is announced (Thiccums' way)
 const EmonadMint = import.meta.env.DEV || __EMONAD__ ? lazy(() => import('./emonadgotchi/EmonadMint').then((m) => ({ default: m.EmonadMint }))) : () => null;
 const R3Mint = named(() => import('./r3tards/R3Mint'), 'R3Mint');   // r3tardgotchi's mint page: on the site as "Coming soon" since 2026-10-01 (unlisted; its own chunk, his drawing with it)
-const BouncePot = import.meta.env.DEV ? lazy(() => import('./bouncepot/BouncePot').then((m) => ({ default: m.BouncePot }))) : () => null;   // the Bounce Pot, a simulated jackpot for Thiccums (DEV ONLY: no contract yet, 2026-09-30)
 const SoundLab = import.meta.env.DEV ? lazy(() => import('./sound/SoundLab').then((m) => ({ default: m.SoundLab }))) : () => null;   // the sound lab: every sound and tune on a button, DEV ONLY
 const FightLab = import.meta.env.DEV ? lazy(() => import('./fight/FightLab').then((m) => ({ default: m.FightLab }))) : () => null;   // Fight Club's lab: two pets in the ring, DEV ONLY
 const FightClubPage = lazy(() => import('./fight/FightClubPage').then((m) => ({ default: m.FightClubPage })));   // Fight Club (2026-09-30, unlisted: nothing links to it until the operator has fought from the live site)
@@ -121,7 +119,6 @@ function Route() {
   }
   if (path === '/claim') return <Claim />;
   if (path === '/adopt') return <Adopt />;   // "Get a pet": the three pets, the free ones first (2026-09-28)
-  if (path === '/autocare') return <AutocareRoute />;   // unlisted, cancelled (2026-09-28): the simulation, its own chunk
   if (path === '/costume') return <CostumeLab />;
   if (path === '/frog') return <CharacterLab />;
   if (path === '/halloween') return <HalloweenLab />;
@@ -136,7 +133,6 @@ function Route() {
   if (import.meta.env.DEV && (path === '/emonadgotchi/lab' || (path === '/emonadgotchi' && params.has('card')))) return <Suspense fallback={<div className="page" />}><EgLab /></Suspense>;
   if ((import.meta.env.DEV || __EMONAD__) && path === '/emonadgotchi') return <Suspense fallback={<div className="page" />}><EmonadMint /></Suspense>;   // his mint page and his contractURI link
   if (import.meta.env.DEV && path === '/soundlab') return <Suspense fallback={<div className="page" />}><SoundLab /></Suspense>;   // the sound lab (dev only)
-  if (import.meta.env.DEV && path === '/bouncepot') return <Suspense fallback={<div className="page" />}><BouncePot /></Suspense>;   // the Bounce Pot (simulated)
   if (import.meta.env.DEV && path === '/fightlab') return <Suspense fallback={<div className="page" />}><FightLab /></Suspense>;   // Fight Club's lab (sandbox)
   if (path === '/fightclub') return <Suspense fallback={<div className="page" />}><FightClubPage /></Suspense>;   // Fight Club (unlisted)
   if (import.meta.env.DEV && path === '/fightlab') return <Suspense fallback={<div className="page" />}><FightLab /></Suspense>;   // Fight Club's lab

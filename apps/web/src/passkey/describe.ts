@@ -6,7 +6,7 @@
  * moves a pet or an item, grants an approval, or targets a contract or a function this file does not know, always asks.
  */
 import { decodeFunctionData, formatEther, type Abi, type Address, type Hex } from 'viem';
-import { autocareAbi, autocareVaultAbi, emogotchiAbi, emogotchiDropAbi, emogotchiItemsAbi, inversegotchiAbi, r3tardgotchiAbi, emonadgotchiAbi, sahuragotchiAbi, thiccumsgotchiAbi } from '@emo-pets/chain';
+import { emogotchiAbi, emogotchiDropAbi, emogotchiItemsAbi, inversegotchiAbi, r3tardgotchiAbi, emonadgotchiAbi, sahuragotchiAbi, thiccumsgotchiAbi } from '@emo-pets/chain';
 import { cfg as chainCfg } from './config';
 import { ITEM_LABEL } from '../items';
 
@@ -32,7 +32,7 @@ const mon = (wei: bigint) => `${Number(formatEther(wei)).toLocaleString(undefine
 const CARE = ['feed', 'play', 'wash', 'put to bed', 'clean up after'] as const;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-type Kind = 'cat' | 'frok' | 'sahur' | 'thiccums' | 'r3tards' | 'emonad' | 'items' | 'drop' | 'autocare';
+type Kind = 'cat' | 'frok' | 'sahur' | 'thiccums' | 'r3tards' | 'emonad' | 'items' | 'drop';
 type Known = { kind: Kind; name: string; abi: Abi; pet: string };
 
 function known(to: Address): Known | null {
@@ -46,7 +46,6 @@ function known(to: Address): Known | null {
   if (__EMONAD__ && c.emonad && a === c.emonad.toLowerCase()) return { kind: 'emonad', name: 'Emonadgotchi', abi: emonadgotchiAbi as Abi, pet: 'Emonad' };
   if (c.items && a === c.items.toLowerCase()) return { kind: 'items', name: 'Item shop', abi: emogotchiItemsAbi as Abi, pet: 'item' };
   if (c.drop && a === c.drop.toLowerCase()) return { kind: 'drop', name: 'Emogotchi claim', abi: emogotchiDropAbi as Abi, pet: 'Emogotchi' };
-  if (c.autocare && a === c.autocare.toLowerCase()) return { kind: 'autocare', name: 'Autocare', abi: autocareAbi as Abi, pet: 'pet' };
   return null;
 }
 
@@ -68,7 +67,6 @@ const SILENT = {
   items: new Set(['claim', 'equip', 'equipMany', 'unequip', 'prune', 'crankBurn', 'crankFallback', 'sweep', 'skim', 'noteSwapPath']),
   drop: new Set(['claim']),
   // withdraw only ever returns the caller's own pets and MON to the caller
-  autocare: new Set(['runPets', 'run', 'runAll', 'sweepTeam', 'withdraw']),
 } as Record<Kind, ReadonlySet<string>>;
 
 const MON_ = 10n ** 18n;
@@ -110,10 +108,8 @@ export function describeTx(tx: TxRequest): TxSummary {
 
   const k = known(to);
   if (!k) {
-    // An Autocare vault has no fixed address, and a selector is not proof of one: any contract can expose
-    // `withdrawMon`. Describing an unverified address as "your vault, it can only pay you" would be this wallet
-    // vouching for a stranger, so it does not. When Autocare ships, the way to describe a vault kindly is to check
-    // the address against the machine's own `vaultOf(owner)` first; until then an unknown contract reads as one.
+    // A selector is not proof of what a contract is: describing an unverified address kindly would be this wallet
+    // vouching for a stranger, so it does not.
     return { title: 'Unknown contract', detail: [`${to}`, `call ${data.slice(0, 10)}`, 'This site does not know this contract or what this call does. Cancel unless you are sure.', ...(value > 0n ? [`It carries ${mon(value)}.`] : [])], risk: 'unknown', contract: short(to), value, silent: false, danger: true };
   }
 
@@ -142,14 +138,11 @@ export function describeTx(tx: TxRequest): TxSummary {
   if (fn === 'approve') return out(`Let ${short(String(args[0]))} move ${k.pet} ${id(1)}`, [`${String(args[0])}`, 'That address could take this pet at any time until you revoke it. This site never asks for this.'], 'approval', true);
   if (fn === 'setApprovalForAll') {
     const op = String(args[0]); const on = Boolean(args[1]);
-    // Autocare holds pets and nothing else: an item approval to it is not the call the site makes, so it is not excused
-    const machine = (k.kind === 'cat' || k.kind === 'frok') && !!chainCfg?.autocare && op.toLowerCase() === chainCfg.autocare.toLowerCase();
-    if (!on) return out(`Revoke ${machine ? 'Autocare' : short(op)}'s permission`, [`${op}`, `It can no longer move your ${k.kind === 'items' ? 'items' : `${k.pet}s`}.`], 'routine');
+    if (!on) return out(`Revoke ${short(op)}'s permission`, [`${op}`, `It can no longer move your ${k.kind === 'items' ? 'items' : `${k.pet}s`}.`], 'routine');
     return out(
-      machine ? `Let Autocare move your ${k.pet}s` : `Let ${short(op)} move ALL your ${k.kind === 'items' ? 'items' : `${k.pet}s`}`,
-      machine ? [`${op}`, 'Needed once, so the machine can take the pets you deposit. It can only ever hand them back to you.']
-        : [`${op}`, 'That address could take every one of them at any time until you revoke it. This site never asks for this.'],
-      'approval', !machine,
+      `Let ${short(op)} move ALL your ${k.kind === 'items' ? 'items' : `${k.pet}s`}`,
+      [`${op}`, 'That address could take every one of them at any time until you revoke it. This site never asks for this.'],
+      'approval', true,
     );
   }
 
@@ -191,15 +184,6 @@ export function describeTx(tx: TxRequest): TxSummary {
     if (fn === 'prune' || fn === 'crankBurn' || fn === 'crankFallback' || fn === 'sweep' || fn === 'skim' || fn === 'noteSwapPath') return out('Housekeeping', ['Moves nothing of yours. Gas only.'], 'routine');
   }
   if (k.kind === 'drop' && fn === 'claim') return out('Claim your Emogotchi', ['Free. One per wallet.'], 'routine');
-  if (k.kind === 'autocare') {
-    const n = (i: number) => ((args[i] as readonly unknown[]) ?? []).length;
-    if (fn === 'deposit') return out(`Send ${plural(n(0), 'pet')} to Autocare`, [`${Number(args[1]) === 1 ? 'Full care' : 'Fed'} · the MON goes into your own vault, less 1 MON per pet`, 'Only this account can take them back.'], value > 0n ? 'spend' : 'transfer');
-    if (fn === 'topUp') return out('Top up an Autocare vault', [`for ${String(args[0])}`, 'It can only be spent on that owner\'s pets, and only they can withdraw it.'], paid);
-    if (fn === 'setMode') return out(`Switch ${plural(n(0), 'pet')} to ${Number(args[1]) === 1 ? 'Full care' : 'Fed'}`, ['Changes what the machine spends on them each day.'], 'spend');
-    if (fn === 'withdraw') return out(`Take ${plural(n(0), 'pet')} back from Autocare`, [args[1] ? 'With all of your MON.' : 'The MON stays in your vault.'], 'routine');
-    if (fn === 'runPets' || fn === 'run' || fn === 'runAll') return out('Run an Autocare round', ['Does what is due and pays you the bounty. Gas only.'], 'routine');
-    if (fn === 'sweepTeam') return out('Housekeeping', ['Moves nothing of yours. Gas only.'], 'routine');
-  }
   // a function of a known contract that this file has no words for: never silent
   return { title: `${fn} on ${k.name}`, detail: ['This site has no description for this call. Cancel unless you are sure.', ...(value > 0n ? [`It carries ${mon(value)}.`] : [])], risk: 'unknown', contract: k.name, value, silent: false, danger: true };
 }

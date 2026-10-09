@@ -25,7 +25,7 @@ snapshot/*-testnet.progress.json
 
 # ---------- secrets: nothing below may ever be committed ----------
 # The repo's own worker/wrangler.toml walks you through setting HYPERSYNC_TOKEN, DRIP_KEY and
-# AUTOCARE_KEEPER_KEY. The local-dev form of all three is a line in worker/.dev.vars — one `wrangler dev`
+# FIGHT_KEEPER_KEY. The local-dev form of all three is a line in worker/.dev.vars — one `wrangler dev`
 # session that needs live values writes the drip wallet's PRIVATE KEY to disk inside this repo.
 .env
 .env.*

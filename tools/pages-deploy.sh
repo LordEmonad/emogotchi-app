@@ -49,16 +49,13 @@ if [ -n "$R3TARDS_ADDRESS" ] || [ -n "$got_r3tards" ]; then check_addr VITE_R3TA
 EMONAD_ADDRESS="0xcD4BF1Ea169703f810dA87680a1B8FdA64adcdF7"
 got_emonad=$(grep -E "^VITE_EMONAD_ADDRESS=" "$HERE/apps/web/.env.local" | cut -d= -f2 | tr -d '[:space:]' || true)
 if [ -n "$EMONAD_ADDRESS" ] || [ -n "$got_emonad" ]; then check_addr VITE_EMONAD_ADDRESS "$EMONAD_ADDRESS"; fi
-# The other settings that decide what this origin trusts (security review, 2026-09-27). An Autocare address makes a
-# contract "known" to the passkey wallet (silent calls, and setApprovalForAll to it described as the Autocare machine),
-# so until Autocare is deployed and reviewed it must be absent; the RPC and the media host feed the CSP; the passkey
-# flag is on for everyone.
+# The other settings that decide what this origin trusts (security review, 2026-09-27): the RPC and the media host
+# feed the CSP; the passkey flag is on for everyone.
 only_or_absent() {
   local name="$1" want="$2" got
   got=$(grep -E "^$name=" "$HERE/apps/web/.env.local" | cut -d= -f2- | tr -d '[:space:]' || true)
   if [ -n "$got" ] && [ "$got" != "$want" ]; then echo "REFUSING TO DEPLOY: $name is $got, expected ${want:-nothing}" >&2; exit 1; fi
 }
-only_or_absent VITE_AUTOCARE_ADDRESS ""
 only_or_absent VITE_SOCIAL_API ""
 only_or_absent VITE_RPC_URL "https://rpc.monad.xyz"
 only_or_absent VITE_MEDIA_ORIGIN "https://emotown-media.emonad.lol"
@@ -119,7 +116,7 @@ cp -R "$HERE/apps/web/dist/." .
 cp index.html 404.html                     # SPA fallback for /pet/<id>, which cannot be pre-generated
 # Every route people share gets a real page. Without this GitHub Pages answers 404 for them: the page
 # still renders through the fallback, but a 404 status breaks link previews and looks broken to crawlers.
-for route in claim cats pets collection leaderboard nft faq costume shop items shop/jewish shop/habibi shop/emo mint inversebrah tung stats pfps autocare refer r1 emotown town adopt fightclub r3tardgotchi ${THICCUMS_ADDRESS:+thiccums} ${EMONAD_ADDRESS:+emonadgotchi}; do
+for route in claim cats pets collection leaderboard nft faq costume shop items shop/jewish shop/habibi shop/emo mint inversebrah tung stats pfps refer r1 emotown town adopt fightclub r3tardgotchi ${THICCUMS_ADDRESS:+thiccums} ${EMONAD_ADDRESS:+emonadgotchi}; do
   mkdir -p "$route" && cp index.html "$route/index.html"
 done
 # The r1 keeps its recovery phrase in this origin's localStorage (the device has no WebAuthn), so ITS page runs no
@@ -137,13 +134,6 @@ fs.writeFileSync(p, h);
 # no numbers at all, so the Action is simply gone.
 rm -rf .github/stats-card .github/workflows/stats-card.yml
 mkdir -p .github/workflows
-# the second Autocare poker (GitHub's cron, independent of Cloudflare): the keeper and its runner travel with the site;
-# the workflow is a no-op until the repo variable AUTOCARE_ADDRESS and the secret AUTOCARE_KEEPER_KEY are set
-mkdir -p .github/autocare
-cp "$HERE/worker/keeper.js" .github/autocare/keeper.js
-sed 's#../worker/keeper.js#./keeper.js#' "$HERE/tools/autocare-poke.mjs" > .github/autocare/autocare-poke.mjs
-printf '{ "type": "module" }\n' > .github/autocare/package.json
-cp "$HERE/tools/autocare-poke.yml" .github/workflows/autocare-poke.yml
 # his pages and the stats page get their own link preview: same page, their title, their card (brand/*-og.png)
 node "$HERE/tools/og-meta.mjs" mint inversebrah tung stats nft pfps emotown town shop/jewish shop/habibi shop/emo adopt pets cats fightclub r3tardgotchi ${THICCUMS_ADDRESS:+thiccums} ${EMONAD_ADDRESS:+emonadgotchi}
 mkdir -p inversebrah/pet && cp inversebrah/index.html inversebrah/pet/index.html   # /inversebrah/pet/<id> falls through 404.html, but the folder keeps the path real

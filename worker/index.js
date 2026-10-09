@@ -11,7 +11,6 @@
  */
 import { advance, catsFromIndex, indexStatus, petOf, starvationFromIndex, statsFromIndex } from './indexer.js';
 import { fromSite, preview, previewRoute } from './preview.js';
-import { poke } from './keeper.js';
 import { settle } from './fightkeeper.js';
 import { pushTick } from './push.js';
 import { drip } from './drip.js';
@@ -72,8 +71,6 @@ export default {
     // Everything below runs every five minutes, as it did when the cron itself was */5 (a test's own cron string, like
     // push-check's, always runs it).
     if (event.cron === '* * * * *' && new Date(event.scheduledTime ?? Date.now()).getUTCMinutes() % 5 !== 0) return;
-    // the Autocare poker: a free read of what is due, a transaction only when there is work
-    ctx.waitUntil(poke(env, (m) => console.log('[autocare]', m)).then((s) => console.log('[autocare]', JSON.stringify(s))).catch((e) => console.error('[autocare]', String(e))));
     ctx.waitUntil(sweep(env).catch((e) => console.error('[social] sweep', String(e))));   // expired sign-ins and sessions
     // the home-screen app's notifications: every pet's clock and the fights, every ten minutes (worker/push.js); a no-op until the VAPID keys are set
     if (env.PUSH_EVERY_TICK === '1' || new Date().getUTCMinutes() % 10 < 5) ctx.waitUntil(pushTick(env, (m) => console.log('[push]', m)).catch((e) => console.error('[push]', String(e))));
